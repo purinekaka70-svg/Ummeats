@@ -1,20 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Tamu Express</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Tamu Express (Simple)</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 text-gray-900 flex flex-col min-h-screen">
+<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
 
 <header class="bg-green-600 text-white p-4 flex justify-between items-center">
   <h1 class="text-lg font-bold cursor-pointer">Tamu Express</h1>
-  <nav>
-    <button type="button" class="tab px-3 py-1 rounded" data-tab="restaurants">Restaurants</button>
-    <button type="button" class="tab px-3 py-1 rounded" data-tab="orders">Orders</button>
-    <button type="button" class="tab px-3 py-1 rounded" data-tab="hotel">Hotel Portal</button>
-    <button type="button" class="tab px-3 py-1 rounded" data-tab="admin">Admin</button>
+  <nav class="space-x-2">
+    <button class="tab px-3 py-1 rounded" data-tab="restaurants">Restaurants</button>
+    <button class="tab px-3 py-1 rounded" data-tab="orders">Orders</button>
+    <button class="tab px-3 py-1 rounded" data-tab="hotel">Hotel Portal</button>
+    <button class="tab px-3 py-1 rounded" data-tab="admin">Admin</button>
   </nav>
 </header>
 
@@ -25,12 +25,18 @@
 </footer>
 
 <script type="module">
+/* =========================
+   Simplified Tamu Express
+   Single file, same colors/layout
+   ========================= */
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, setDoc, doc, onSnapshot, getDocs, updateDoc, deleteDoc
+  getFirestore, collection, addDoc, setDoc, doc,
+  onSnapshot, getDocs, updateDoc, deleteDoc, query, where
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-// Firebase config (unchanged)
+/* ---------- Firebase config (unchanged) ---------- */
 const firebaseConfig = {
   apiKey: "AIzaSyApi2RjwEXEW2mTwCMiYERKUNAYL8Toddk",
   authDomain: "tamuexpress-26e4a.firebaseapp.com",
@@ -42,319 +48,289 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// App state
+/* ---------- State & constants ---------- */
 let hotels = [], restaurants = [], orders = [];
 let cart = [], currentTab = "restaurants", currentHotelId = null, currentAdmin = null, currentCustomer = null;
+
 const SERVICE_FEE = 40;
 const SERVICE_FEE_TILL = "0115613332";
-const SUBSCRIPTION_FEE = 100;
-const ADMIN = { user: "admin", pass: "TamuAdmin@2025" };
+const ADMIN_CRED = { user: "admin", pass: "TamuAdmin@2025" };
 const appDiv = document.getElementById("app");
 
-// Hide admin tab initially
+/* ---------- UI helpers ---------- */
 const adminTab = document.querySelector(".tab[data-tab='admin']");
-adminTab.style.display = "none";
+adminTab.style.display = "none"; // hidden until footer click
 
-// Tab handlers
-document.querySelectorAll(".tab").forEach(btn=>{
-  btn.addEventListener("click",()=>switchTab(btn.dataset.tab));
-});
-
-// Reveal admin tab by tapping footer 4 times
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 let footerClicks = 0;
-document.getElementById("footer").addEventListener("click",()=>{
+document.getElementById("footer").addEventListener("click", () => {
   footerClicks++;
-  if(footerClicks>=4){
-    adminTab.style.display = "inline-block";
-    switchTab("admin");
-    footerClicks = 0;
-  }
+  if (footerClicks >= 4) { adminTab.style.display = "inline-block"; switchTab("admin"); footerClicks = 0; }
 });
 
-function switchTab(tab){
+function switchTab(tab) {
   currentTab = tab;
-  document.querySelectorAll(".tab").forEach(b=>{
-    if(b.dataset.tab === tab){
-      b.classList.add("bg-white","text-green-700","font-semibold");
-      b.classList.remove("text-white");
-    } else {
-      b.classList.remove("bg-white","text-green-700","font-semibold");
-      b.classList.add("text-white");
-    }
+  document.querySelectorAll(".tab").forEach(b => {
+    if (b.dataset.tab === tab) { b.classList.add("bg-white","text-green-700","font-semibold"); b.classList.remove("text-white"); }
+    else { b.classList.remove("bg-white","text-green-700","font-semibold"); b.classList.add("text-white"); }
   });
   render();
 }
 
-function getHotelById(id){
-  return hotels.find(h=>h.id===id) || {name:"Unknown", till:"N/A", subscriptionExpiry:0, blocked:false, approved:false};
+function getHotelById(id) {
+  return hotels.find(h => h.id === id) || { name: "Unknown", till: "N/A", approved: false, blocked: false };
 }
 
-// Render
-function render(){
-  if(currentTab === "restaurants") renderRestaurants();
-  else if(currentTab === "orders") renderOrders();
-  else if(currentTab === "hotel") renderHotelPortal();
-  else if(currentTab === "admin") renderAdmin();
+/* ---------- Render functions (simple, compact) ---------- */
+function render() {
+  if (currentTab === "restaurants") renderRestaurants();
+  else if (currentTab === "orders") renderOrders();
+  else if (currentTab === "hotel") renderHotelPortal();
+  else if (currentTab === "admin") renderAdmin();
 }
 
-// --- Restaurants (customer view) ---
-function renderRestaurants(){
-  // show only restaurants whose associated hotel is approved and not blocked
-  appDiv.innerHTML = `<h2 class="text-xl font-semibold mb-3">All Restaurants</h2>
-  ${restaurants.filter(r => r.approved && !r.blocked).map(r=>`
-    <div class="bg-white p-4 rounded shadow mb-3">
-      <h3 class="font-bold">${r.hotelName}</h3>
-      <p class="text-sm text-gray-500">Till: ${r.till || "N/A"}</p>
-      <div class="mt-2">
-        ${r.menu?.length ? r.menu.map(item=>`
-          <div class="flex justify-between border-b py-2">
-            <span>${item.name} - KSh ${item.price}</span>
-            <button type="button" data-hotel="${r.hotelId}" data-name="${item.name}" data-price="${item.price}" class="addToCart bg-green-500 text-white px-2 py-1 rounded text-sm">Add</button>
-          </div>`).join("") : `<p>No items yet</p>`}
-      </div>
-    </div>`).join("")}
+/* Restaurants (customer view) */
+function renderRestaurants() {
+  const visible = restaurants.filter(r => r.approved && !r.blocked);
+  appDiv.innerHTML = `
+    <h2 class="text-xl font-semibold mb-3">All Restaurants</h2>
+    ${visible.map(r => `
+      <div class="bg-white p-4 rounded shadow mb-3">
+        <h3 class="font-bold">${r.hotelName}</h3>
+        <p class="text-sm text-gray-500">Till: ${r.till || "N/A"}</p>
+        <div class="mt-2">
+          ${r.menu?.length ? r.menu.map(item => `
+            <div class="flex justify-between border-b py-2">
+              <span>${item.name} - KSh ${item.price}</span>
+              <button data-hotel="${r.hotelId}" data-name="${item.name}" data-price="${item.price}" class="addToCart bg-green-500 text-white px-2 py-1 rounded text-sm">Add</button>
+            </div>`).join("") : `<p>No items yet</p>`}
+        </div>
+      </div>`).join("")}
 
-  <div class="bg-white p-4 rounded shadow mt-6">
-    <h3 class="font-semibold">Cart</h3>
-    ${cart.length===0 ? "<p>Empty cart</p>" : `
-      <ul class="mb-2">${cart.map((c,i)=>`<li>${c.name} - KSh ${c.price} <button type="button" data-i="${i}" class="remove text-red-500">x</button></li>`).join("")}</ul>
-      <p>Items Total: KSh ${cart.reduce((s,i)=>s+i.price,0)}</p>
-      <p>Service Fee: KSh ${SERVICE_FEE}</p>
+    <div class="bg-white p-4 rounded shadow mt-6">
+      <h3 class="font-semibold">Cart</h3>
+      ${cart.length === 0 ? "<p>Empty cart</p>" : `
+        <ul class="mb-2">${cart.map((c,i) => `<li>${c.name} - KSh ${c.price} <button data-i="${i}" class="remove text-red-500">x</button></li>`).join("")}</ul>
+        <p>Items Total: KSh ${cart.reduce((s,i)=>s+i.price,0)}</p>
+        <p>Service Fee: KSh ${SERVICE_FEE}</p>
+        ${cart.length > 0 ? `<p class="mt-1 text-sm">Pay food amount to: <strong>${getHotelById(cart[0].hotelId).till || "N/A"}</strong> (${getHotelById(cart[0].hotelId).name})</p>
+        <p class="text-sm">Service Fee Till: <strong>${SERVICE_FEE_TILL}</strong></p>` : ""}
+        <p class="font-semibold mt-2">Total to Pay: KSh ${cart.reduce((s,i)=>s+i.price,0) + SERVICE_FEE}</p>
 
-      <!-- show hotel's till info & service fee till -->
-      ${(() => {
-        if (cart.length > 0) {
-          const firstHotel = getHotelById(cart[0].hotelId);
-          return `<p class="mt-2 text-sm text-gray-700">Pay food amount to: <strong>${firstHotel.till || "N/A"}</strong> (${firstHotel.name})</p>
-                  <p class="text-sm text-gray-700">Service Fee Till: <strong>${SERVICE_FEE_TILL}</strong></p>`;
-        }
-        return "";
-      })()}
+        <div class="mt-3">
+          <h4 class="font-semibold mb-1">M-PESA details (required)</h4>
+          <input id="mpesaName" class="border p-1 w-full mt-1" placeholder="M-PESA name (as on payment)">
+          <input id="mpesaNumber" class="border p-1 w-full mt-2" placeholder="M-PESA number (07XXXXXXXX)">
+        </div>
 
-      <p class="font-semibold mt-3">Total to Pay: <strong>KSh ${cart.reduce((s,i)=>s+i.price,0)+SERVICE_FEE}</strong></p>
-
-      <!-- M-PESA confirmation inputs (required) -->
-      <div class="mt-3">
-        <h4 class="font-semibold mb-1">M-PESA payment details (required)</h4>
-        <input id="mpesaName" class="border p-1 w-full mt-1" placeholder="M-PESA name (as on payment)">
-        <input id="mpesaNumber" class="border p-1 w-full mt-2" placeholder="M-PESA number (07XXXXXXXX)">
-      </div>
-
-      <input id="custName" class="border p-1 w-full mt-3" placeholder="Your name">
-      <input id="custPhone" class="border p-1 w-full mt-2" placeholder="Your phone">
-      <div class="mt-2 flex gap-2">
-        <button type="button" id="placeOrder" class="bg-blue-600 text-white px-3 py-1 rounded">Place Order</button>
-        <button type="button" id="resetCart" class="bg-gray-600 text-white px-3 py-1 rounded">Reset</button>
-      </div>`}
-  </div>`;
+        <input id="custName" class="border p-1 w-full mt-3" placeholder="Your name">
+        <input id="custPhone" class="border p-1 w-full mt-2" placeholder="Your phone">
+        <div class="mt-2 flex gap-2">
+          <button id="placeOrder" class="bg-blue-600 text-white px-3 py-1 rounded">Place Order</button>
+          <button id="resetCart" class="bg-gray-600 text-white px-3 py-1 rounded">Reset</button>
+        </div>`}
+    </div>
+  `;
 }
 
-// --- Orders (customer / hotel / admin) ---
-function renderOrders(){
+/* Orders (customer / hotel / admin) */
+function renderOrders() {
   let visibleOrders = [];
+  if (currentHotelId) visibleOrders = orders.filter(o => o.hotelId === currentHotelId);
+  else if (currentAdmin) visibleOrders = orders;
+  else if (currentCustomer) visibleOrders = orders.filter(o => o.customerName === currentCustomer.name && o.customerPhone === currentCustomer.phone);
+  else visibleOrders = [];
 
-  if(currentHotelId){
-    // Hotel sees only its orders
-    visibleOrders = orders.filter(o => o.hotelId === currentHotelId);
-  } else if(currentAdmin){
-    // Admin sees all orders
-    visibleOrders = orders;
-  } else if(currentCustomer){
-    // Customer sees own orders
-    visibleOrders = orders.filter(o => o.customerName === currentCustomer.name && o.customerPhone === currentCustomer.phone);
-  } else {
-    visibleOrders = [];
-  }
-
-  appDiv.innerHTML = `<h2 class="text-xl font-semibold mb-3">Orders</h2>
-    ${visibleOrders.length===0 ? "<p>No orders yet</p>" : visibleOrders.map(o=>{
+  appDiv.innerHTML = `
+    <h2 class="text-xl font-semibold mb-3">Orders</h2>
+    ${visibleOrders.length === 0 ? "<p>No orders yet</p>" : visibleOrders.map(o => {
       const hotel = getHotelById(o.hotelId);
       const itemsTotal = o.items.reduce((s,i)=>s+i.price,0);
-      const serviceFee = o.serviceFee ?? SERVICE_FEE;
-      const totalPay = o.total ?? (itemsTotal + serviceFee);
-      const status = o.status || "Pending";
+      const total = o.total ?? (itemsTotal + (o.serviceFee ?? SERVICE_FEE));
+      const canDelete = currentAdmin || (currentHotelId && currentHotelId === o.hotelId);
       const canMarkPaid = (currentHotelId && currentHotelId === o.hotelId) || currentAdmin;
-      const canDelete = (currentAdmin) || (currentHotelId && currentHotelId === o.hotelId);
-      const markPaidBtn = (status !== "Paid" && canMarkPaid) ? `<button type="button" data-id="${o.id}" class="markPaid bg-green-600 text-white px-3 py-1 rounded mt-2">Mark as Paid</button>` : "";
-      const deleteBtn = canDelete ? `<button type="button" data-id="${o.id}" class="deleteOrder bg-red-600 text-white px-3 py-1 rounded mt-2 ml-2">Delete</button>` : "";
-      const statusBadge = status === "Paid" ? `<span class="text-green-700 font-semibold">Paid ✅</span>` : `<span class="text-yellow-600 font-semibold">Pending ⏳</span>`;
-
       return `
         <div class="bg-white p-4 rounded shadow mb-3">
           <div class="flex justify-between items-center mb-2">
             <h3 class="font-semibold">${o.customerName}</h3>
-            <div>${statusBadge}</div>
+            <div class="${o.status === 'Paid' ? 'text-green-700 font-semibold' : 'text-yellow-600 font-semibold'}">${o.status || 'Pending'}</div>
           </div>
+
           <p class="text-sm text-gray-600">Phone: ${o.customerPhone}</p>
-          <p class="text-sm text-gray-600">Hotel: ${hotel.name} | Hotel Till: ${hotel.till || "N/A"}</p>
+          <p class="text-sm text-gray-600">Hotel: ${hotel.name} | Hotel Till: ${hotel.till || 'N/A'}</p>
+
           <ul class="text-sm mt-2">${o.items.map(i=>`<li>${i.name} - KSh ${i.price}</li>`).join("")}</ul>
           <p class="text-sm mt-1">Items Total: KSh ${itemsTotal}</p>
-          <p class="text-sm mt-1">Service Fee: KSh ${serviceFee}</p>
+          <p class="text-sm mt-1">Service Fee: KSh ${o.serviceFee ?? SERVICE_FEE}</p>
           <p class="text-sm mt-1">Service Fee Till: <strong>${SERVICE_FEE_TILL}</strong></p>
-
-          <p class="font-semibold mt-1">Total to Pay: KSh ${totalPay}</p>
+          <p class="font-semibold mt-1">Total to Pay: KSh ${total}</p>
 
           <div class="mt-2 text-sm">
-            <p><strong>M-PESA Name:</strong> ${o.mpesaName || "—"}</p>
-            <p><strong>M-PESA Number:</strong> ${o.mpesaNumber || "—"}</p>
+            <p><strong>M-PESA Name:</strong> ${o.mpesaName || '—'}</p>
+            <p><strong>M-PESA Number:</strong> ${o.mpesaNumber || '—'}</p>
           </div>
 
-          <div class="mt-3">
-            ${markPaidBtn}
-            ${deleteBtn}
+          <div class="mt-3 flex gap-2">
+            ${canMarkPaid && o.status !== 'Paid' ? `<button data-id="${o.id}" class="markPaid bg-green-600 text-white px-3 py-1 rounded">Mark as Paid</button>` : ''}
+            ${canDelete ? `<button data-id="${o.id}" class="deleteOrder bg-red-600 text-white px-3 py-1 rounded">Delete</button>` : ''}
           </div>
-        </div>`;
+        </div>
+      `;
     }).join("")}
   `;
 }
 
-// --- Hotel Portal ---
-function renderHotelPortal(){
-  if(!currentHotelId){
-    appDiv.innerHTML=`<div class="grid md:grid-cols-2 gap-4">
+/* Hotel Portal (login/register and menu) */
+function renderHotelPortal() {
+  if (!currentHotelId) {
+    appDiv.innerHTML = `
+      <div class="grid md:grid-cols-2 gap-4">
         <form id="hotelLogin" class="bg-white p-4 rounded shadow">
           <h3 class="font-semibold mb-2">Hotel Login</h3>
           <input name="name" placeholder="Hotel name" class="border p-2 w-full mb-2">
           <input name="pass" placeholder="Password" type="password" class="border p-2 w-full mb-2">
-          <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded">Login</button>
+          <button class="bg-green-600 text-white px-3 py-1 rounded" type="submit">Login</button>
         </form>
+
         <form id="hotelRegister" class="bg-white p-4 rounded shadow">
           <h3 class="font-semibold mb-2">Register</h3>
           <input name="name" placeholder="Hotel name" class="border p-2 w-full mb-2">
           <input name="pass" placeholder="Password" type="password" class="border p-2 w-full mb-2">
           <input name="till" placeholder="Till number (e.g. 123456)" class="border p-2 w-full mb-2">
-          <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded">Register</button>
+          <button class="bg-blue-600 text-white px-3 py-1 rounded" type="submit">Register</button>
         </form>
       </div>`;
     return;
   }
 
-  const hotel = hotels.find(h=>h.id===currentHotelId);
-  if(!hotel) return;
-  if(!hotel.subscriptionExpiry || hotel.subscriptionExpiry < Date.now() || hotel.blocked){
-    appDiv.innerHTML=`<div class="bg-white p-4 rounded shadow">
-      <p class="text-red-600 font-bold">${hotel.blocked ? "Blocked by admin" : `Subscription expired. Pay KSh ${SUBSCRIPTION_FEE}`}</p>
-      <button type="button" id="logoutHotel" class="bg-red-500 text-white px-3 py-1 rounded mt-3">Logout</button>
-    </div>`;
+  const hotel = hotels.find(h => h.id === currentHotelId);
+  if (!hotel) return;
+  if (hotel.blocked) {
+    appDiv.innerHTML = `<div class="bg-white p-4 rounded shadow"><p class="text-red-600 font-bold">Blocked by admin</p><button id="logoutHotel" class="mt-3 bg-red-500 text-white px-3 py-1 rounded">Logout</button></div>`;
+    return;
+  }
+  if (!hotel.subscriptionExpiry || hotel.subscriptionExpiry < Date.now()) {
+    appDiv.innerHTML = `<div class="bg-white p-4 rounded shadow"><p class="text-red-600 font-bold">Subscription expired. Pay KSh ${100}</p><button id="logoutHotel" class="mt-3 bg-red-500 text-white px-3 py-1 rounded">Logout</button></div>`;
     return;
   }
 
-  const rest = restaurants.find(r=>r.hotelId===currentHotelId) || {menu:[]};
-  appDiv.innerHTML=`<div class="flex justify-between items-center mb-3">
-        <h2 class="font-bold">${hotel.name}</h2>
-        <button type="button" id="logoutHotel" class="bg-red-500 text-white px-3 py-1 rounded">Logout</button>
-      </div>
-      <div class="bg-white p-4 rounded shadow mb-4">
-        <form id="addMenu" class="flex gap-2">
-          <input name="name" placeholder="Item name" class="border p-2 flex-1">
-          <input name="price" type="number" placeholder="Price" class="border p-2 w-24">
-          <button type="submit" class="bg-green-600 text-white px-3 py-1 rounded">Add</button>
-        </form>
-        <ul class="mt-2">
-          ${rest.menu.map((m,i)=>`
-            <li>${m.name} - KSh ${m.price} 
-              <button type="button" data-i="${i}" class="removeMenu text-red-500 ml-2">x</button>
-            </li>`).join("")}
-        </ul>
-      </div>`;
-}
+  const rest = restaurants.find(r => r.hotelId === currentHotelId) || { menu: [] };
+  appDiv.innerHTML = `
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="font-bold">${hotel.name}</h2>
+      <button id="logoutHotel" class="bg-red-500 text-white px-3 py-1 rounded">Logout</button>
+    </div>
 
-// --- Admin ---
-function renderAdmin(){
-  if(!currentAdmin){
-    appDiv.innerHTML=`<form id="adminLogin" class="bg-white p-4 rounded shadow">
-      <h3 class="font-semibold mb-2">Admin Login</h3>
-      <input name="user" placeholder="Username" class="border p-2 w-full mb-2">
-      <input name="pass" placeholder="Password" type="password" class="border p-2 w-full mb-2">
-      <button type="submit" class="bg-purple-600 text-white px-3 py-1 rounded">Login</button>
-    </form>`;
-    return;
-  }
+    <div class="bg-white p-4 rounded shadow">
+      <form id="addMenu" class="flex gap-2">
+        <input name="name" placeholder="Item name" class="border p-2 flex-1" />
+        <input name="price" type="number" placeholder="Price" class="border p-2 w-24" />
+        <button class="bg-green-600 text-white px-3 py-1 rounded" type="submit">Add</button>
+      </form>
 
-  appDiv.innerHTML=`<h2 class="text-xl font-semibold mb-3">Admin Panel</h2>
-    <button type="button" id="clearAll" class="bg-red-700 text-white px-3 py-1 rounded mb-4">Clear All Data</button>
-
-    <h3 class="font-semibold mb-2">Registered Hotels</h3>
-    ${hotels.map(h=>`<div class="bg-white p-3 rounded shadow mb-2 flex justify-between items-center">
-      <div>
-        <p class="font-semibold">${h.name}</p>
-        <p>Till: ${h.till}</p>
-        <p>Blocked: ${h.blocked?"Yes":"No"}</p>
-        <p>Approved: ${h.approved?"Yes":"No"}</p>
-      </div>
-      <div class="flex gap-2">
-        <button type="button" data-id="${h.id}" class="toggleBlock bg-red-500 text-white px-2 py-1 rounded">${h.blocked?"Unblock":"Block"}</button>
-        ${!h.approved?`<button type="button" data-id="${h.id}" class="approveHotel bg-green-500 text-white px-2 py-1 rounded">Approve</button>`:""}
-      </div>
-    </div>`).join("")}
-
-    <h3 class="font-semibold mt-4 mb-2">All Orders</h3>
-    <div>
-      <button type="button" class="bg-blue-600 text-white px-3 py-1 rounded" onclick="switchTab('orders')">Go to Orders</button>
+      <ul class="mt-3">
+        ${rest.menu.map((m,i)=>`<li>${m.name} - KSh ${m.price} <button data-i="${i}" class="removeMenu text-red-500 ml-2">x</button></li>`).join("")}
+      </ul>
     </div>
   `;
 }
 
-// ===== Firestore listeners =====
-onSnapshot(collection(db,"hotels"),snap=>{
-  hotels = snap.docs.map(d=>({id:d.id,...d.data()}));
+/* Admin panel */
+function renderAdmin() {
+  if (!currentAdmin) {
+    appDiv.innerHTML = `
+      <form id="adminLogin" class="bg-white p-4 rounded shadow">
+        <h3 class="font-semibold mb-2">Admin Login</h3>
+        <input name="user" placeholder="Username" class="border p-2 w-full mb-2">
+        <input name="pass" placeholder="Password" type="password" class="border p-2 w-full mb-2">
+        <button class="bg-purple-600 text-white px-3 py-1 rounded" type="submit">Login</button>
+      </form>`;
+    return;
+  }
+
+  appDiv.innerHTML = `
+    <h2 class="text-xl font-semibold mb-3">Admin Panel</h2>
+    <button id="clearAll" class="bg-red-700 text-white px-3 py-1 rounded mb-4">Clear All Data</button>
+
+    <h3 class="font-semibold mb-2">Registered Hotels</h3>
+    ${hotels.map(h => `<div class="bg-white p-3 rounded shadow mb-2 flex justify-between items-center">
+      <div>
+        <p class="font-semibold">${h.name}</p>
+        <p>Till: ${h.till}</p>
+        <p>Blocked: ${h.blocked ? "Yes" : "No"}</p>
+        <p>Approved: ${h.approved ? "Yes" : "No"}</p>
+      </div>
+      <div class="flex gap-2">
+        <button data-id="${h.id}" class="toggleBlock bg-red-500 text-white px-2 py-1 rounded">${h.blocked ? "Unblock" : "Block"}</button>
+        ${!h.approved ? `<button data-id="${h.id}" class="approveHotel bg-green-500 text-white px-2 py-1 rounded">Approve</button>` : ''}
+      </div>
+    </div>`).join("")}
+
+    <h3 class="font-semibold mt-4 mb-2">Orders</h3>
+    <div><button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="switchTab('orders')">Go to Orders</button></div>
+  `;
+}
+
+/* ---------- Firestore listeners (lightweight) ---------- */
+/* Watch hotels, restaurants, orders once and keep arrays updated. */
+onSnapshot(collection(db, "hotels"), snap => {
+  hotels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   render();
 });
 
-onSnapshot(collection(db,"restaurants"),snap=>{
-  restaurants = snap.docs.map(d=>{
+onSnapshot(collection(db, "restaurants"), snap => {
+  restaurants = snap.docs.map(d => {
     const data = d.data();
     const hotel = getHotelById(data.hotelId);
-    return {id:d.id,...data, hotelName: hotel.name, till: hotel.till, approved: hotel.approved, blocked: hotel.blocked};
+    return { id: d.id, ...data, hotelName: hotel.name, till: hotel.till, approved: hotel.approved, blocked: hotel.blocked };
   });
   render();
 });
 
-onSnapshot(collection(db,"orders"),snap=>{
-  orders = snap.docs.map(d=>({id:d.id,...d.data()}));
+/* orders snapshot: keep it simple, admin sees all; hotel/customer views are filtered in renderOrders */
+onSnapshot(collection(db, "orders"), snap => {
+  orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   render();
 });
 
-// ===== Event listeners =====
-document.addEventListener("click", async e=>{
+/* ---------- Event handling (single listener) ---------- */
+document.addEventListener("click", async e => {
   const t = e.target;
 
-  // Add to cart
-  if(t.classList.contains("addToCart")){
+  /* Add to cart */
+  if (t.classList.contains("addToCart")) {
     const name = t.dataset.name, price = parseFloat(t.dataset.price), hotelId = t.dataset.hotel;
-    cart.push({name,price,hotelId});
+    cart.push({ name, price, hotelId });
     renderRestaurants();
+    return;
   }
 
-  // Remove item from cart
-  if(t.classList.contains("remove")){
-    const idx = parseInt(t.dataset.i);
-    cart.splice(idx,1);
+  /* Remove from cart */
+  if (t.classList.contains("remove")) {
+    const i = parseInt(t.dataset.i);
+    cart.splice(i, 1);
     renderRestaurants();
+    return;
   }
 
-  // Reset cart
-  if(t.id==="resetCart"){ cart=[]; renderRestaurants(); }
+  /* Reset cart */
+  if (t.id === "resetCart") { cart = []; renderRestaurants(); return; }
 
-  // Place order
-  if(t.id==="placeOrder"){
-    const name = document.getElementById("custName").value.trim();
-    const phone = document.getElementById("custPhone").value.trim();
+  /* Place order (customer) */
+  if (t.id === "placeOrder") {
+    const cname = document.getElementById("custName").value.trim();
+    const cphone = document.getElementById("custPhone").value.trim();
     const mpesaName = (document.getElementById("mpesaName") && document.getElementById("mpesaName").value.trim()) || "";
     const mpesaNumber = (document.getElementById("mpesaNumber") && document.getElementById("mpesaNumber").value.trim()) || "";
 
-    // basic validation
-    if(!name || !phone || cart.length===0) return alert("Fill name/phone and add items");
-    if(!mpesaName || !mpesaNumber) return alert("Enter your M-PESA name and number");
+    if (!cname || !cphone || cart.length === 0) return alert("Fill name/phone and add items");
+    if (!mpesaName || !mpesaNumber) return alert("Enter M-PESA name and number");
 
-    // compute totals
     const itemsTotal = cart.reduce((s,i)=>s+i.price,0);
     const total = itemsTotal + SERVICE_FEE;
-
-    // save order to firestore
-    await addDoc(collection(db,"orders"),{
-      customerName: name,
-      customerPhone: phone,
+    await addDoc(collection(db, "orders"), {
+      customerName: cname,
+      customerPhone: cphone,
       items: cart,
       itemsTotal,
       serviceFee: SERVICE_FEE,
@@ -362,134 +338,143 @@ document.addEventListener("click", async e=>{
       total,
       hotelId: cart[0].hotelId,
       status: "Pending",
-      createdAt: Date.now(),
       mpesaName,
-      mpesaNumber
+      mpesaNumber,
+      createdAt: Date.now()
     });
 
-    alert("Order placed! Make sure you paid the hotel's till and you entered correct M-PESA details.");
-    currentCustomer = { name, phone };
+    alert("Order placed! Make sure you paid the hotel's till and entered the correct M-PESA details.");
+    currentCustomer = { name: cname, phone: cphone };
     cart = [];
     switchTab("orders");
     render();
+    return;
   }
 
-  // Logout hotel
-  if(t.id==="logoutHotel"){ currentHotelId = null; render(); }
+  /* Logout hotel */
+  if (t.id === "logoutHotel") { currentHotelId = null; render(); return; }
 
-  // Remove menu item (hotel)
-  if(t.classList.contains("removeMenu")){
-    const i = parseInt(t.dataset.i);
-    const rest = restaurants.find(r=>r.hotelId === currentHotelId);
-    if(!rest) return;
-    rest.menu.splice(i,1);
-    await setDoc(doc(db,"restaurants",rest.id), rest);
+  /* Remove menu item (hotel) */
+  if (t.classList.contains("removeMenu")) {
+    const idx = parseInt(t.dataset.i);
+    const rest = restaurants.find(r => r.hotelId === currentHotelId);
+    if (!rest) return;
+    rest.menu.splice(idx, 1);
+    await setDoc(doc(db, "restaurants", rest.id), rest);
     renderHotelPortal();
+    return;
   }
 
-  // Block/unblock hotel (admin)
-  if(t.classList.contains("toggleBlock")){
+  /* Block/unblock hotel (admin) */
+  if (t.classList.contains("toggleBlock")) {
     const hid = t.dataset.id;
-    const hotelRef = doc(db,"hotels",hid);
-    const hotel = hotels.find(h=>h.id===hid);
-    await updateDoc(hotelRef,{blocked: !hotel.blocked});
+    const hotelRef = doc(db, "hotels", hid);
+    const hotel = hotels.find(h => h.id === hid);
+    await updateDoc(hotelRef, { blocked: !hotel.blocked });
+    return;
   }
 
-  // Approve hotel (admin)
-  if(t.classList.contains("approveHotel")){
+  /* Approve hotel (admin) */
+  if (t.classList.contains("approveHotel")) {
     const hid = t.dataset.id;
-    const hotelRef = doc(db,"hotels",hid);
-    await updateDoc(hotelRef,{approved: true});
-    // ensure a restaurant doc exists so menu can be added and shown after approval
-    const existingRest = restaurants.find(r => r.hotelId === hid);
-    if(!existingRest){
-      await setDoc(doc(db,"restaurants",hid), { hotelId: hid, menu: [] });
-    }
+    await updateDoc(doc(db, "hotels", hid), { approved: true });
+    // ensure restaurants doc exists
+    const existing = restaurants.find(r => r.hotelId === hid);
+    if (!existing) await setDoc(doc(db, "restaurants", hid), { hotelId: hid, menu: [] });
+    return;
   }
 
-  // Mark order as Paid (hotel owner or admin)
-  if(t.classList.contains("markPaid")){
+  /* Mark as paid (hotel or admin) */
+  if (t.classList.contains("markPaid")) {
     const oid = t.dataset.id;
-    const order = orders.find(o=>o.id===oid);
-    if(!order) return alert("Order not found");
-    if(currentHotelId && order.hotelId !== currentHotelId && !currentAdmin) {
-      return alert("You don't have permission to change this order.");
-    }
-    await updateDoc(doc(db,"orders",oid), { status: "Paid" });
-    alert("Order marked as Paid.");
+    const order = orders.find(o => o.id === oid);
+    if (!order) return alert("Order not found");
+    if (currentHotelId && order.hotelId !== currentHotelId && !currentAdmin) return alert("No permission");
+    await updateDoc(doc(db, "orders", oid), { status: "Paid" });
+    alert("Order marked Paid.");
+    return;
   }
 
-  // Delete order (admin or hotel owner) - permanent delete
-  if(t.classList.contains("deleteOrder")){
+  /* Delete order (admin or hotel) - permanent */
+  if (t.classList.contains("deleteOrder")) {
     const oid = t.dataset.id;
-    const order = orders.find(o=>o.id===oid);
-    if(!order) return alert("Order not found");
-    // check permission: admin or the hotel that owns the order
-    if(currentAdmin || (currentHotelId && order.hotelId === currentHotelId)){
-      if(confirm("Delete this order permanently?")){
-        await deleteDoc(doc(db,"orders",oid));
-        alert("Order deleted.");
-      }
-    } else {
-      alert("You don't have permission to delete this order.");
+    const order = orders.find(o => o.id === oid);
+    if (!order) return alert("Order not found");
+    if (!(currentAdmin || (currentHotelId && order.hotelId === currentHotelId))) return alert("No permission");
+    if (confirm("Delete this order permanently?")) {
+      await deleteDoc(doc(db, "orders", oid));
+      alert("Order deleted.");
     }
+    return;
   }
 
-  // Clear all data (admin)
-  if(t.id==="clearAll"){
-    if(confirm("Are you sure? This will delete ALL hotels, restaurants, and orders!")){
-      const collections = ["hotels","restaurants","orders"];
-      for(const col of collections){
-        const snapshot = await getDocs(collection(db, col));
-        for(const d of snapshot.docs){
-          await deleteDoc(doc(db,col,d.id));
-        }
-      }
-      alert("All data cleared!");
+  /* Clear all data (admin) */
+  if (t.id === "clearAll") {
+    if (!confirm("Delete ALL hotels, restaurants, orders?")) return;
+    const cols = ["hotels","restaurants","orders"];
+    for (const c of cols) {
+      const snap = await getDocs(collection(db, c));
+      for (const d of snap.docs) await deleteDoc(doc(db, c, d.id));
     }
+    alert("All cleared.");
+    return;
   }
 });
 
-// ===== Form submissions =====
-document.addEventListener("submit", async e=>{
+/* ---------- Form submissions (login/register/add menu) ---------- */
+document.addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target;
 
-  // Hotel Login (only if approved and not blocked)
-  if(f.id==="hotelLogin"){
-    const name = f.name.value.trim();
-    const pass = f.pass.value.trim();
-    const h = hotels.find(h=>h.name===name && h.pass===pass && h.approved && !h.blocked);
-    if(!h) return alert("Wrong credentials, hotel not approved yet, or blocked");
+  /* Hotel login */
+  if (f.id === "hotelLogin") {
+    const name = f.name.value.trim(), pass = f.pass.value.trim();
+    const h = hotels.find(h => h.name === name && h.pass === pass);
+    if (!h) return alert("Wrong credentials");
+    if (!h.approved) return alert("Account pending admin approval");
+    if (h.blocked) return alert("Account blocked by admin");
     currentHotelId = h.id;
     currentCustomer = null;
     switchTab("orders");
     render();
+    return;
   }
 
-  // Hotel Register -> creates hotel (approved=false) and a restaurants doc
-  if(f.id==="hotelRegister"){
-    const name = f.name.value.trim();
-    const pass = f.pass.value.trim();
-    const till = f.till.value.trim();
-    if(!name || !pass || !till) return alert("Fill all fields");
-    const docRef = await addDoc(collection(db,"hotels"),{name,pass,till,subscriptionExpiry:Date.now()+30*24*3600*1000, blocked:false, approved:false});
-    // create restaurants doc (not visible to customers until approved)
-    await setDoc(doc(db,"restaurants",docRef.id),{hotelId: docRef.id, menu: []});
-    alert("Hotel registered! Waiting admin approval.");
-    currentHotelId = docRef.id;
-    render();
+  /* Hotel register */
+  if (f.id === "hotelRegister") {
+    const name = f.name.value.trim(), pass = f.pass.value.trim(), till = f.till.value.trim();
+    if (!name || !pass || !till) return alert("Fill all fields");
+    const docRef = await addDoc(collection(db, "hotels"), { name, pass, till, approved: false, blocked: false, subscriptionExpiry: Date.now() + 30*24*3600*1000 });
+    // create restaurant doc (not visible until approved)
+    await setDoc(doc(db, "restaurants", docRef.id), { hotelId: docRef.id, menu: [] });
+    alert("Registered — waiting admin approval.");
+    return;
   }
 
-  // Admin Login
-  if(f.id==="adminLogin"){
-    const user = f.user.value.trim(), pass = f.pass.value.trim();
-    if(user===ADMIN.user && pass===ADMIN.pass){ currentAdmin = true; currentCustomer = null; switchTab("admin"); render(); }
+  /* Admin login */
+  if (f.id === "adminLogin") {
+    const u = f.user.value.trim(), p = f.pass.value.trim();
+    if (u === ADMIN_CRED.user && p === ADMIN_CRED.pass) { currentAdmin = true; currentCustomer = null; switchTab("admin"); render(); }
     else alert("Wrong admin credentials");
+    return;
   }
 
-  // Add Menu (hotel)
-  if(f.id==="addMenu"){
-    const name = f.name.value.trim();
-    const price = parseFloat(f.price.value);
-    if(!name || isNa
+  /* Add menu (hotel) */
+  if (f.id === "addMenu") {
+    const name = f.name.value.trim(), price = parseFloat(f.price.value);
+    if (!name || isNaN(price)) return alert("Fill valid item");
+    const restRef = doc(db, "restaurants", currentHotelId);
+    const rest = restaurants.find(r => r.hotelId === currentHotelId);
+    if (rest) {
+      const newMenu = [...(rest.menu || []), { name, price }];
+      await setDoc(restRef, { ...rest, menu: newMenu });
+    } else {
+      await setDoc(doc(db, "restaurants", currentHotelId), { hotelId: currentHotelId, menu: [{ name, price }] });
+    }
+    renderHotelPortal();
+    f.reset();
+  }
+});
+</script>
+</body>
+</html>
