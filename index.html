@@ -6,95 +6,193 @@
 <title>Tamu Express</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
-import { getFirestore, collection, getDocs, addDoc, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, getDocs, addDoc, setDoc,
+  updateDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
+// ===== Firebase setup =====
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
-  projectId: "YOUR_FIREBASE_PROJECT_ID",
-  storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_FIREBASE_SENDER_ID",
-  appId: "YOUR_FIREBASE_APP_ID"
+  apiKey: "AIzaSyAV8bXyVgZPzAc9zqOrcBvubqxNyc3VECg",
+  authDomain: "tamu-express.firebaseapp.com",
+  projectId: "tamu-express",
+  storageBucket: "tamu-express.appspot.com",
+  messagingSenderId: "768113289000",
+  appId: "1:768113289000:web:exampleid"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// ===== Global variables =====
 let hotels = [];
+let restaurants = [];
+let orders = [];
 let cart = [];
+let currentHotelId = null;
+let currentAdmin = false;
+
+const ADMIN = { user: "admin", pass: "1234" };
+const SERVICE_FEE = 30;
 const SERVICE_NUMBER = "0115613332";
-const SERVICE_FEE = 20;
 
 const appEl = document.getElementById("app");
 
-// Load all hotels
-async function loadHotels(){
-  const snapshot = await getDocs(collection(db, "hotels"));
-  hotels = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+// ===== Render functions =====
+function render() {
+  if (currentAdmin) return renderAdmin();
+  if (currentHotelId) return renderHotelPortal();
+  renderHome();
 }
 
-// Render homepage (customer)
-function renderRestaurants(){
+function renderHome() {
   appEl.innerHTML = `
-    <header class="bg-green-600 text-white p-4 flex justify-between">
-      <h1 class="font-bold text-lg">🍔 Tamu Express</h1>
-      <button id="toAdmin" class="bg-black px-2 py-1 rounded">Admin</button>
-    </header>
-    <main class="p-4 grid gap-4">
-      ${hotels.map(h => `
-        <div class="bg-white p-4 rounded shadow">
-          <h2 class="font-bold">${h.name}</h2>
-          <p>Till: ${h.till}</p>
-          <button data-hid="${h.id}" class="orderBtn bg-green-600 text-white px-3 py-1 rounded mt-2">Order</button>
+  <header class="bg-green-600 text-white p-4 text-center text-2xl font-bold">
+    🍔 Tamu Express
+  </header>
+
+  <main class="p-4 space-y-4">
+    <h2 class="text-lg font-semibold">Customer Order</h2>
+    <div id="restaurants" class="space-y-2"></div>
+
+    <div class="border p-3 rounded bg-white shadow">
+      <h3 class="font-semibold mb-2">🛒 Your Cart</h3>
+      <div id="cartItems">${cart.map((c,i)=>`
+        <div class="flex justify-between items-center border-b p-1">
+          <span>${c.name} - Ksh ${c.price}</span>
+          <button data-i="${i}" class="remove bg-red-500 text-white px-2 py-1 rounded">X</button>
+        </div>
+      `).join("") || "<p>No items yet.</p>"}</div>
+      <div class="mt-3 text-right font-semibold">Total: Ksh ${cart.reduce((s,i)=>s+i.price,0)+SERVICE_FEE}</div>
+      <div class="mt-2">
+        <input id="custName" placeholder="Your Name" class="border p-2 w-full rounded mb-2"/>
+        <input id="custPhone" placeholder="M-Pesa Number" class="border p-2 w-full rounded mb-2"/>
+        <button id="placeOrder" class="bg-green-600 text-white px-4 py-2 rounded w-full">Place Order</button>
+      </div>
+    </div>
+
+    <div class="flex justify-around mt-6">
+      <button onclick="document.getElementById('loginHotel').style.display='block'" class="bg-blue-500 text-white px-3 py-2 rounded">Hotel Login</button>
+      <button onclick="document.getElementById('registerHotel').style.display='block'" class="bg-purple-500 text-white px-3 py-2 rounded">Hotel Register</button>
+      <button onclick="document.getElementById('loginAdmin').style.display='block'" class="bg-gray-700 text-white px-3 py-2 rounded">Admin</button>
+    </div>
+  </main>
+
+  <div id="loginHotel" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <form id="hotelLogin" class="bg-white p-4 rounded space-y-2">
+      <h3 class="text-lg font-bold">Hotel Login</h3>
+      <input name="name" placeholder="Hotel Name" class="border p-2 w-full rounded"/>
+      <input name="pass" placeholder="Password" type="password" class="border p-2 w-full rounded"/>
+      <button class="bg-green-600 text-white px-3 py-2 rounded w-full">Login</button>
+    </form>
+  </div>
+
+  <div id="registerHotel" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <form id="hotelRegister" class="bg-white p-4 rounded space-y-2">
+      <h3 class="text-lg font-bold">Hotel Register</h3>
+      <input name="name" placeholder="Hotel Name" class="border p-2 w-full rounded"/>
+      <input name="pass" placeholder="Password" type="password" class="border p-2 w-full rounded"/>
+      <input name="till" placeholder="Till Number" class="border p-2 w-full rounded"/>
+      <button class="bg-green-600 text-white px-3 py-2 rounded w-full">Register</button>
+    </form>
+  </div>
+
+  <div id="loginAdmin" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <form id="adminLogin" class="bg-white p-4 rounded space-y-2">
+      <h3 class="text-lg font-bold">Admin Login</h3>
+      <input name="user" placeholder="Username" class="border p-2 w-full rounded"/>
+      <input name="pass" placeholder="Password" type="password" class="border p-2 w-full rounded"/>
+      <button class="bg-green-600 text-white px-3 py-2 rounded w-full">Login</button>
+    </form>
+  </div>
+  `;
+  renderRestaurants();
+}
+
+function renderRestaurants(){
+  const container = document.getElementById("restaurants");
+  if(!container) return;
+  const list = restaurants.filter(r=>{
+    const hotel = hotels.find(h=>h.id===r.hotelId);
+    return hotel && hotel.approved && !hotel.blocked;
+  });
+  container.innerHTML = list.map(r=>{
+    const hotel = hotels.find(h=>h.id===r.hotelId);
+    return `
+      <div class="border p-3 rounded bg-white shadow">
+        <h3 class="font-bold text-lg">${hotel.name}</h3>
+        <p class="text-sm text-gray-500">Till: ${hotel.till}</p>
+        ${(r.menu||[]).map(i=>`
+          <div class="flex justify-between items-center mt-1">
+            <span>${i.name}</span><span>Ksh ${i.price}</span>
+            <button class="addToCart bg-green-500 text-white px-2 py-1 rounded" data-name="${i.name}" data-price="${i.price}" data-hotel="${r.hotelId}">Add</button>
+          </div>
+        `).join("") || "<p>No menu yet.</p>"}
+      </div>
+    `;
+  }).join("");
+}
+
+// ===== Hotel portal =====
+function renderHotelPortal(){
+  const rest = restaurants.find(r => r.hotelId === currentHotelId);
+  const myOrders = orders.filter(o => o.hotelId === currentHotelId);
+
+  appEl.innerHTML = `
+  <header class="bg-green-600 text-white p-4 flex justify-between items-center">
+    <h1 class="text-lg font-bold">Hotel Portal</h1>
+    <button id="logoutHotel" class="bg-red-500 px-3 py-1 rounded">Logout</button>
+  </header>
+
+  <main class="p-4 space-y-6">
+    <section>
+      <h2 class="text-xl font-semibold mb-2">Your Menu</h2>
+      <form id="addMenu" class="flex gap-2 mb-4">
+        <input type="text" name="name" placeholder="Item name" class="border p-2 flex-1 rounded">
+        <input type="number" name="price" placeholder="Price" class="border p-2 w-24 rounded">
+        <button type="submit" class="bg-green-600 text-white px-3 py-2 rounded">Add</button>
+      </form>
+      <div class="space-y-2">
+        ${(rest?.menu || []).map((m, i)=>`
+          <div class="flex justify-between items-center border p-2 rounded">
+            <span>${m.name} - Ksh ${m.price}</span>
+            <button class="removeMenu bg-red-500 text-white px-2 py-1 rounded" data-i="${i}">Remove</button>
+          </div>
+        `).join("") || "<p>No menu items yet.</p>"}
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-xl font-semibold mb-2">Customer Orders</h2>
+      ${myOrders.length === 0 ? "<p>No orders yet.</p>" : myOrders.map(o=>`
+        <div class="border rounded p-3 bg-white shadow-sm mb-3">
+          <p><b>Customer:</b> ${o.customerName}</p>
+          <p><b>Phone:</b> ${o.customerPhone}</p>
+          <p><b>Total:</b> Ksh ${o.total}</p>
+          <p><b>Hotel Till:</b> ${o.hotelTill}</p>
+          <p><b>Service No:</b> ${o.serviceNumber}</p>
+          <p><b>Status:</b> <span class="${o.status==='Paid'?'text-green-600':'text-red-600'}">${o.status}</span></p>
+          <h4 class="font-semibold mt-2">Items:</h4>
+          <ul class="list-disc ml-6">
+            ${o.items.map(i=>`<li>${i.name} - Ksh ${i.price}</li>`).join("")}
+          </ul>
+          ${o.status !== 'Paid' ? `
+            <button class="markPaid bg-green-500 text-white mt-3 px-3 py-1 rounded" data-id="${o.id}">
+              Mark as Paid
+            </button>` : ''}
         </div>
       `).join("")}
-    </main>
-  `;
+    </section>
+  </main>`;
 }
 
-// Render hotel order page
-function renderHotelOrders(hotelId){
-  appEl.innerHTML = `
-    <header class="bg-green-700 text-white p-4 flex justify-between">
-      <h1 class="font-bold">Hotel Dashboard</h1>
-      <button id="logoutHotel" class="bg-red-500 px-3 py-1 rounded">Logout</button>
-    </header>
-    <main id="ordersContainer" class="p-4 space-y-4">
-      <h2 class="font-semibold text-lg">Orders</h2>
-      <p>Loading...</p>
-    </main>
-  `;
-  loadHotelOrders(hotelId);
-}
-
-// Load hotel-specific orders
-async function loadHotelOrders(hotelId){
-  const q = await getDocs(collection(db, "orders"));
-  const orders = q.docs.map(d => ({id: d.id, ...d.data()})).filter(o => o.hotelId === hotelId);
-  const container = document.getElementById("ordersContainer");
-  container.innerHTML = orders.length ? orders.map(o => `
-    <div class="border rounded p-3 bg-white shadow">
-      <p><b>Customer:</b> ${o.customerName}</p>
-      <p><b>Phone:</b> ${o.customerPhone}</p>
-      <p><b>Total:</b> ${o.total}</p>
-      <p><b>Status:</b> ${o.status}</p>
-      <button data-id="${o.id}" class="markPaid bg-green-600 text-white px-3 py-1 rounded mt-2">Mark as Paid</button>
-    </div>
-  `).join("") : `<p>No orders yet.</p>`;
-}
-
-// Admin page
+// ===== Admin panel =====
 function renderAdmin(){
   appEl.innerHTML = `
   <header class="bg-gray-800 text-white p-4 flex justify-between items-center">
     <h1 class="font-bold text-lg">Admin Panel</h1>
-    <div class="flex gap-2">
-      <button id="clearAll" class="bg-yellow-500 px-3 py-1 rounded">🗑 Clear All</button>
-      <button id="logoutAdmin" class="bg-red-500 px-3 py-1 rounded">Logout</button>
-    </div>
+    <button id="logoutAdmin" class="bg-red-500 px-3 py-1 rounded">Logout</button>
   </header>
-
   <main class="p-4 space-y-4">
     <h2 class="font-semibold text-lg">Hotels</h2>
     ${hotels.map(h=>`
@@ -112,71 +210,116 @@ function renderAdmin(){
   </main>`;
 }
 
-// ========== EVENTS ==========
+// ===== Firestore listeners =====
+onSnapshot(collection(db,"hotels"),snap=>{
+  hotels = snap.docs.map(d=>({id:d.id,...d.data()}));
+  render();
+});
+onSnapshot(collection(db,"restaurants"),snap=>{
+  restaurants = snap.docs.map(d=>({id:d.id,...d.data()}));
+  render();
+});
+onSnapshot(collection(db,"orders"),snap=>{
+  orders = snap.docs.map(d=>({id:d.id,...d.data()}));
+  render();
+});
+
+// ===== Event listeners =====
 document.addEventListener("click", async e=>{
-  const t = e.target;
+  const t=e.target;
 
-  // Admin view
-  if(t.id==="toAdmin"){ renderAdmin(); }
-
-  // Mark order as paid
-  if(t.classList.contains("markPaid")){
-    const id = t.dataset.id;
-    await updateDoc(doc(db, "orders", id), {status:"Paid"});
-    alert("✅ Order marked as paid!");
-    const hotelId = JSON.parse(localStorage.getItem("hotelLogin"));
-    loadHotelOrders(hotelId);
+  // Cart
+  if(t.classList.contains("addToCart")){
+    cart.push({name:t.dataset.name,price:+t.dataset.price,hotelId:t.dataset.hotel});
+    renderRestaurants();
   }
+  if(t.classList.contains("remove")){cart.splice(t.dataset.i,1);renderRestaurants();}
 
-  // Order button
-  if(t.classList.contains("orderBtn")){
-    const h = hotels.find(h=>h.id===t.dataset.hid);
-    const name = prompt("Enter your name:");
-    const phone = prompt("Enter your phone:");
-    if(!name || !phone) return alert("Enter name and phone!");
-
-    const total = 100 + SERVICE_FEE;
-    await addDoc(collection(db,"orders"), {
-      customerName:name,
-      customerPhone:phone,
-      items:[{item:"Sample Meal",price:100}],
-      total,
-      hotelId:h.id,
-      hotelTill:h.till,
-      serviceNumber:SERVICE_NUMBER,
-      status:"Pending"
+  // Place Order
+  if(t.id==="placeOrder"){
+    const name=document.getElementById("custName").value.trim();
+    const phone=document.getElementById("custPhone").value.trim();
+    if(!name||!phone||cart.length===0)return alert("Fill name/phone and add items");
+    const total=cart.reduce((s,i)=>s+i.price,0)+SERVICE_FEE;
+    const hotelId=cart[0].hotelId;
+    const hotel=hotels.find(h=>h.id===hotelId);
+    await addDoc(collection(db,"orders"),{
+      customerName:name,customerPhone:phone,items:cart,total,hotelId,
+      hotelTill:hotel.till,serviceNumber:SERVICE_NUMBER,status:"Pending"
     });
-
-    alert(
-      `Order placed!\n\n` +
-      `🍴 Hotel Till Number: ${h.till}\n` +
-      ` Pay Service Fee (Ksh ${SERVICE_FEE}) to: Pochi Labiashara ${SERVICE_NUMBER}\n\n` +
-      `You'll be called when your order is ready.`
-    );
+    alert(`✅ Order placed!\n\n🍴 Hotel Till: ${hotel.till}\n💰 Pay service fee Ksh ${SERVICE_FEE} to Pochi Labiashara ${SERVICE_NUMBER}`);
+    cart=[];renderRestaurants();
   }
 
-  // Clear all data (admin)
-  if(t.id === "clearAll"){
-    if(confirm(" Are you sure? This will delete ALL hotels, restaurants, and orders!")){
-      const collections = ["hotels", "restaurants", "orders"];
-      for(const col of collections){
-        const snapshot = await getDocs(collection(db, col));
-        for(const d of snapshot.docs){
-          await deleteDoc(doc(db, col, d.id));
-        }
-      }
-      alert("All data cleared successfully!");
-      renderAdmin();
-    }
+  // Logout
+  if(t.id==="logoutHotel"){currentHotelId=null;render();}
+  if(t.id==="logoutAdmin"){currentAdmin=false;render();}
+
+  // Remove menu
+  if(t.classList.contains("removeMenu")){
+    const i=+t.dataset.i;
+    const rest=restaurants.find(r=>r.hotelId===currentHotelId);
+    rest.menu.splice(i,1);
+    await setDoc(doc(db,"restaurants",rest.id),rest);
+  }
+
+  // Approve/block
+  if(t.classList.contains("approveHotel")){
+    await updateDoc(doc(db,"hotels",t.dataset.id),{approved:true});
+  }
+  if(t.classList.contains("toggleBlock")){
+    const hid=t.dataset.id;
+    const h=hotels.find(h=>h.id===hid);
+    await updateDoc(doc(db,"hotels",hid),{blocked:!h.blocked});
+  }
+
+  // Mark Paid
+  if(t.classList.contains("markPaid")){
+    await updateDoc(doc(db,"orders",t.dataset.id),{status:"Paid"});
+    alert("✅ Order marked as Paid!");
   }
 });
 
-// Load on start
-await loadHotels();
-renderRestaurants();
+// ===== Forms =====
+document.addEventListener("submit",async e=>{
+  e.preventDefault();
+  const f=e.target;
+
+  if(f.id==="hotelLogin"){
+    const name=f.name.value.trim(),pass=f.pass.value.trim();
+    const h=hotels.find(h=>h.name===name&&h.pass===pass&&h.approved);
+    if(!h)return alert("Wrong credentials or not approved yet");
+    currentHotelId=h.id;render();
+  }
+
+  if(f.id==="hotelRegister"){
+    const name=f.name.value.trim(),pass=f.pass.value.trim(),till=f.till.value.trim();
+    if(!name||!pass||!till)return alert("Fill all fields");
+    await addDoc(collection(db,"hotels"),{name,pass,till,approved:false,blocked:false});
+    alert("Hotel registered! Wait for admin approval.");render();
+  }
+
+  if(f.id==="adminLogin"){
+    if(f.user.value===ADMIN.user && f.pass.value===ADMIN.pass){currentAdmin=true;render();}
+    else alert("Wrong admin credentials");
+  }
+
+  if(f.id==="addMenu"){
+    const name=f.name.value.trim(),price=parseFloat(f.price.value);
+    if(!name||isNaN(price))return alert("Enter valid item");
+    const restRef=doc(db,"restaurants",currentHotelId);
+    const rest=restaurants.find(r=>r.hotelId===currentHotelId);
+    if(rest){
+      const newMenu=[...(rest.menu||[]),{name,price}];
+      await setDoc(restRef,{...rest,menu:newMenu});
+    }else{
+      await setDoc(restRef,{hotelId:currentHotelId,menu:[{name,price}]});
+    }
+  }
+});
 </script>
 </head>
-<body class="bg-gray-100 text-gray-900">
+<body class="bg-gray-100 min-h-screen">
 <div id="app" class="min-h-screen"></div>
 </body>
-</html>
+  </html>
