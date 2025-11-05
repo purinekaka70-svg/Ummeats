@@ -3,12 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tamu Express — Full (No localStorage)</title>
+  <title>Tamu Express — Full Working</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* Small tweak for modal z-index & scroll */
-    body.modal-open { overflow: hidden; }
-  </style>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
 
@@ -22,10 +18,10 @@
   </nav>
 </header>
 
-<main id="app" class="p-4 flex-1 overflow-auto"></main>
+<main id="app" class="p-4 flex-1"></main>
 
 <footer id="footer" class="bg-gray-800 text-white p-3 text-center cursor-pointer">
-  @ Tamu Express | Umma-Kenya (click 4x to unlock admin)
+  @ Tamu Express | Umma-Kenya 
 </footer>
 
 <!-- Cart / Checkout Modal container (hidden until needed) -->
@@ -38,22 +34,21 @@
 
 <script type="module">
 /* =========================
-   Tamu Express — Full Single File (No localStorage)
-   - Firestore modular v12
-   - Orders written to "orders" collection
-   - Customers see their orders (session-based identity)
-   - Hotel & Admin panels included
+   Tamu Express — Full working single-file
+   - Firestore (modular v12)
+   - Orders created from cart -> saved to "orders" collection
+   - Orders tab reads from same "orders" collection (real-time)
+   - No localStorage; session-only (in-memory)
+   - Admin, Hotel, and User flows
    ========================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, setDoc, doc, onSnapshot, getDocs, updateDoc, deleteDoc
+  getFirestore, collection, addDoc, setDoc, doc,
+  onSnapshot, getDocs, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-/* ---------- FIREBASE CONFIG ----------
-   Replace these values with your Firebase project config if needed.
-   If you don't have a Firebase project yet, create one and enable Firestore.
--------------------------------------------------- */
+/* ---------- FIREBASE CONFIG (Option B - your keys) ---------- */
 const firebaseConfig = {
   apiKey: "AIzaSyApi2RjwEXEW2mTwCMiYERKUNAYL8Toddk",
   authDomain: "tamuexpress-26e4a.firebaseapp.com",
@@ -65,40 +60,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ---------- App state (no localStorage) ---------- */
+/* ---------- STATE ---------- */
 let hotels = [], restaurants = [], orders = [], notifications = [];
 let cartByHotel = {}; // { hotelId: [ {name, price, qty} ] }
 let currentTab = "restaurants";
-let currentHotelId = null; // hotel portal login
+let currentHotelId = null;
 let currentAdmin = false;
-let currentCustomer = null; // { name, phone } stored in memory after placing an order
+let currentCustomer = null; // {name, phone} after placing an order
 const SERVICE_FEE = 40;
 const SERVICE_FEE_TILL = "0115613332";
 const ADMIN_CRED = { user: "admin", pass: "TamuAdmin@2025" };
 
-/* ---------- Elements ---------- */
 const appDiv = document.getElementById("app");
 const adminTab = document.querySelector(".tab[data-tab='admin']");
-adminTab.style.display = "none"; // locked until footer clicks
+adminTab.style.display = "none"; // hidden until footer 4x
 
 /* Modal elements */
 const cartModalContainer = document.getElementById('cartModalContainer');
-const cartModalBackdrop = document.getElementById('cartModalBackdrop');
 const cartModalContent = document.getElementById('cartModalContent');
 
 /* ---------- Helpers ---------- */
-function escapeHtml(s) {
-  if (!s) return '';
-  return String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll("'",'&#39;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-}
-function formatTime(ts) {
-  try { return new Date(ts).toLocaleString('en-KE', { hour12: false }); } catch (e) { return String(ts); }
-}
-function getHotelById(id) {
-  return hotels.find(h => h.id === id) || { name: "Unknown", till: "N/A", approved: false, blocked: false };
-}
-
-/* ---------- Tab switching ---------- */
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll(".tab").forEach(b => {
@@ -107,23 +88,40 @@ function switchTab(tab) {
   });
   render();
 }
-document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 
-/* ---------- Footer click to unlock Admin ---------- */
+function getHotelById(id) {
+  return hotels.find(h => h.id === id) || { name: "Unknown", till: "N/A", approved: false, blocked: false };
+}
+
+function formatTime(ts) {
+  try { return new Date(ts).toLocaleString('en-KE', { hour12: false }); } catch(e) { return String(ts); }
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll("'",'&#39;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+}
+
+// Normalizers for matching
+function normalizeName(n) { return (n||"").toString().trim().toLowerCase(); }
+function normalizePhone(p) { return (p||"").toString().replace(/\D/g,''); }
+
+/* ---------- UI wiring ---------- */
+document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
 let footerClicks = 0;
 document.getElementById("footer").addEventListener("click", () => {
   footerClicks++;
   if (footerClicks >= 4) { adminTab.style.display = "inline-block"; switchTab("admin"); footerClicks = 0; }
 });
 
-/* ---------- Firestore real-time listeners ---------- */
+/* ---------- Firestore listeners (real-time) ---------- */
 /* Hotels */
 onSnapshot(collection(db, "hotels"), snap => {
   hotels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   render();
 });
 
-/* Restaurants (menu docs keyed by hotelId) */
+/* Restaurants */
 onSnapshot(collection(db, "restaurants"), snap => {
   restaurants = snap.docs.map(d => {
     const data = d.data();
@@ -134,7 +132,7 @@ onSnapshot(collection(db, "restaurants"), snap => {
   render();
 });
 
-/* Orders */
+/* Orders (real-time) */
 onSnapshot(collection(db, "orders"), snap => {
   orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   render();
@@ -147,7 +145,7 @@ onSnapshot(collection(db, "notifications"), snap => {
   render();
 });
 
-/* ---------- Notification Badges ---------- */
+/* ---------- Notification badges ---------- */
 function updateNotificationBadges() {
   const adminUnread = notifications.filter(n => n.to === 'admin' && !n.read).length;
   const adminBadge = document.getElementById("adminNotifBadge");
@@ -169,30 +167,28 @@ function render() {
   else if (currentTab === "admin") renderAdmin();
 }
 
-/* ---------- Restaurants view ---------- */
+/* Restaurants view */
 function renderRestaurants() {
   const visible = restaurants.filter(r => r.approved && !r.blocked);
   appDiv.innerHTML = `
     <h2 class="text-xl font-semibold mb-3">All Restaurants</h2>
     <div class="grid md:grid-cols-2 gap-4">
       ${visible.map(r => `
-        <div class="bg-white p-4 rounded shadow">
-          <div class="flex justify-between items-center">
-            <div>
-              <h3 class="font-bold">${escapeHtml(r.hotelName)}</h3>
-              <p class="text-sm text-gray-500">Till: ${escapeHtml(r.till || "N/A")}</p>
-            </div>
-            <div class="flex items-center gap-2">
-              <button class="viewMenuBtn bg-green-500 text-white px-3 py-1 rounded" data-hotel="${r.hotelId}">View Menu</button>
-              <span class="text-sm">${(cartByHotel[r.hotelId] && cartByHotel[r.hotelId].length) ? `<span class="bg-gray-100 px-2 py-0.5 rounded">Cart: ${cartByHotel[r.hotelId].length}</span>` : ''}</span>
-            </div>
+      <div class="bg-white p-4 rounded shadow">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="font-bold">${r.hotelName}</h3>
+            <p class="text-sm text-gray-500">Till: ${r.till || "N/A"}</p>
           </div>
-          <div id="menu-${r.hotelId}" class="menuArea mt-3 hidden"></div>
+          <div class="flex items-center gap-2">
+            <button class="viewMenuBtn bg-green-500 text-white px-3 py-1 rounded" data-hotel="${r.hotelId}">View Menu</button>
+            <span class="text-sm">${(cartByHotel[r.hotelId] && cartByHotel[r.hotelId].length) ? `<span class="bg-gray-100 px-2 py-0.5 rounded">Cart: ${cartByHotel[r.hotelId].length}</span>` : ''}</span>
+          </div>
         </div>
-      `).join('')}
+        <div id="menu-${r.hotelId}" class="menuArea mt-3 hidden"></div>
+      </div>`).join("")}
     </div>
   `;
-  // re-open any previously opened menus (if flagged)
   visible.forEach(r => {
     const menuDiv = document.getElementById(`menu-${r.hotelId}`);
     if (!menuDiv) return;
@@ -203,7 +199,7 @@ function renderRestaurants() {
   });
 }
 
-/* Render menu and cart block for a hotel */
+/* Render menu + cart for hotel */
 function renderMenuForHotel(hotelId, container) {
   const rest = restaurants.find(rr => rr.hotelId === hotelId) || { menu: [] };
   const cart = cartByHotel[hotelId] || [];
@@ -215,7 +211,7 @@ function renderMenuForHotel(hotelId, container) {
             <div><span class="font-medium">${escapeHtml(item.name)}</span><div class="text-xs text-gray-500">KSh ${item.price}</div></div>
             <div class="flex items-center gap-2">
               <input type="number" min="1" value="1" class="qty w-16 border p-1 text-sm" data-hotel="${hotelId}" data-idx="${idx}">
-              <button class="addToCart bg-green-600 text-white px-3 py-1 rounded text-sm" data-hotel="${hotelId}" data-name="${escapeHtml(item.name)}" data-price="${item.price}">Add</button>
+              <button class="addToCart bg-green-600 text-white px-3 py-1 rounded text-sm" data-hotel="${hotelId}" data-name="${item.name}" data-price="${item.price}">Add</button>
             </div>
           </div>`).join("") : `<p class="text-sm text-gray-500">No items yet</p>`}
       </div>
@@ -226,8 +222,8 @@ function renderMenuForHotel(hotelId, container) {
           <ul class="mb-2 text-sm">${cart.map((c,i) => `<li class="flex justify-between py-1"><span>${c.qty} x ${escapeHtml(c.name)}</span><span>KSh ${c.price * c.qty}</span> <button data-i="${i}" data-hotel="${hotelId}" class="removeItem text-red-500 ml-3 text-xs">x</button></li>`).join("")}</ul>
           <p class="text-sm">Items Total: KSh ${cart.reduce((s,i)=>s + (i.price * i.qty), 0)}</p>
           <p class="text-sm">Service Fee: KSh ${SERVICE_FEE}</p>
-          <p class="text-sm">Pay food amount to: <strong>${escapeHtml(getHotelById(hotelId).till || "N/A")}</strong></p>
-          <p class="text-sm">Service Fee Till: <strong>${escapeHtml(SERVICE_FEE_TILL)}</strong></p>
+          <p class="text-sm">Pay food amount to: <strong>${getHotelById(hotelId).till || "N/A"}</strong></p>
+          <p class="text-sm">Service Fee Till: <strong>${SERVICE_FEE_TILL}</strong></p>
           <p class="font-semibold mt-2">Total to Pay: KSh ${cart.reduce((s,i)=>s + (i.price * i.qty), 0) + SERVICE_FEE}</p>
 
           <div class="mt-3">
@@ -247,54 +243,115 @@ function renderMenuForHotel(hotelId, container) {
   `;
 }
 
-/* ---------- Orders view ---------- */
+/* Orders view */
 function renderOrders() {
-  // Determine visible orders for this session/view:
   let visibleOrders = [];
-  if (currentAdmin) visibleOrders = [...orders];
-  else if (currentHotelId) visibleOrders = orders.filter(o => o.hotelId === currentHotelId);
-  else if (currentCustomer) visibleOrders = orders.filter(o => o.customerName === currentCustomer.name && o.customerPhone === currentCustomer.phone);
-  else visibleOrders = [];
 
-  visibleOrders = visibleOrders.sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
+  // Decide which orders the current session can view
+  if (currentAdmin) {
+    visibleOrders = [...orders];
+  } else if (currentHotelId) {
+    visibleOrders = orders.filter(o => o.hotelId === currentHotelId);
+  } else if (currentCustomer) {
+    // Match using normalized name & phone to avoid small mismatches
+    const nName = normalizeName(currentCustomer.name);
+    const nPhone = normalizePhone(currentCustomer.phone);
+    visibleOrders = orders.filter(o => normalizeName(o.customerName) === nName && normalizePhone(o.customerPhone) === nPhone);
+  } else {
+    visibleOrders = [];
+  }
 
+  // Sort orders by date (latest first)
+  visibleOrders = visibleOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+  // Build HTML
   appDiv.innerHTML = `
     <h2 class="text-xl font-semibold mb-3">Orders</h2>
-    ${visibleOrders.length === 0 ? "<p>No orders yet</p>" : visibleOrders.map(o => {
-      const hotel = getHotelById(o.hotelId);
-      const itemsTotal = o.items.reduce((s,i)=>s + (i.price * (i.qty || 1)), 0);
-      const total = o.total ?? (itemsTotal + (o.serviceFee ?? SERVICE_FEE));
-      const canDelete = currentAdmin || (currentHotelId && currentHotelId === o.hotelId) || (currentCustomer && currentCustomer.name === o.customerName && currentCustomer.phone === o.customerPhone && (o.status || 'Pending') !== 'Paid');
-      const canMarkPaid = (currentHotelId && currentHotelId === o.hotelId) || currentAdmin;
-      return `
-        <div class="bg-white p-4 rounded shadow mb-3">
-          <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">${escapeHtml(o.customerName)}</h3>
-            <div class="${o.status === 'Paid' ? 'text-green-700 font-semibold' : 'text-yellow-600 font-semibold'}">${escapeHtml(o.status || 'Pending')}</div>
-          </div>
-          <p class="text-sm text-gray-600">Phone: ${escapeHtml(o.customerPhone)}</p>
-          <p class="text-sm text-gray-600">Hotel: ${escapeHtml(hotel.name)} | Hotel Till: ${escapeHtml(hotel.till || 'N/A')}</p>
-          <p class="text-xs text-gray-500">Ordered at: ${formatTime(o.createdAt)}</p>
-          <ul class="text-sm mt-2">${o.items.map(i=>`<li>${i.qty ? i.qty + ' x ' : ''}${escapeHtml(i.name)} - KSh ${i.price}${i.qty ? ' each' : ''}</li>`).join("")}</ul>
-          <p class="text-sm mt-1">Items Total: KSh ${itemsTotal}</p>
-          <p class="text-sm mt-1">Service Fee: KSh ${o.serviceFee ?? SERVICE_FEE}</p>
-          <p class="text-sm mt-1">Service Fee Till: <strong>${escapeHtml(SERVICE_FEE_TILL)}</strong></p>
-          <p class="font-semibold mt-1">Total to Pay: KSh ${total}</p>
-          <div class="mt-2 text-sm">
-            <p><strong>M-PESA Name:</strong> ${escapeHtml(o.mpesaName || '—')}</p>
-            <p><strong>M-PESA Number:</strong> ${escapeHtml(o.mpesaNumber || '—')}</p>
-          </div>
-          <div class="mt-3 flex gap-2">
-            ${canMarkPaid && o.status !== 'Paid' ? `<button data-id="${o.id}" class="markPaid bg-green-600 text-white px-3 py-1 rounded">Mark as Paid</button>` : ''}
-            ${canDelete ? `<button data-id="${o.id}" class="deleteOrder bg-red-600 text-white px-3 py-1 rounded">Delete</button>` : ''}
-          </div>
-        </div>
-      `;
-    }).join("")}
+    ${
+      visibleOrders.length === 0
+        ? "<p class='text-gray-500'>No orders yet</p>"
+        : visibleOrders
+            .map(o => {
+              const hotel = getHotelById(o.hotelId) || { name: "Unknown Hotel", till: "N/A" };
+              const itemsTotal = o.items
+                ? o.items.reduce((s, i) => s + (i.price * (i.qty || 1)), 0)
+                : 0;
+              const total = o.total ?? (itemsTotal + (o.serviceFee ?? SERVICE_FEE));
+
+              // Everyone (admin, hotel owner of order, or the ordering customer) can delete (even if Paid)
+              const canDelete =
+                currentAdmin ||
+                (currentHotelId && currentHotelId === o.hotelId) ||
+                (currentCustomer &&
+                  normalizeName(currentCustomer.name) === normalizeName(o.customerName) &&
+                  normalizePhone(currentCustomer.phone) === normalizePhone(o.customerPhone));
+
+              const canMarkPaid =
+                (currentHotelId && currentHotelId === o.hotelId) || currentAdmin;
+
+              return `
+                <div class="bg-white p-4 rounded shadow mb-3">
+                  <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-semibold">${escapeHtml(o.customerName)}</h3>
+                    <div class="${
+                      o.status === "Paid"
+                        ? "text-green-700 font-semibold"
+                        : "text-yellow-600 font-semibold"
+                    }">${o.status || "Pending"}</div>
+                  </div>
+
+                  <p class="text-sm text-gray-600">Phone: ${escapeHtml(o.customerPhone)}</p>
+                  <p class="text-sm text-gray-600">Hotel: ${escapeHtml(
+                    hotel.name
+                  )} | Hotel Till: ${escapeHtml(hotel.till || "N/A")}</p>
+                  <p class="text-xs text-gray-500">Ordered at: ${formatTime(o.createdAt)}</p>
+
+                  ${
+                    o.items
+                      ? `<ul class="text-sm mt-2">
+                          ${o.items
+                            .map(
+                              i =>
+                                `<li>${i.qty ? i.qty + " x " : ""}${escapeHtml(
+                                  i.name
+                                )} - KSh ${i.price}${i.qty ? " each" : ""}</li>`
+                            )
+                            .join("")}
+                        </ul>`
+                      : ""
+                  }
+
+                  <p class="text-sm mt-1">Items Total: KSh ${itemsTotal}</p>
+                  <p class="text-sm mt-1">Service Fee: KSh ${o.serviceFee ?? SERVICE_FEE}</p>
+                  <p class="text-sm mt-1">Service Fee Till: <strong>${SERVICE_FEE_TILL}</strong></p>
+                  <p class="font-semibold mt-1">Total to Pay: KSh ${total}</p>
+
+                  <div class="mt-2 text-sm">
+                    <p><strong>M-PESA Name:</strong> ${escapeHtml(o.mpesaName || "—")}</p>
+                    <p><strong>M-PESA Number:</strong> ${escapeHtml(o.mpesaNumber || "—")}</p>
+                  </div>
+
+                  <div class="mt-3 flex gap-2">
+                    ${
+                      canMarkPaid && o.status !== "Paid"
+                        ? `<button data-id="${o.id}" class="markPaid bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">Mark as Paid</button>`
+                        : ""
+                    }
+                    ${
+                      canDelete
+                        ? `<button data-id="${o.id}" class="deleteOrder bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Delete</button>`
+                        : ""
+                    }
+                  </div>
+                </div>
+              `;
+            })
+            .join("")
+    }
   `;
 }
 
-/* ---------- Hotel Portal ---------- */
+/* Hotel portal */
 function renderHotelPortal() {
   if (!currentHotelId) {
     appDiv.innerHTML = `
@@ -382,7 +439,7 @@ function renderHotelOrdersHtml(hid) {
           <div class="font-semibold">${escapeHtml(o.customerName)}</div>
           <div class="text-xs text-gray-500">${formatTime(o.createdAt)}</div>
         </div>
-        <div class="text-sm ${o.status === 'Paid' ? 'text-green-700' : 'text-yellow-600'}">${escapeHtml(o.status || 'Pending')}</div>
+        <div class="text-sm ${o.status === 'Paid' ? 'text-green-700' : 'text-yellow-600'}">${o.status || 'Pending'}</div>
       </div>
       <div class="text-sm mt-2">${o.items.map(i => `<div>${i.qty ? i.qty + ' x ' : ''}${escapeHtml(i.name)} - KSh ${i.price}</div>`).join("")}</div>
       <div class="mt-2 flex gap-2">
@@ -393,7 +450,7 @@ function renderHotelOrdersHtml(hid) {
   `).join("");
 }
 
-/* ---------- Admin ---------- */
+/* Admin */
 function renderAdmin() {
   if (!currentAdmin) {
     appDiv.innerHTML = `
@@ -448,39 +505,46 @@ function renderAdmin() {
   `).join("");
 }
 
-/* ---------- Event delegation (clicks) ---------- */
+/* ---------- Event delegation ---------- */
 document.addEventListener("click", async e => {
   const t = e.target;
 
-  // Toggle menu view
+  // toggle menu view
   if (t.classList.contains("viewMenuBtn")) {
     const hid = t.dataset.hotel;
     const menuDiv = document.getElementById(`menu-${hid}`);
     if (!menuDiv) return;
     const isOpen = menuDiv.dataset.open === "true";
-    if (isOpen) { menuDiv.dataset.open = "false"; menuDiv.classList.add("hidden"); }
-    else { menuDiv.dataset.open = "true"; menuDiv.classList.remove("hidden"); renderMenuForHotel(hid, menuDiv); }
+    if (isOpen) {
+      menuDiv.dataset.open = "false";
+      menuDiv.classList.add("hidden");
+    } else {
+      menuDiv.dataset.open = "true";
+      menuDiv.classList.remove("hidden");
+      renderMenuForHotel(hid, menuDiv);
+    }
     return;
   }
 
-  // Add to cart
+  // add to cart
   if (t.classList.contains("addToCart")) {
     const hotelId = t.dataset.hotel;
     const name = t.dataset.name;
     const price = parseFloat(t.dataset.price);
     const row = t.closest('div');
     let qty = 1;
-    try { const qtyInput = row?.querySelector('.qty'); if (qtyInput) qty = Math.max(1, parseInt(qtyInput.value) || 1); } catch(e){}
+    try { const qtyInput = row?.querySelector('.qty'); if (qtyInput) qty = Math.max(1, parseInt(qtyInput.value) || 1); } catch(e) {}
     cartByHotel[hotelId] = cartByHotel[hotelId] || [];
     const existing = cartByHotel[hotelId].find(c => c.name === name && c.price === price);
-    if (existing) existing.qty += qty; else cartByHotel[hotelId].push({ name, price, qty });
+    if (existing) existing.qty += qty;
+    else cartByHotel[hotelId].push({ name, price, qty });
     const menuDiv = document.getElementById(`menu-${hotelId}`);
     if (menuDiv) renderMenuForHotel(hotelId, menuDiv);
     updateNotificationBadges();
     return;
   }
 
-  // Remove item from cart
+  // remove item from cart
   if (t.classList.contains("removeItem")) {
     const hotelId = t.dataset.hotel;
     const i = parseInt(t.dataset.i);
@@ -491,7 +555,7 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Reset cart
+  // reset cart
   if (t.classList.contains("resetCart")) {
     const hotelId = t.dataset.hotel;
     cartByHotel[hotelId] = [];
@@ -500,41 +564,52 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Place order -> open modal
+  // place order -> open modal
   if (t.classList.contains("placeOrder")) {
     const hotelId = t.dataset.hotel;
     openCartModal(hotelId);
     return;
   }
 
-  // Delete order
+  // delete order (admin/hotel/customer permitted) - allow deletion even if Paid
   if (t.classList.contains("deleteOrder")) {
     const oid = t.dataset.id;
     const order = orders.find(o => o.id === oid);
     if (!order) return alert("Order not found");
-    const isCustomerOwner = currentCustomer && currentCustomer.name === order.customerName && currentCustomer.phone === order.customerPhone;
-    const allowed = currentAdmin || (currentHotelId && order.hotelId === currentHotelId) || (isCustomerOwner && (order.status || 'Pending') !== 'Paid');
+
+    const isCustomerOwner = currentCustomer && normalizeName(currentCustomer.name) === normalizeName(order.customerName) && normalizePhone(currentCustomer.phone) === normalizePhone(order.customerPhone);
+    const allowed = currentAdmin || (currentHotelId && order.hotelId === currentHotelId) || isCustomerOwner;
+
     if (!allowed) return alert("No permission to delete this order");
-    if ((order.status || 'Pending') === 'Paid') return alert("Cannot delete an order already marked Paid");
-    if (confirm("Delete this order permanently?")) {
+    if (!confirm("Delete this order permanently?")) return;
+
+    try {
       await deleteDoc(doc(db, "orders", oid));
       alert("Order deleted.");
+    } catch (err) {
+      console.error("Delete failed", err);
+      alert("Failed to delete order. Check console.");
     }
     return;
   }
 
-  // Mark Paid
+  // mark paid
   if (t.classList.contains("markPaid")) {
     const oid = t.dataset.id;
     const order = orders.find(o => o.id === oid);
     if (!order) return alert("Order not found");
     if (currentHotelId && order.hotelId !== currentHotelId && !currentAdmin) return alert("No permission");
-    await updateDoc(doc(db, "orders", oid), { status: "Paid" });
-    alert("Order marked Paid.");
+    try {
+      await updateDoc(doc(db, "orders", oid), { status: "Paid" });
+      alert("Order marked Paid.");
+    } catch (err) {
+      console.error("Mark paid failed", err);
+      alert("Failed to mark paid. Check console.");
+    }
     return;
   }
 
-  // Remove menu item (hotel)
+  // remove menu item (hotel)
   if (t.classList.contains("removeMenu")) {
     const idx = parseInt(t.dataset.i);
     const rest = restaurants.find(r => r.hotelId === currentHotelId);
@@ -545,7 +620,7 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Toggle block/unblock (admin)
+  // block/unblock hotel (admin)
   if (t.classList.contains("toggleBlock")) {
     const hid = t.dataset.id;
     const hotelRef = doc(db, "hotels", hid);
@@ -554,7 +629,7 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Approve hotel (admin)
+  // approve hotel (admin)
   if (t.classList.contains("approveHotel")) {
     const hid = t.dataset.id;
     await updateDoc(doc(db, "hotels", hid), { approved: true });
@@ -563,7 +638,7 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Clear All (admin)
+  // clear all (admin)
   if (t.id === "clearAll") {
     if (!confirm("Delete ALL hotels, restaurants, orders, notifications?")) return;
     const cols = ["hotels","restaurants","orders","notifications"];
@@ -575,38 +650,38 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Logout hotel
+  // logout hotel
   if (t.id === "logoutHotel") { currentHotelId = null; render(); return; }
 
-  // Mark notification read
+  // mark notification read
   if (t.classList.contains("markNotifRead")) {
     const nid = t.dataset.id;
     await updateDoc(doc(db, "notifications", nid), { read: true });
     return;
   }
 
-  // Show hotel notifications dropdown
+  // show hotel notif dropdown
   if (t.id === "showHotelNotifs") {
     const box = document.getElementById("hotelNotifBox");
     if (box) box.classList.toggle("hidden");
     return;
   }
 
-  // Show admin notifications dropdown
+  // show admin notif dropdown
   if (t.id === "showAdminNotifs") {
     const box = document.getElementById("adminNotifBox");
     if (box) box.classList.toggle("hidden");
     return;
   }
 
-  // Modal confirm (order)
+  // confirm order (modal)
   if (t.id === 'confirmOrderBtn') {
     const hotelId = t.dataset.hotel;
     await handlePlaceOrder(hotelId, { clearCartAfter: false, closeModal: true });
     return;
   }
 
-  // Close modal (return to cart)
+  // close cart modal (return to cart)
   if (t.id === 'closeCartModal' || t.id === 'cartModalBackdrop') {
     closeCartModal();
     return;
@@ -618,21 +693,18 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target;
 
-  /* Hotel login */
+  // hotel login
   if (f.id === "hotelLogin") {
     const name = f.name.value.trim(), pass = f.pass.value.trim();
     const h = hotels.find(h => h.name === name && h.pass === pass);
     if (!h) return alert("Wrong credentials");
     if (!h.approved) return alert("Account pending admin approval");
     if (h.blocked) return alert("Account blocked by admin");
-    currentHotelId = h.id;
-    currentCustomer = null;
-    switchTab("hotel");
-    render();
+    currentHotelId = h.id; currentCustomer = null; switchTab("hotel"); render();
     return;
   }
 
-  /* Hotel register */
+  // hotel register
   if (f.id === "hotelRegister") {
     const name = f.name.value.trim(), pass = f.pass.value.trim(), till = f.till.value.trim();
     if (!name || !pass || !till) return alert("Fill all fields");
@@ -642,7 +714,7 @@ document.addEventListener("submit", async e => {
     return;
   }
 
-  /* Admin login */
+  // admin login
   if (f.id === "adminLogin") {
     const u = f.user.value.trim(), p = f.pass.value.trim();
     if (u === ADMIN_CRED.user && p === ADMIN_CRED.pass) { currentAdmin = true; currentCustomer = null; switchTab("admin"); render(); }
@@ -650,7 +722,7 @@ document.addEventListener("submit", async e => {
     return;
   }
 
-  /* Add menu (hotel) */
+  // add menu (hotel)
   if (f.id === "addMenu") {
     const name = f.name.value.trim(), price = parseFloat(f.price.value);
     if (!name || isNaN(price)) return alert("Fill valid item");
@@ -664,6 +736,7 @@ document.addEventListener("submit", async e => {
     }
     render();
     f.reset();
+    return;
   }
 });
 
@@ -709,18 +782,15 @@ function openCartModal(hotelId) {
 
   cartModalContainer.classList.remove('hidden');
   cartModalContainer.classList.add('flex');
-  document.body.classList.add('modal-open');
 }
 
-/* Close cart modal */
 function closeCartModal() {
   cartModalContainer.classList.add('hidden');
   cartModalContainer.classList.remove('flex');
   cartModalContent.innerHTML = '';
-  document.body.classList.remove('modal-open');
 }
 
-/* ---------- Place order (writes to Firestore) ---------- */
+/* ---------- Place order (writes to Firestore orders collection) ---------- */
 async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, closeModal: true }) {
   const cart = cartByHotel[hotelId] || [];
   if (!cart || cart.length === 0) { closeCartModal(); return alert("Cart empty"); }
@@ -738,7 +808,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   if (!cname || !cphone) return alert("Fill your name and phone");
   if (!mpesaName || !mpesaNumber) return alert("Enter M-PESA name and number for service fee");
 
-  // Check pending orders limit
+  // limit pending orders to 100 (server-side enforcement would be better, but we check here)
   const snap = await getDocs(collection(db, "orders"));
   const allOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   const pendingCount = allOrders.filter(o => (o.status || 'Pending') !== 'Paid').length;
@@ -762,30 +832,39 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     createdAt: Date.now()
   };
 
-  await addDoc(collection(db, "orders"), orderPayload);
-
-  // Notifications for admin and hotel
-  const hotel = getHotelById(hotelId);
-  const message = `New order from ${cname} (${cphone}) — KSh ${total} for ${hotel.name}`;
-  await addDoc(collection(db, "notifications"), { type: "order", to: "admin", message, timestamp: Date.now(), read: false });
-  await addDoc(collection(db, "notifications"), { type: "order", to: hotelId, message, timestamp: Date.now(), read: false });
-
-  alert("Order placed! Make sure you paid the hotel's till and entered the correct M-PESA details.");
-
-  // Remember current customer for this session (so they can view & delete their orders)
+  // IMPORTANT FIX: set currentCustomer BEFORE writing so realtime listener + render can show the order immediately
   currentCustomer = { name: cname, phone: cphone };
 
-  // Keep cart intact unless caller requested clearing
+  // Write order to Firestore (orders listener will refresh UI)
+  try {
+    await addDoc(collection(db, "orders"), orderPayload);
+  } catch (err) {
+    console.error("Order write failed", err);
+    alert("Failed to place order. Check console.");
+    return;
+  }
+
+  // Create notifications
+  const hotel = getHotelById(hotelId);
+  const message = `New order from ${cname} (${cphone}) — KSh ${total} for ${hotel.name}`;
+  try {
+    await addDoc(collection(db, "notifications"), { type: "order", to: "admin", message, timestamp: Date.now(), read: false });
+    await addDoc(collection(db, "notifications"), { type: "order", to: hotelId, message, timestamp: Date.now(), read: false });
+  } catch (err) {
+    console.warn("Notification write failed", err);
+  }
+
+  // Optionally clear cart after placing (we keep per your earlier request)
   if (options.clearCartAfter) cartByHotel[hotelId] = [];
 
   if (options.closeModal) closeCartModal();
 
-  // switch to orders so the user sees it; Firestore onSnapshot will update list
+  // switch to Orders so user sees it immediately (orders list is realtime and currentCustomer is set)
   switchTab("orders");
   render();
 }
 
-/* ---------- Init rendering & badges ---------- */
+/* ---------- Initialize ---------- */
 updateNotificationBadges();
 render();
 
