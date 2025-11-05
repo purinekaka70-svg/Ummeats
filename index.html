@@ -3,8 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tamu Express (Enhanced)</title>
+  <title>Tamu Express — Full (No localStorage)</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Small tweak for modal z-index & scroll */
+    body.modal-open { overflow: hidden; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col">
 
@@ -18,31 +22,38 @@
   </nav>
 </header>
 
-<main id="app" class="p-4 flex-1"></main>
+<main id="app" class="p-4 flex-1 overflow-auto"></main>
 
 <footer id="footer" class="bg-gray-800 text-white p-3 text-center cursor-pointer">
   @ Tamu Express | Umma-Kenya (click 4x to unlock admin)
 </footer>
 
+<!-- Cart / Checkout Modal container (hidden until needed) -->
+<div id="cartModalContainer" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+  <div id="cartModalBackdrop" class="absolute inset-0 bg-black opacity-50"></div>
+  <div class="relative max-w-2xl w-full bg-white rounded shadow-lg p-4 z-60">
+    <div id="cartModalContent"></div>
+  </div>
+</div>
+
 <script type="module">
 /* =========================
-   Tamu Express Enhanced - Single file
-   Features:
-    - Toggle menu per restaurant
-    - Per-hotel carts
-    - Notifications (hotel + admin)
-    - Global pending orders limit (100)
-    - Service-fee enforcement
-    - FIFO order sorting & readable times
+   Tamu Express — Full Single File (No localStorage)
+   - Firestore modular v12
+   - Orders written to "orders" collection
+   - Customers see their orders (session-based identity)
+   - Hotel & Admin panels included
    ========================= */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, setDoc, doc,
-  onSnapshot, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit
+  getFirestore, collection, addDoc, setDoc, doc, onSnapshot, getDocs, updateDoc, deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-/* ---------- Firebase config (replace if needed) ---------- */
+/* ---------- FIREBASE CONFIG ----------
+   Replace these values with your Firebase project config if needed.
+   If you don't have a Firebase project yet, create one and enable Firestore.
+-------------------------------------------------- */
 const firebaseConfig = {
   apiKey: "AIzaSyApi2RjwEXEW2mTwCMiYERKUNAYL8Toddk",
   authDomain: "tamuexpress-26e4a.firebaseapp.com",
@@ -54,22 +65,40 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ---------- State ---------- */
+/* ---------- App state (no localStorage) ---------- */
 let hotels = [], restaurants = [], orders = [], notifications = [];
-let cartByHotel = {}; // { hotelId: [items] }
+let cartByHotel = {}; // { hotelId: [ {name, price, qty} ] }
 let currentTab = "restaurants";
-let currentHotelId = null; // logged-in hotel id for hotel portal
+let currentHotelId = null; // hotel portal login
 let currentAdmin = false;
-let currentCustomer = null;
+let currentCustomer = null; // { name, phone } stored in memory after placing an order
 const SERVICE_FEE = 40;
 const SERVICE_FEE_TILL = "0115613332";
 const ADMIN_CRED = { user: "admin", pass: "TamuAdmin@2025" };
 
+/* ---------- Elements ---------- */
 const appDiv = document.getElementById("app");
 const adminTab = document.querySelector(".tab[data-tab='admin']");
-adminTab.style.display = "none"; // hidden until footer click
+adminTab.style.display = "none"; // locked until footer clicks
 
-/* ---------- Small helpers ---------- */
+/* Modal elements */
+const cartModalContainer = document.getElementById('cartModalContainer');
+const cartModalBackdrop = document.getElementById('cartModalBackdrop');
+const cartModalContent = document.getElementById('cartModalContent');
+
+/* ---------- Helpers ---------- */
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll("'",'&#39;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+}
+function formatTime(ts) {
+  try { return new Date(ts).toLocaleString('en-KE', { hour12: false }); } catch (e) { return String(ts); }
+}
+function getHotelById(id) {
+  return hotels.find(h => h.id === id) || { name: "Unknown", till: "N/A", approved: false, blocked: false };
+}
+
+/* ---------- Tab switching ---------- */
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll(".tab").forEach(b => {
@@ -78,49 +107,36 @@ function switchTab(tab) {
   });
   render();
 }
-
-function getHotelById(id) {
-  return hotels.find(h => h.id === id) || { name: "Unknown", till: "N/A", approved: false, blocked: false };
-}
-
-function formatTime(ts) {
-  try {
-    return new Date(ts).toLocaleString('en-KE', { hour12: false });
-  } catch(e) {
-    return String(ts);
-  }
-}
-
-/* ---------- UI event wiring ---------- */
 document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+
+/* ---------- Footer click to unlock Admin ---------- */
 let footerClicks = 0;
 document.getElementById("footer").addEventListener("click", () => {
   footerClicks++;
   if (footerClicks >= 4) { adminTab.style.display = "inline-block"; switchTab("admin"); footerClicks = 0; }
 });
 
-/* ---------- Real-time listeners for Firestore ---------- */
+/* ---------- Firestore real-time listeners ---------- */
 /* Hotels */
 onSnapshot(collection(db, "hotels"), snap => {
   hotels = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   render();
 });
 
-/* Restaurants */
+/* Restaurants (menu docs keyed by hotelId) */
 onSnapshot(collection(db, "restaurants"), snap => {
-  // attach hotel data to restaurant view for convenience
   restaurants = snap.docs.map(d => {
     const data = d.data();
     const hotel = getHotelById(data.hotelId);
     return { id: d.id, ...data, hotelName: hotel.name, till: hotel.till, approved: hotel.approved, blocked: hotel.blocked };
   });
+  updateNotificationBadges();
   render();
 });
 
 /* Orders */
 onSnapshot(collection(db, "orders"), snap => {
   orders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  // update badges or UI where needed
   render();
 });
 
@@ -131,24 +147,21 @@ onSnapshot(collection(db, "notifications"), snap => {
   render();
 });
 
-/* ---------- Helpers: Notification badges ---------- */
+/* ---------- Notification Badges ---------- */
 function updateNotificationBadges() {
-  // Admin unread
   const adminUnread = notifications.filter(n => n.to === 'admin' && !n.read).length;
   const adminBadge = document.getElementById("adminNotifBadge");
-  adminBadge.innerHTML = adminUnread ? `<span class="text-xs ml-1 bg-red-600 rounded-full px-2">${adminUnread}</span>` : "";
+  if (adminBadge) adminBadge.innerHTML = adminUnread ? `<span class="text-xs ml-1 bg-red-600 rounded-full px-2">${adminUnread}</span>` : "";
 
-  // Hotel unread (for logged-in hotel)
   const hotelUnread = currentHotelId ? notifications.filter(n => n.to === currentHotelId && !n.read).length : notifications.filter(n => n.to === 'hotel' && !n.read).length;
   const hotelBadge = document.getElementById("hotelNotifBadge");
-  hotelBadge.innerHTML = hotelUnread ? `<span class="text-xs ml-1 bg-red-600 rounded-full px-2">${hotelUnread}</span>` : "";
+  if (hotelBadge) hotelBadge.innerHTML = hotelUnread ? `<span class="text-xs ml-1 bg-red-600 rounded-full px-2">${hotelUnread}</span>` : "";
 
-  // Restaurants tab badge: total restaurants count
   const restBadge = document.getElementById("restBadge");
-  restBadge.innerHTML = restaurants.length ? `<span class="text-xs ml-1 bg-white text-green-700 rounded-full px-2">${restaurants.length}</span>` : "";
+  if (restBadge) restBadge.innerHTML = restaurants.length ? `<span class="text-xs ml-1 bg-white text-green-700 rounded-full px-2">${restaurants.length}</span>` : "";
 }
 
-/* ---------- Rendering (restaurants/orders/hotel/admin) ---------- */
+/* ---------- Rendering ---------- */
 function render() {
   if (currentTab === "restaurants") renderRestaurants();
   else if (currentTab === "orders") renderOrders();
@@ -156,37 +169,33 @@ function render() {
   else if (currentTab === "admin") renderAdmin();
 }
 
-/* Restaurants view:
-   - Show list of restaurants only (name & till)
-   - Each has View Menu button that toggles menu display
-   - The menu area includes that hotel's cart and checkout
-*/
+/* ---------- Restaurants view ---------- */
 function renderRestaurants() {
   const visible = restaurants.filter(r => r.approved && !r.blocked);
   appDiv.innerHTML = `
     <h2 class="text-xl font-semibold mb-3">All Restaurants</h2>
     <div class="grid md:grid-cols-2 gap-4">
       ${visible.map(r => `
-      <div class="bg-white p-4 rounded shadow">
-        <div class="flex justify-between items-center">
-          <div>
-            <h3 class="font-bold">${r.hotelName}</h3>
-            <p class="text-sm text-gray-500">Till: ${r.till || "N/A"}</p>
+        <div class="bg-white p-4 rounded shadow">
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="font-bold">${escapeHtml(r.hotelName)}</h3>
+              <p class="text-sm text-gray-500">Till: ${escapeHtml(r.till || "N/A")}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="viewMenuBtn bg-green-500 text-white px-3 py-1 rounded" data-hotel="${r.hotelId}">View Menu</button>
+              <span class="text-sm">${(cartByHotel[r.hotelId] && cartByHotel[r.hotelId].length) ? `<span class="bg-gray-100 px-2 py-0.5 rounded">Cart: ${cartByHotel[r.hotelId].length}</span>` : ''}</span>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <button class="viewMenuBtn bg-green-500 text-white px-3 py-1 rounded" data-hotel="${r.hotelId}">View Menu</button>
-            <span class="text-sm">${(cartByHotel[r.hotelId] && cartByHotel[r.hotelId].length) ? `<span class="bg-gray-100 px-2 py-0.5 rounded">Cart: ${cartByHotel[r.hotelId].length}</span>` : ''}</span>
-          </div>
+          <div id="menu-${r.hotelId}" class="menuArea mt-3 hidden"></div>
         </div>
-        <div id="menu-${r.hotelId}" class="menuArea mt-3 hidden"></div>
-      </div>`).join("")}
+      `).join('')}
     </div>
   `;
-  // attach any open menus (if previously toggled open)
+  // re-open any previously opened menus (if flagged)
   visible.forEach(r => {
     const menuDiv = document.getElementById(`menu-${r.hotelId}`);
     if (!menuDiv) return;
-    // if menu should be open (we track by presence of menuDiv.dataset.open)
     if (menuDiv.dataset && menuDiv.dataset.open === "true") {
       renderMenuForHotel(r.hotelId, menuDiv);
       menuDiv.classList.remove("hidden");
@@ -194,7 +203,7 @@ function renderRestaurants() {
   });
 }
 
-/* Render the menu and cart for a given hotel into provided container */
+/* Render menu and cart block for a hotel */
 function renderMenuForHotel(hotelId, container) {
   const rest = restaurants.find(rr => rr.hotelId === hotelId) || { menu: [] };
   const cart = cartByHotel[hotelId] || [];
@@ -203,10 +212,10 @@ function renderMenuForHotel(hotelId, container) {
       <div class="space-y-2">
         ${rest.menu && rest.menu.length ? rest.menu.map((item, idx) => `
           <div class="flex justify-between border-b py-2">
-            <div><span class="font-medium">${item.name}</span><div class="text-xs text-gray-500">KSh ${item.price}</div></div>
+            <div><span class="font-medium">${escapeHtml(item.name)}</span><div class="text-xs text-gray-500">KSh ${item.price}</div></div>
             <div class="flex items-center gap-2">
               <input type="number" min="1" value="1" class="qty w-16 border p-1 text-sm" data-hotel="${hotelId}" data-idx="${idx}">
-              <button class="addToCart bg-green-600 text-white px-3 py-1 rounded text-sm" data-hotel="${hotelId}" data-name="${item.name}" data-price="${item.price}">Add</button>
+              <button class="addToCart bg-green-600 text-white px-3 py-1 rounded text-sm" data-hotel="${hotelId}" data-name="${escapeHtml(item.name)}" data-price="${item.price}">Add</button>
             </div>
           </div>`).join("") : `<p class="text-sm text-gray-500">No items yet</p>`}
       </div>
@@ -214,11 +223,11 @@ function renderMenuForHotel(hotelId, container) {
       <div class="bg-gray-50 p-3 rounded mt-3 border">
         <h4 class="font-semibold">Cart (${cart.length})</h4>
         ${cart.length === 0 ? "<p class='text-sm text-gray-500'>Empty cart</p>" : `
-          <ul class="mb-2 text-sm">${cart.map((c,i) => `<li class="flex justify-between py-1"><span>${c.qty} x ${c.name}</span><span>KSh ${c.price * c.qty}</span> <button data-i="${i}" data-hotel="${hotelId}" class="removeItem text-red-500 ml-3 text-xs">x</button></li>`).join("")}</ul>
+          <ul class="mb-2 text-sm">${cart.map((c,i) => `<li class="flex justify-between py-1"><span>${c.qty} x ${escapeHtml(c.name)}</span><span>KSh ${c.price * c.qty}</span> <button data-i="${i}" data-hotel="${hotelId}" class="removeItem text-red-500 ml-3 text-xs">x</button></li>`).join("")}</ul>
           <p class="text-sm">Items Total: KSh ${cart.reduce((s,i)=>s + (i.price * i.qty), 0)}</p>
           <p class="text-sm">Service Fee: KSh ${SERVICE_FEE}</p>
-          <p class="text-sm">Pay food amount to: <strong>${getHotelById(hotelId).till || "N/A"}</strong></p>
-          <p class="text-sm">Service Fee Till: <strong>${SERVICE_FEE_TILL}</strong></p>
+          <p class="text-sm">Pay food amount to: <strong>${escapeHtml(getHotelById(hotelId).till || "N/A")}</strong></p>
+          <p class="text-sm">Service Fee Till: <strong>${escapeHtml(SERVICE_FEE_TILL)}</strong></p>
           <p class="font-semibold mt-2">Total to Pay: KSh ${cart.reduce((s,i)=>s + (i.price * i.qty), 0) + SERVICE_FEE}</p>
 
           <div class="mt-3">
@@ -230,6 +239,7 @@ function renderMenuForHotel(hotelId, container) {
               <button data-hotel="${hotelId}" class="placeOrder bg-blue-600 text-white px-3 py-1 rounded text-sm">Place Order</button>
               <button data-hotel="${hotelId}" class="resetCart bg-gray-600 text-white px-3 py-1 rounded text-sm">Reset</button>
             </div>
+            <p class="text-xs text-gray-500 mt-2">Press "Place Order" to review & confirm. Closing the review returns you to the cart so you can add more items.</p>
           </div>
         `}
       </div>
@@ -237,16 +247,15 @@ function renderMenuForHotel(hotelId, container) {
   `;
 }
 
-/* Orders view */
+/* ---------- Orders view ---------- */
 function renderOrders() {
-  // Determine visible orders:
+  // Determine visible orders for this session/view:
   let visibleOrders = [];
   if (currentAdmin) visibleOrders = [...orders];
   else if (currentHotelId) visibleOrders = orders.filter(o => o.hotelId === currentHotelId);
   else if (currentCustomer) visibleOrders = orders.filter(o => o.customerName === currentCustomer.name && o.customerPhone === currentCustomer.phone);
   else visibleOrders = [];
 
-  // FIFO: oldest first by createdAt
   visibleOrders = visibleOrders.sort((a,b) => (a.createdAt || 0) - (b.createdAt || 0));
 
   appDiv.innerHTML = `
@@ -255,25 +264,25 @@ function renderOrders() {
       const hotel = getHotelById(o.hotelId);
       const itemsTotal = o.items.reduce((s,i)=>s + (i.price * (i.qty || 1)), 0);
       const total = o.total ?? (itemsTotal + (o.serviceFee ?? SERVICE_FEE));
-      const canDelete = currentAdmin || (currentHotelId && currentHotelId === o.hotelId);
+      const canDelete = currentAdmin || (currentHotelId && currentHotelId === o.hotelId) || (currentCustomer && currentCustomer.name === o.customerName && currentCustomer.phone === o.customerPhone && (o.status || 'Pending') !== 'Paid');
       const canMarkPaid = (currentHotelId && currentHotelId === o.hotelId) || currentAdmin;
       return `
         <div class="bg-white p-4 rounded shadow mb-3">
           <div class="flex justify-between items-center mb-2">
-            <h3 class="font-semibold">${o.customerName}</h3>
-            <div class="${o.status === 'Paid' ? 'text-green-700 font-semibold' : 'text-yellow-600 font-semibold'}">${o.status || 'Pending'}</div>
+            <h3 class="font-semibold">${escapeHtml(o.customerName)}</h3>
+            <div class="${o.status === 'Paid' ? 'text-green-700 font-semibold' : 'text-yellow-600 font-semibold'}">${escapeHtml(o.status || 'Pending')}</div>
           </div>
-          <p class="text-sm text-gray-600">Phone: ${o.customerPhone}</p>
-          <p class="text-sm text-gray-600">Hotel: ${hotel.name} | Hotel Till: ${hotel.till || 'N/A'}</p>
+          <p class="text-sm text-gray-600">Phone: ${escapeHtml(o.customerPhone)}</p>
+          <p class="text-sm text-gray-600">Hotel: ${escapeHtml(hotel.name)} | Hotel Till: ${escapeHtml(hotel.till || 'N/A')}</p>
           <p class="text-xs text-gray-500">Ordered at: ${formatTime(o.createdAt)}</p>
-          <ul class="text-sm mt-2">${o.items.map(i=>`<li>${i.qty ? i.qty + ' x ' : ''}${i.name} - KSh ${i.price}${i.qty ? ' each' : ''}</li>`).join("")}</ul>
+          <ul class="text-sm mt-2">${o.items.map(i=>`<li>${i.qty ? i.qty + ' x ' : ''}${escapeHtml(i.name)} - KSh ${i.price}${i.qty ? ' each' : ''}</li>`).join("")}</ul>
           <p class="text-sm mt-1">Items Total: KSh ${itemsTotal}</p>
           <p class="text-sm mt-1">Service Fee: KSh ${o.serviceFee ?? SERVICE_FEE}</p>
-          <p class="text-sm mt-1">Service Fee Till: <strong>${SERVICE_FEE_TILL}</strong></p>
+          <p class="text-sm mt-1">Service Fee Till: <strong>${escapeHtml(SERVICE_FEE_TILL)}</strong></p>
           <p class="font-semibold mt-1">Total to Pay: KSh ${total}</p>
           <div class="mt-2 text-sm">
-            <p><strong>M-PESA Name:</strong> ${o.mpesaName || '—'}</p>
-            <p><strong>M-PESA Number:</strong> ${o.mpesaNumber || '—'}</p>
+            <p><strong>M-PESA Name:</strong> ${escapeHtml(o.mpesaName || '—')}</p>
+            <p><strong>M-PESA Number:</strong> ${escapeHtml(o.mpesaNumber || '—')}</p>
           </div>
           <div class="mt-3 flex gap-2">
             ${canMarkPaid && o.status !== 'Paid' ? `<button data-id="${o.id}" class="markPaid bg-green-600 text-white px-3 py-1 rounded">Mark as Paid</button>` : ''}
@@ -285,7 +294,7 @@ function renderOrders() {
   `;
 }
 
-/* Hotel Portal */
+/* ---------- Hotel Portal ---------- */
 function renderHotelPortal() {
   if (!currentHotelId) {
     appDiv.innerHTML = `
@@ -319,13 +328,12 @@ function renderHotelPortal() {
     return;
   }
 
-  // hotel notifications (filtered)
   const hotelNotifs = notifications.filter(n => n.to === currentHotelId);
-
   const rest = restaurants.find(r => r.hotelId === currentHotelId) || { menu: [] };
+
   appDiv.innerHTML = `
     <div class="flex justify-between items-center mb-3">
-      <h2 class="font-bold">${hotel.name}</h2>
+      <h2 class="font-bold">${escapeHtml(hotel.name)}</h2>
       <div class="flex items-center gap-2">
         <div class="relative">
           <button id="showHotelNotifs" class="bg-white text-gray-700 px-3 py-1 rounded">Notifications ${hotelNotifs.filter(n=>!n.read).length ? `<span class="text-xs ml-1 bg-red-600 rounded-full px-2 text-white">${hotelNotifs.filter(n=>!n.read).length}</span>` : ''}</button>
@@ -342,21 +350,20 @@ function renderHotelPortal() {
         <button class="bg-green-600 text-white px-3 py-1 rounded" type="submit">Add</button>
       </form>
       <ul class="mt-3">
-        ${rest.menu.map((m,i)=>`<li>${m.name} - KSh ${m.price} <button data-i="${i}" class="removeMenu text-red-500 ml-2">x</button></li>`).join("")}
+        ${rest.menu.map((m,i)=>`<li>${escapeHtml(m.name)} - KSh ${m.price} <button data-i="${i}" class="removeMenu text-red-500 ml-2">x</button></li>`).join("")}
       </ul>
     </div>
 
     <div>
-      <h3 class="font-semibold mb-2">Orders for ${hotel.name}</h3>
+      <h3 class="font-semibold mb-2">Orders for ${escapeHtml(hotel.name)}</h3>
       <div id="hotelOrdersArea">${renderHotelOrdersHtml(currentHotelId)}</div>
     </div>
   `;
 
-  // render notif box content
   const notifBox = document.getElementById("hotelNotifBox");
   notifBox.innerHTML = hotelNotifs.length === 0 ? `<p class="text-sm text-gray-500">No notifications</p>` : hotelNotifs.map(n => `
     <div class="border-b py-2">
-      <div class="text-sm">${n.message}</div>
+      <div class="text-sm">${escapeHtml(n.message)}</div>
       <div class="text-xs text-gray-500">${formatTime(n.timestamp)}</div>
       <div class="mt-1">
         ${!n.read ? `<button data-id="${n.id}" class="markNotifRead text-xs text-blue-600">Mark read</button>` : `<span class="text-xs text-gray-400">Read</span>`}
@@ -372,12 +379,12 @@ function renderHotelOrdersHtml(hid) {
     <div class="bg-white p-3 rounded mb-2">
       <div class="flex justify-between items-center">
         <div>
-          <div class="font-semibold">${o.customerName}</div>
+          <div class="font-semibold">${escapeHtml(o.customerName)}</div>
           <div class="text-xs text-gray-500">${formatTime(o.createdAt)}</div>
         </div>
-        <div class="text-sm ${o.status === 'Paid' ? 'text-green-700' : 'text-yellow-600'}">${o.status || 'Pending'}</div>
+        <div class="text-sm ${o.status === 'Paid' ? 'text-green-700' : 'text-yellow-600'}">${escapeHtml(o.status || 'Pending')}</div>
       </div>
-      <div class="text-sm mt-2">${o.items.map(i => `<div>${i.qty ? i.qty + ' x ' : ''}${i.name} - KSh ${i.price}</div>`).join("")}</div>
+      <div class="text-sm mt-2">${o.items.map(i => `<div>${i.qty ? i.qty + ' x ' : ''}${escapeHtml(i.name)} - KSh ${i.price}</div>`).join("")}</div>
       <div class="mt-2 flex gap-2">
         ${o.status !== 'Paid' ? `<button data-id="${o.id}" class="markPaid bg-green-600 text-white px-2 py-1 rounded text-sm">Mark Paid</button>` : ''}
         <button data-id="${o.id}" class="deleteOrder bg-red-600 text-white px-2 py-1 rounded text-sm">Delete</button>
@@ -386,7 +393,7 @@ function renderHotelOrdersHtml(hid) {
   `).join("");
 }
 
-/* Admin panel */
+/* ---------- Admin ---------- */
 function renderAdmin() {
   if (!currentAdmin) {
     appDiv.innerHTML = `
@@ -414,8 +421,8 @@ function renderAdmin() {
     <h3 class="font-semibold mb-2">Registered Hotels</h3>
     ${hotels.map(h => `<div class="bg-white p-3 rounded shadow mb-2 flex justify-between items-center">
       <div>
-        <p class="font-semibold">${h.name}</p>
-        <p>Till: ${h.till}</p>
+        <p class="font-semibold">${escapeHtml(h.name)}</p>
+        <p>Till: ${escapeHtml(h.till)}</p>
         <p>Blocked: ${h.blocked ? "Yes" : "No"}</p>
         <p>Approved: ${h.approved ? "Yes" : "No"}</p>
       </div>
@@ -429,11 +436,10 @@ function renderAdmin() {
     <div><button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="switchTab('orders')">Go to Orders</button></div>
   `;
 
-  // admin notif box contents
   const adminNotifBox = document.getElementById("adminNotifBox");
   adminNotifBox.innerHTML = adminNotifs.length === 0 ? `<p class="text-sm text-gray-500">No notifications</p>` : adminNotifs.map(n => `
     <div class="border-b py-2">
-      <div class="text-sm">${n.message}</div>
+      <div class="text-sm">${escapeHtml(n.message)}</div>
       <div class="text-xs text-gray-500">${formatTime(n.timestamp)}</div>
       <div class="mt-1">
         ${!n.read ? `<button data-id="${n.id}" class="markNotifRead text-xs text-blue-600">Mark read</button>` : `<span class="text-xs text-gray-400">Read</span>`}
@@ -442,7 +448,7 @@ function renderAdmin() {
   `).join("");
 }
 
-/* ---------- Event delegation for clicks ---------- */
+/* ---------- Event delegation (clicks) ---------- */
 document.addEventListener("click", async e => {
   const t = e.target;
 
@@ -452,71 +458,64 @@ document.addEventListener("click", async e => {
     const menuDiv = document.getElementById(`menu-${hid}`);
     if (!menuDiv) return;
     const isOpen = menuDiv.dataset.open === "true";
-    if (isOpen) {
-      menuDiv.dataset.open = "false";
-      menuDiv.classList.add("hidden");
-    } else {
-      menuDiv.dataset.open = "true";
-      menuDiv.classList.remove("hidden");
-      renderMenuForHotel(hid, menuDiv);
-    }
+    if (isOpen) { menuDiv.dataset.open = "false"; menuDiv.classList.add("hidden"); }
+    else { menuDiv.dataset.open = "true"; menuDiv.classList.remove("hidden"); renderMenuForHotel(hid, menuDiv); }
     return;
   }
 
-  // Add to cart (within menu view)
+  // Add to cart
   if (t.classList.contains("addToCart")) {
     const hotelId = t.dataset.hotel;
     const name = t.dataset.name;
     const price = parseFloat(t.dataset.price);
-    // find qty input nearby
-    const menuContainer = t.closest('.menuArea') || t.closest('.transition-all');
+    const row = t.closest('div');
     let qty = 1;
-    try {
-      const qtyInput = menuContainer?.querySelector('.qty');
-      if (qtyInput) qty = Math.max(1, parseInt(qtyInput.value) || 1);
-    } catch(e) {}
+    try { const qtyInput = row?.querySelector('.qty'); if (qtyInput) qty = Math.max(1, parseInt(qtyInput.value) || 1); } catch(e){}
     cartByHotel[hotelId] = cartByHotel[hotelId] || [];
-    // if same item exists, increment
     const existing = cartByHotel[hotelId].find(c => c.name === name && c.price === price);
-    if (existing) existing.qty += qty;
-    else cartByHotel[hotelId].push({ name, price, qty });
-    render(); // re-render restaurants so cart count updates
+    if (existing) existing.qty += qty; else cartByHotel[hotelId].push({ name, price, qty });
+    const menuDiv = document.getElementById(`menu-${hotelId}`);
+    if (menuDiv) renderMenuForHotel(hotelId, menuDiv);
+    updateNotificationBadges();
     return;
   }
 
-  // qty change - handled inline by addToCart reading value
-
-  // remove item from cart
+  // Remove item from cart
   if (t.classList.contains("removeItem")) {
     const hotelId = t.dataset.hotel;
     const i = parseInt(t.dataset.i);
     if (!cartByHotel[hotelId]) return;
     cartByHotel[hotelId].splice(i, 1);
-    render();
+    const menuDiv = document.getElementById(`menu-${hotelId}`);
+    if (menuDiv) renderMenuForHotel(hotelId, menuDiv);
     return;
   }
 
-  // reset cart
+  // Reset cart
   if (t.classList.contains("resetCart")) {
     const hotelId = t.dataset.hotel;
     cartByHotel[hotelId] = [];
-    render();
+    const menuDiv = document.getElementById(`menu-${hotelId}`);
+    if (menuDiv) renderMenuForHotel(hotelId, menuDiv);
     return;
   }
 
-  // Place order
+  // Place order -> open modal
   if (t.classList.contains("placeOrder")) {
     const hotelId = t.dataset.hotel;
-    await handlePlaceOrder(hotelId);
+    openCartModal(hotelId);
     return;
   }
 
-  // Global delete order
+  // Delete order
   if (t.classList.contains("deleteOrder")) {
     const oid = t.dataset.id;
     const order = orders.find(o => o.id === oid);
     if (!order) return alert("Order not found");
-    if (!(currentAdmin || (currentHotelId && order.hotelId === currentHotelId))) return alert("No permission");
+    const isCustomerOwner = currentCustomer && currentCustomer.name === order.customerName && currentCustomer.phone === order.customerPhone;
+    const allowed = currentAdmin || (currentHotelId && order.hotelId === currentHotelId) || (isCustomerOwner && (order.status || 'Pending') !== 'Paid');
+    if (!allowed) return alert("No permission to delete this order");
+    if ((order.status || 'Pending') === 'Paid') return alert("Cannot delete an order already marked Paid");
     if (confirm("Delete this order permanently?")) {
       await deleteDoc(doc(db, "orders", oid));
       alert("Order deleted.");
@@ -524,7 +523,7 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Mark paid
+  // Mark Paid
   if (t.classList.contains("markPaid")) {
     const oid = t.dataset.id;
     const order = orders.find(o => o.id === oid);
@@ -535,7 +534,7 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Remove menu item (hotel adds menu)
+  // Remove menu item (hotel)
   if (t.classList.contains("removeMenu")) {
     const idx = parseInt(t.dataset.i);
     const rest = restaurants.find(r => r.hotelId === currentHotelId);
@@ -546,7 +545,7 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // Block/unblock hotel (admin)
+  // Toggle block/unblock (admin)
   if (t.classList.contains("toggleBlock")) {
     const hid = t.dataset.id;
     const hotelRef = doc(db, "hotels", hid);
@@ -559,13 +558,12 @@ document.addEventListener("click", async e => {
   if (t.classList.contains("approveHotel")) {
     const hid = t.dataset.id;
     await updateDoc(doc(db, "hotels", hid), { approved: true });
-    // ensure restaurants doc exists
     const existing = restaurants.find(r => r.hotelId === hid);
     if (!existing) await setDoc(doc(db, "restaurants", hid), { hotelId: hid, menu: [] });
     return;
   }
 
-  // Clear all (admin)
+  // Clear All (admin)
   if (t.id === "clearAll") {
     if (!confirm("Delete ALL hotels, restaurants, orders, notifications?")) return;
     const cols = ["hotels","restaurants","orders","notifications"];
@@ -580,24 +578,37 @@ document.addEventListener("click", async e => {
   // Logout hotel
   if (t.id === "logoutHotel") { currentHotelId = null; render(); return; }
 
-  // Mark notification read (admin or hotel)
+  // Mark notification read
   if (t.classList.contains("markNotifRead")) {
     const nid = t.dataset.id;
     await updateDoc(doc(db, "notifications", nid), { read: true });
     return;
   }
 
-  // show hotel notif dropdown
+  // Show hotel notifications dropdown
   if (t.id === "showHotelNotifs") {
     const box = document.getElementById("hotelNotifBox");
     if (box) box.classList.toggle("hidden");
     return;
   }
 
-  // show admin notif dropdown
+  // Show admin notifications dropdown
   if (t.id === "showAdminNotifs") {
     const box = document.getElementById("adminNotifBox");
     if (box) box.classList.toggle("hidden");
+    return;
+  }
+
+  // Modal confirm (order)
+  if (t.id === 'confirmOrderBtn') {
+    const hotelId = t.dataset.hotel;
+    await handlePlaceOrder(hotelId, { clearCartAfter: false, closeModal: true });
+    return;
+  }
+
+  // Close modal (return to cart)
+  if (t.id === 'closeCartModal' || t.id === 'cartModalBackdrop') {
+    closeCartModal();
     return;
   }
 });
@@ -626,7 +637,6 @@ document.addEventListener("submit", async e => {
     const name = f.name.value.trim(), pass = f.pass.value.trim(), till = f.till.value.trim();
     if (!name || !pass || !till) return alert("Fill all fields");
     const docRef = await addDoc(collection(db, "hotels"), { name, pass, till, approved: false, blocked: false, subscriptionExpiry: Date.now() + 30*24*3600*1000 });
-    // create restaurants doc (not visible until approved)
     await setDoc(doc(db, "restaurants", docRef.id), { hotelId: docRef.id, menu: [] });
     alert("Registered — waiting admin approval.");
     return;
@@ -657,34 +667,86 @@ document.addEventListener("submit", async e => {
   }
 });
 
-/* ---------- Place order logic with restrictions & notifications ---------- */
-async function handlePlaceOrder(hotelId) {
+/* ---------- Cart modal helpers ---------- */
+function openCartModal(hotelId) {
   const cart = cartByHotel[hotelId] || [];
   if (!cart || cart.length === 0) return alert("Cart empty");
-  const mpesaNameInput = document.getElementById(`mpesaName-${hotelId}`);
-  const mpesaNumberInput = document.getElementById(`mpesaNumber-${hotelId}`);
-  const custNameInput = document.getElementById(`custName-${hotelId}`);
-  const custPhoneInput = document.getElementById(`custPhone-${hotelId}`);
+  const itemsTotal = cart.reduce((s,i) => s + (i.price * (i.qty || 1)), 0);
+  const total = itemsTotal + SERVICE_FEE;
+  const mpesaNameVal = document.getElementById(`mpesaName-${hotelId}`)?.value || '';
+  const mpesaNumberVal = document.getElementById(`mpesaNumber-${hotelId}`)?.value || '';
+  const custNameVal = document.getElementById(`custName-${hotelId}`)?.value || '';
+  const custPhoneVal = document.getElementById(`custPhone-${hotelId}`)?.value || '';
 
-  const mpesaName = mpesaNameInput ? mpesaNameInput.value.trim() : "";
-  const mpesaNumber = mpesaNumberInput ? mpesaNumberInput.value.trim() : "";
-  const cname = custNameInput ? custNameInput.value.trim() : "";
-  const cphone = custPhoneInput ? custPhoneInput.value.trim() : "";
+  cartModalContent.innerHTML = `
+    <div class="flex justify-between items-center mb-2">
+      <h3 class="font-semibold">Confirm Order - ${escapeHtml(getHotelById(hotelId).name)}</h3>
+      <button id="closeCartModal" class="text-gray-500 hover:text-gray-800">Close</button>
+    </div>
+    <div class="max-h-64 overflow-auto text-sm mb-3">
+      ${cart.map(i => `<div class="flex justify-between py-1"><div>${i.qty} x ${escapeHtml(i.name)}</div><div>KSh ${i.price * i.qty}</div></div>`).join('')}
+    </div>
+    <div class="text-sm mb-2">
+      <div>Items Total: KSh ${itemsTotal}</div>
+      <div>Service Fee: KSh ${SERVICE_FEE}</div>
+      <div class="font-semibold">Total: KSh ${total}</div>
+    </div>
+
+    <div class="space-y-2 mb-3">
+      <input id="modalMpesaName" value="${escapeHtml(mpesaNameVal)}" placeholder="M-PESA name" class="border p-2 w-full text-sm" />
+      <input id="modalMpesaNumber" value="${escapeHtml(mpesaNumberVal)}" placeholder="M-PESA number" class="border p-2 w-full text-sm" />
+      <input id="modalCustName" value="${escapeHtml(custNameVal)}" placeholder="Your name" class="border p-2 w-full text-sm" />
+      <input id="modalCustPhone" value="${escapeHtml(custPhoneVal)}" placeholder="Your phone" class="border p-2 w-full text-sm" />
+    </div>
+
+    <div class="flex gap-2">
+      <button id="confirmOrderBtn" data-hotel="${hotelId}" class="bg-blue-600 text-white px-3 py-1 rounded">Confirm Order</button>
+      <button id="closeCartModal" class="bg-gray-300 px-3 py-1 rounded">Return to Cart</button>
+    </div>
+
+    <p class="text-xs text-gray-500 mt-3">Note: closing this dialog returns you to the cart so you can add more food. You can place multiple orders without losing cart contents.</p>
+  `;
+
+  cartModalContainer.classList.remove('hidden');
+  cartModalContainer.classList.add('flex');
+  document.body.classList.add('modal-open');
+}
+
+/* Close cart modal */
+function closeCartModal() {
+  cartModalContainer.classList.add('hidden');
+  cartModalContainer.classList.remove('flex');
+  cartModalContent.innerHTML = '';
+  document.body.classList.remove('modal-open');
+}
+
+/* ---------- Place order (writes to Firestore) ---------- */
+async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, closeModal: true }) {
+  const cart = cartByHotel[hotelId] || [];
+  if (!cart || cart.length === 0) { closeCartModal(); return alert("Cart empty"); }
+
+  const mpesaNameInputModal = document.getElementById('modalMpesaName');
+  const mpesaNumberInputModal = document.getElementById('modalMpesaNumber');
+  const custNameInputModal = document.getElementById('modalCustName');
+  const custPhoneInputModal = document.getElementById('modalCustPhone');
+
+  const mpesaName = mpesaNameInputModal ? mpesaNameInputModal.value.trim() : (document.getElementById(`mpesaName-${hotelId}`)?.value.trim() || "");
+  const mpesaNumber = mpesaNumberInputModal ? mpesaNumberInputModal.value.trim() : (document.getElementById(`mpesaNumber-${hotelId}`)?.value.trim() || "");
+  const cname = custNameInputModal ? custNameInputModal.value.trim() : (document.getElementById(`custName-${hotelId}`)?.value.trim() || "");
+  const cphone = custPhoneInputModal ? custPhoneInputModal.value.trim() : (document.getElementById(`custPhone-${hotelId}`)?.value.trim() || "");
 
   if (!cname || !cphone) return alert("Fill your name and phone");
   if (!mpesaName || !mpesaNumber) return alert("Enter M-PESA name and number for service fee");
 
-  // Check pending orders global count (status !== 'Paid')
+  // Check pending orders limit
   const snap = await getDocs(collection(db, "orders"));
   const allOrders = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   const pendingCount = allOrders.filter(o => (o.status || 'Pending') !== 'Paid').length;
   if (pendingCount >= 100) return alert("Sorry, maximum pending orders reached. Try again later.");
 
-  // compute totals
   const itemsTotal = cart.reduce((s,i) => s + (i.price * (i.qty || 1)), 0);
   const total = itemsTotal + SERVICE_FEE;
 
-  // create order payload
   const orderPayload = {
     customerName: cname,
     customerPhone: cphone,
@@ -702,36 +764,28 @@ async function handlePlaceOrder(hotelId) {
 
   await addDoc(collection(db, "orders"), orderPayload);
 
-  // create notifications: to admin and to hotel
+  // Notifications for admin and hotel
   const hotel = getHotelById(hotelId);
   const message = `New order from ${cname} (${cphone}) — KSh ${total} for ${hotel.name}`;
-  await addDoc(collection(db, "notifications"), {
-    type: "order",
-    to: "admin",
-    message,
-    timestamp: Date.now(),
-    read: false
-  });
-  await addDoc(collection(db, "notifications"), {
-    type: "order",
-    to: hotelId,
-    message,
-    timestamp: Date.now(),
-    read: false
-  });
+  await addDoc(collection(db, "notifications"), { type: "order", to: "admin", message, timestamp: Date.now(), read: false });
+  await addDoc(collection(db, "notifications"), { type: "order", to: hotelId, message, timestamp: Date.now(), read: false });
 
   alert("Order placed! Make sure you paid the hotel's till and entered the correct M-PESA details.");
 
-  // store current customer locally so they can view their orders
+  // Remember current customer for this session (so they can view & delete their orders)
   currentCustomer = { name: cname, phone: cphone };
 
-  // clear this hotel's cart
-  cartByHotel[hotelId] = [];
+  // Keep cart intact unless caller requested clearing
+  if (options.clearCartAfter) cartByHotel[hotelId] = [];
+
+  if (options.closeModal) closeCartModal();
+
+  // switch to orders so the user sees it; Firestore onSnapshot will update list
   switchTab("orders");
   render();
 }
 
-/* Initialize rendering */
+/* ---------- Init rendering & badges ---------- */
 updateNotificationBadges();
 render();
 
