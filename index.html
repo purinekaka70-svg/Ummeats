@@ -56,29 +56,7 @@ const firebaseConfig = {
   storageBucket: "tamuexpress-26e4a.appspot.com",
   messagingSenderId: "202068792631",
   appId: "1:202068792631:web:8a9b97028ebd7a45af76b2"
-};
-
-
-
-
-/* Listen to Firestore for real-time updates */
-function loadOrders() {
-  const ordersRef = collection(db, "orders");
-  onSnapshot(ordersRef, (snapshot) => {
-    orders = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    renderOrders(); // re-render UI every time orders update
-  });
-}
-
-/* Call this when your app loads */
-loadOrders();
-
-
-  
-  
+}; 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
