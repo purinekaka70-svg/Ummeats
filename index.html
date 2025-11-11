@@ -59,6 +59,25 @@ const firebaseConfig = {
 };
 
 
+
+
+/* Listen to Firestore for real-time updates */
+function loadOrders() {
+  const ordersRef = collection(db, "orders");
+  onSnapshot(ordersRef, (snapshot) => {
+    orders = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    renderOrders(); // re-render UI every time orders update
+  });
+}
+
+/* Call this when your app loads */
+loadOrders();
+
+
+  
   
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
