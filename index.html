@@ -962,23 +962,78 @@ render();
 
 
 /*----sms functionality----*/
-const SMS_MODE = "SIMULATED"; // SIMULATED | REAL (future)
-function sendHotelSMS_SIMULATED(hotel, order) {
+/* =====================================================
+   REAL WORKING SIMULATED SMS (HOTEL-BASED)
+   ===================================================== */
+
+// turn simulation ON
+const SIMULATED_SMS = true;
+
+// send simulated SMS to HOTEL of the order
+function sendSimulatedHotelSMS(hotel, order) {
+  if (!SIMULATED_SMS) return;
+
+  // hotel.phone MUST exist
+  if (!hotel || !hotel.phone) {
+    console.error("❌ No hotel phone number found");
+    return;
+  }
+
   const message =
-    ` NEW ORDER (SIMULATED)\n` +
-    `Hotel: ${hotel.name}\n` +
-    `Customer: ${order.customerName}\n` +
-    `Customer Phone: ${order.customerPhone}\n` +
-    `Total: KSh ${order.total}`;
+    "📩 NEW ORDER RECEIVED\n\n" +
+    "Hotel: " + hotel.name + "\n" +
+    "Customer: " + order.customerName + "\n" +
+    "Customer Phone: " + order.customerPhone + "\n" +
+    "Total: KSh " + order.total + "\n\n" +
+    "Please check your dashboard.";
 
-  console.log(" ============================");
-  console.log("SIMULATED SMS");
-  console.log("To:", hotel.phone);
-  console.log("Message:\n", message);
-  console.log("============================");
+  // build SMS object
+  const sms = {
+    to: hotel.phone,
+    message: message,
+    time: new Date().toLocaleString()
+  };
 
-  alert(" SMS sent successfully!\nCheck console.");
+  // store in localStorage (SIMULATED SMS INBOX)
+  const inbox = JSON.parse(localStorage.getItem("smsInbox")) || [];
+  inbox.push(sms);
+  localStorage.setItem("smsInbox", JSON.stringify(inbox));
+
+  // REAL visible feedback
+  alert(
+    "📩 SIMULATED SMS SENT\n\n" +
+    "To Hotel: " + hotel.phone + "\n\n" +
+    message
+  );
+
+  console.log("📩 SIMULATED HOTEL SMS SENT:", sms);
 }
+
+// OPTIONAL: view simulated SMS inbox
+function viewSimulatedSMSInbox() {
+  const inbox = JSON.parse(localStorage.getItem("smsInbox")) || [];
+
+  if (inbox.length === 0) {
+    alert("No simulated SMS yet");
+    return;
+  }
+
+  let text = " SIMULATED SMS INBOX\n\n";
+  inbox.forEach((sms, i) => {
+    text +=
+      (i + 1) + ". To: " + sms.to + "\n" +
+      sms.message + "\n" +
+      "Time: " + sms.time + "\n\n";
+  });
+
+  alert(text);
+}
+sendSimulatedHotelSMS(hotel, {
+  customerName: cname,
+  customerPhone: cphone,
+  total: total
+});
+
 
 
 </script>
