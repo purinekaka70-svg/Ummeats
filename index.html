@@ -787,7 +787,7 @@ document.addEventListener("submit", async e => {
   
   
 
-  
+
   
   // hotel login
  // hotel register ✅ FIXED
@@ -835,6 +835,8 @@ if (f.id === "hotelRegister") {
 
   // hotel register
   if (f.id === "hotelRegister") {
+    console.log("Submitted form:", f.id);
+
     const name = f.name.value.trim(), pass = f.pass.value.trim(), till = f.till.value.trim();
     if (!name || !pass || !till) return alert("Fill all fields");
     const docRef = await addDoc(collection(db, "hotels"), { name, pass, till, approved: false, blocked: false, subscriptionExpiry: Date.now() + 30*24*3600*1000 });
@@ -1007,6 +1009,7 @@ render();
 
 
 
+
 /* =========================================================
    SIMULATED SMS SYSTEM (FIREBASE-BASED)
    ========================================================= */
@@ -1045,12 +1048,12 @@ function sendSimulatedHotelSMS(hotelId, order) {
   localStorage.setItem("SIMULATED_SMS_INBOX", JSON.stringify(inbox));
 
   alert(
-    " SIMULATED SMS SENT\n\n" +
+    "📩 SIMULATED SMS SENT\n\n" +
     "To: " + hotel.phone + "\n\n" +
     message
   );
 
-  console.log(" SIMULATED SMS:", sms);
+  console.log("📩 SIMULATED SMS:", sms);
 }
 
 /* VIEW ALL SIMULATED SMS */
@@ -1060,7 +1063,7 @@ function viewSimulatedSMSInbox() {
   if (inbox.length === 0)
     return alert(" No SMS messages yet");
 
-  let output = " SIMULATED SMS INBOX\n\n";
+  let output = "SIMULATED SMS INBOX\n\n";
   inbox.forEach((sms, i) => {
     output +=
       (i + 1) + ". To: " + sms.to + "\n" +
