@@ -806,7 +806,7 @@ if (f.id === "hotelRegister") {
       phone, // ✅ SAVED
       pass,
       till,
-      approved: false,
+      approved: true,
       blocked: false,
       subscriptionExpiry: Date.now() + 30 * 24 * 60 * 60 * 1000
     });
@@ -828,22 +828,45 @@ if (f.id === "hotelRegister") {
 
 
 
+// hotel login
+if (f.id === "hotelLogin") {
+  const name = f.name.value.trim();
+  const pass = f.pass.value.trim();
+
+  if (!name || !pass)
+    return alert("Enter hotel name and password");
+
+  const hotel = hotels.find(
+    h => h.name === name && h.pass === pass
+  );
+
+  if (!hotel)
+    return alert("Wrong hotel name or password");
+
+  if (!hotel.approved)
+    return alert("Hotel not approved yet");
+
+  if (hotel.blocked)
+    return alert("Hotel is blocked");
+
+  if (!hotel.subscriptionExpiry || hotel.subscriptionExpiry < Date.now())
+    return alert("Subscription expired. Contact admin");
+
+  currentHotelId = hotel.id;
+  currentAdmin = false;
+  currentCustomer = null;
+
+  alert("Login successful");
+  switchTab("hotel");
+  render();
+  return;
+}
 
 
 
 
 
-  // hotel register
-  if (f.id === "hotelRegister") {
-    console.log("Submitted form:", f.id);
-
-    const name = f.name.value.trim(), pass = f.pass.value.trim(), till = f.till.value.trim();
-    if (!name || !pass || !till) return alert("Fill all fields");
-    const docRef = await addDoc(collection(db, "hotels"), { name, pass, till, approved: false, blocked: false, subscriptionExpiry: Date.now() + 30*24*3600*1000 });
-    await setDoc(doc(db, "restaurants", docRef.id), { hotelId: docRef.id, menu: [] });
-    alert("Registered — waiting admin approval.");
-    return;
-  }
+ 
 
   // admin login
   if (f.id === "adminLogin") {
@@ -1063,7 +1086,7 @@ function viewSimulatedSMSInbox() {
   if (inbox.length === 0)
     return alert(" No SMS messages yet");
 
-  let output = "SIMULATED SMS INBOX\n\n";
+  let output = " SIMULATED SMS INBOX\n\n";
   inbox.forEach((sms, i) => {
     output +=
       (i + 1) + ". To: " + sms.to + "\n" +
