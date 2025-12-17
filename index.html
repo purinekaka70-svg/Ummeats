@@ -962,48 +962,23 @@ render();
 
 
 /*----sms functionality----*/
-await addDoc(collection(db, "hotels"), {
-  name, pass, till,
-  phone,
-  approved: false,
-  blocked: false
-});
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-admin.initializeApp();
+const SMS_MODE = "SIMULATED"; // SIMULATED | REAL (future)
+function sendHotelSMS_SIMULATED(hotel, order) {
+  const message =
+    ` NEW ORDER (SIMULATED)\n` +
+    `Hotel: ${hotel.name}\n` +
+    `Customer: ${order.customerName}\n` +
+    `Customer Phone: ${order.customerPhone}\n` +
+    `Total: KSh ${order.total}`;
 
-const AfricasTalking = require("africastalking");
+  console.log(" ============================");
+  console.log("SIMULATED SMS");
+  console.log("To:", hotel.phone);
+  console.log("Message:\n", message);
+  console.log("============================");
 
-const sms = AfricasTalking({
-  apiKey: "YOUR_API_KEY",
-  username: "YOUR_USERNAME"
-}).SMS;
-exports.sendHotelSMS = functions.firestore
-  .document("orders/{orderId}")
-  .onCreate(async (snap) => {
-    const order = snap.data();
-
-    const hotelSnap = await admin.firestore()
-      .collection("hotels")
-      .doc(order.hotelId)
-      .get();
-
-    if (!hotelSnap.exists) return;
-
-    const hotel = hotelSnap.data();
-    if (!hotel.phone) return;
-
-    const message =
-      `New order received!\n` +
-      `Customer: ${order.customerName}\n` +
-      `Phone: ${order.customerPhone}\n` +
-      `Amount: KSh ${order.total}`;
-
-    await sms.send({
-      to: hotel.phone,
-      message
-    });
-  });
+  alert(" SMS sent successfully!\nCheck console.");
+}
 
 
 </script>
