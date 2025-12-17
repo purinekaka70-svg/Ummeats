@@ -418,6 +418,7 @@ function renderHotelPortal() {
         <form id="hotelRegister" class="bg-white p-4 rounded shadow">
           <h3 class="font-semibold mb-2">Register</h3>
           <input name="name" placeholder="Hotel name" class="border p-2 w-full mb-2">
+          <input name="phone" placeholder="Phone number (07...)" class="border p-2 w-full mb-2">
           <input name="pass" placeholder="Password" type="password" class="border p-2 w-full mb-2">
           <input name="till" placeholder="Till number (e.g. 123456)" class="border p-2 w-full mb-2">
           <button class="bg-blue-600 text-white px-3 py-1 rounded" type="submit">Register</button>
@@ -957,7 +958,53 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
 
 /* ---------- Initialize ---------- */
 updateNotificationBadges();
-render();
+render(); 
+
+
+/*----sms functionality----*/
+await addDoc(collection(db, "hotels"), {
+  name, pass, till,
+  phone,
+  approved: false,
+  blocked: false
+});
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+admin.initializeApp();
+
+const AfricasTalking = require("africastalking");
+
+const sms = AfricasTalking({
+  apiKey: "YOUR_API_KEY",
+  username: "YOUR_USERNAME"
+}).SMS;
+exports.sendHotelSMS = functions.firestore
+  .document("orders/{orderId}")
+  .onCreate(async (snap) => {
+    const order = snap.data();
+
+    const hotelSnap = await admin.firestore()
+      .collection("hotels")
+      .doc(order.hotelId)
+      .get();
+
+    if (!hotelSnap.exists) return;
+
+    const hotel = hotelSnap.data();
+    if (!hotel.phone) return;
+
+    const message =
+      `New order received!\n` +
+      `Customer: ${order.customerName}\n` +
+      `Phone: ${order.customerPhone}\n` +
+      `Amount: KSh ${order.total}`;
+
+    await sms.send({
+      to: hotel.phone,
+      message
+    });
+  });
+
 
 </script>
 </body>
