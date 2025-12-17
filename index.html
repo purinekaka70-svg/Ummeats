@@ -626,57 +626,13 @@ document.addEventListener("click", async e => {
     if (menuDiv) renderMenuForHotel(hotelId, menuDiv);
     return;
   }
-
  
- 
- 
- 
- 
- 
- 
- // hotel register (CORRECT PLACE)
-if (f.id === "hotelRegister") {
-  const name = f.name.value.trim();
-  const phone = f.phone.value.trim();
-  const pass = f.pass.value.trim();
-  const till = f.till.value.trim();
-
-  if (!name || !phone || !pass || !till)
-    return alert("Fill all fields including phone number");
-
-  try {
-    const docRef = await addDoc(collection(db, "hotels"), {
-      name,
-      phone, // ✅ PHONE SAVED
-      pass,
-      till,
-      approved: false,
-      blocked: false,
-      subscriptionExpiry: Date.now() + 30 * 24 * 60 * 60 * 1000
-    });
-
-    await setDoc(doc(db, "restaurants", docRef.id), {
-      hotelId: docRef.id,
-      menu: []
-    });
-
-    alert("Registered successfully. Waiting for admin approval.");
-    f.reset();
-  } catch (err) {
-    console.error("Hotel register failed", err);
-    alert("Registration failed. Check console.");
+ // place order -> open modal
+ if (t.classList.contains("placeOrder")) {
+    const hotelId = t.dataset.hotel;
+    openCartModal(hotelId);
+    return;
   }
-
-  return;
-}
-
-
-
-
-
-
-
-
 
 
   // delete order (admin/hotel/customer permitted) - allow deletion even if Paid
@@ -828,16 +784,54 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target;
 
+  
+  
+
+  
+  
   // hotel login
-  if (f.id === "hotelLogin") {
-    const name = f.name.value.trim(), pass = f.pass.value.trim();
-    const h = hotels.find(h => h.name === name && h.pass === pass);
-    if (!h) return alert("Wrong credentials");
-    if (!h.approved) return alert("Account pending admin approval");
-    if (h.blocked) return alert("Account blocked by admin");
-    currentHotelId = h.id; currentCustomer = null; switchTab("hotel"); render();
-    return;
+ // hotel register ✅ FIXED
+if (f.id === "hotelRegister") {
+  const name = f.name.value.trim();
+  const phone = f.phone.value.trim();
+  const pass = f.pass.value.trim();
+  const till = f.till.value.trim();
+
+  if (!name || !phone || !pass || !till)
+    return alert("Fill all fields including phone number");
+
+  try {
+    const docRef = await addDoc(collection(db, "hotels"), {
+      name,
+      phone, // ✅ SAVED
+      pass,
+      till,
+      approved: false,
+      blocked: false,
+      subscriptionExpiry: Date.now() + 30 * 24 * 60 * 60 * 1000
+    });
+
+    await setDoc(doc(db, "restaurants", docRef.id), {
+      hotelId: docRef.id,
+      menu: []
+    });
+
+    alert("Registered — waiting admin approval.");
+    f.reset();
+  } catch (err) {
+    console.error(err);
+    alert("Registration failed");
   }
+
+  return;
+}
+
+
+
+
+
+
+
 
   // hotel register
   if (f.id === "hotelRegister") {
@@ -1013,7 +1007,6 @@ render();
 
 
 
-
 /* =========================================================
    SIMULATED SMS SYSTEM (FIREBASE-BASED)
    ========================================================= */
@@ -1052,12 +1045,12 @@ function sendSimulatedHotelSMS(hotelId, order) {
   localStorage.setItem("SIMULATED_SMS_INBOX", JSON.stringify(inbox));
 
   alert(
-    "📩 SIMULATED SMS SENT\n\n" +
+    " SIMULATED SMS SENT\n\n" +
     "To: " + hotel.phone + "\n\n" +
     message
   );
 
-  console.log("📩 SIMULATED SMS:", sms);
+  console.log(" SIMULATED SMS:", sms);
 }
 
 /* VIEW ALL SIMULATED SMS */
@@ -1065,9 +1058,9 @@ function viewSimulatedSMSInbox() {
   const inbox = JSON.parse(localStorage.getItem("SIMULATED_SMS_INBOX")) || [];
 
   if (inbox.length === 0)
-    return alert("📭 No SMS messages yet");
+    return alert(" No SMS messages yet");
 
-  let output = "📨 SIMULATED SMS INBOX\n\n";
+  let output = " SIMULATED SMS INBOX\n\n";
   inbox.forEach((sms, i) => {
     output +=
       (i + 1) + ". To: " + sms.to + "\n" +
