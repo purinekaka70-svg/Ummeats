@@ -627,12 +627,57 @@ document.addEventListener("click", async e => {
     return;
   }
 
-  // place order -> open modal
-  if (t.classList.contains("placeOrder")) {
-    const hotelId = t.dataset.hotel;
-    openCartModal(hotelId);
-    return;
-  }
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  // hotel register
+if (f.id === "hotelRegister") {
+  const name = f.name.value.trim();
+  const pass = f.pass.value.trim();
+  const till = f.till.value.trim();
+  const phone = f.phone.value.trim();
+
+  if (!name || !pass || !till || !phone)
+    return alert("Fill all fields including phone number");
+
+  const docRef = await addDoc(collection(db, "hotels"), {
+    name,
+    pass,
+    till,
+    phone, //  SAVED TO FIRESTORE
+    approved: false,
+    blocked: false,
+    subscriptionExpiry: Date.now() + 30 * 24 * 3600 * 1000
+  });
+
+  await setDoc(doc(db, "restaurants", docRef.id), {
+    hotelId: docRef.id,
+    menu: []
+  });
+
+  alert("Registered — waiting admin approval.");
+  return;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // delete order (admin/hotel/customer permitted) - allow deletion even if Paid
   if (t.classList.contains("deleteOrder")) {
@@ -928,6 +973,12 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   // Write order to Firestore (orders listener will refresh UI)
   try {
     await addDoc(collection(db, "orders"), orderPayload);
+    sendSimulatedHotelSMS(hotelId, {
+  customerName: cname,
+  customerPhone: cphone,
+  total: total
+});
+
     alert("Order placed successfully ");
 
   } catch (err) {
@@ -961,21 +1012,22 @@ updateNotificationBadges();
 render(); 
 
 
-/*----sms functionality----*/
-/* =====================================================
-   REAL WORKING SIMULATED SMS (HOTEL-BASED)
-   ===================================================== */
 
-// turn simulation ON
-const SIMULATED_SMS = true;
 
-// send simulated SMS to HOTEL of the order
-function sendSimulatedHotelSMS(hotel, order) {
-  if (!SIMULATED_SMS) return;
+/* =========================================================
+   SIMULATED SMS SYSTEM (FIREBASE-BASED)
+   ========================================================= */
 
-  // hotel.phone MUST exist
+   const SMS_SIMULATION_ENABLED = true;
+
+/* SEND SMS TO HOTEL */
+function sendSimulatedHotelSMS(hotelId, order) {
+  if (!SMS_SIMULATION_ENABLED) return;
+
+  const hotel = hotels.find(h => h.id === hotelId);
+
   if (!hotel || !hotel.phone) {
-    console.error("❌ No hotel phone number found");
+    console.warn("Hotel phone missing, SMS not sent");
     return;
   }
 
@@ -984,55 +1036,47 @@ function sendSimulatedHotelSMS(hotel, order) {
     "Hotel: " + hotel.name + "\n" +
     "Customer: " + order.customerName + "\n" +
     "Customer Phone: " + order.customerPhone + "\n" +
-    "Total: KSh " + order.total + "\n\n" +
+    "Total Amount: KSh " + order.total + "\n\n" +
     "Please check your dashboard.";
 
-  // build SMS object
   const sms = {
     to: hotel.phone,
-    message: message,
+    hotelId: hotelId,
+    message,
     time: new Date().toLocaleString()
   };
 
-  // store in localStorage (SIMULATED SMS INBOX)
-  const inbox = JSON.parse(localStorage.getItem("smsInbox")) || [];
+  // store SMS locally (simulation inbox)
+  const inbox = JSON.parse(localStorage.getItem("SIMULATED_SMS_INBOX")) || [];
   inbox.push(sms);
-  localStorage.setItem("smsInbox", JSON.stringify(inbox));
+  localStorage.setItem("SIMULATED_SMS_INBOX", JSON.stringify(inbox));
 
-  // REAL visible feedback
   alert(
     "📩 SIMULATED SMS SENT\n\n" +
-    "To Hotel: " + hotel.phone + "\n\n" +
+    "To: " + hotel.phone + "\n\n" +
     message
   );
 
-  console.log("📩 SIMULATED HOTEL SMS SENT:", sms);
+  console.log("📩 SIMULATED SMS:", sms);
 }
 
-// OPTIONAL: view simulated SMS inbox
+/* VIEW ALL SIMULATED SMS */
 function viewSimulatedSMSInbox() {
-  const inbox = JSON.parse(localStorage.getItem("smsInbox")) || [];
+  const inbox = JSON.parse(localStorage.getItem("SIMULATED_SMS_INBOX")) || [];
 
-  if (inbox.length === 0) {
-    alert("No simulated SMS yet");
-    return;
-  }
+  if (inbox.length === 0)
+    return alert("📭 No SMS messages yet");
 
-  let text = " SIMULATED SMS INBOX\n\n";
+  let output = "📨 SIMULATED SMS INBOX\n\n";
   inbox.forEach((sms, i) => {
-    text +=
+    output +=
       (i + 1) + ". To: " + sms.to + "\n" +
       sms.message + "\n" +
       "Time: " + sms.time + "\n\n";
   });
 
-  alert(text);
+  alert(output);
 }
-sendSimulatedHotelSMS(hotel, {
-  customerName: cname,
-  customerPhone: cphone,
-  total: total
-});
 
 
 
