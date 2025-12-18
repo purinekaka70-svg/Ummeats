@@ -312,22 +312,31 @@ function renderMenuForHotel(hotelId, container) {
   `;
 }
 
+// ================= CUSTOMER PERSISTENCE =================
+function getCustomerId() {
+  let id = localStorage.getItem("CUSTOMER_ID");
+  if (!id) {
+    id = "cust_" + crypto.randomUUID();
+    localStorage.setItem("CUSTOMER_ID", id);
+  }
+  return id;
+}
+
+//  MUST be defined BEFORE renderOrders()
+const CUSTOMER_ID = getCustomerId();
+
 /* Orders view */
 function renderOrders() {
   let visibleOrders = [];
 
-  // Decide which orders the current session can view
+   // Decide which orders to show
   if (currentAdmin) {
     visibleOrders = [...orders];
   } else if (currentHotelId) {
     visibleOrders = orders.filter(o => o.hotelId === currentHotelId);
-  } else if (currentCustomer) {
-    // Match using normalized name & phone to avoid small mismatches
-    const nName = normalizeName(currentCustomer.name);
-    const nPhone = normalizePhone(currentCustomer.phone);
-    visibleOrders = orders.filter(o => normalizeName(o.customerName) === nName && normalizePhone(o.customerPhone) === nPhone);
   } else {
-    visibleOrders = [];
+    // CUSTOMER VIEW (persistent via CUSTOMER_ID)
+    visibleOrders = orders.filter(o => o.customerId === CUSTOMER_ID);
   }
 
   // Sort orders by date (latest first)
@@ -634,28 +643,29 @@ document.addEventListener("click", async e => {
     return;
   }
 
+if (t.classList.contains("deleteOrder")) {
+  const oid = t.dataset.id;
+  const order = orders.find(o => o.id === oid);
+  if (!order) return alert("Order not found");
 
-  // delete order (admin/hotel/customer permitted) - allow deletion even if Paid
-  if (t.classList.contains("deleteOrder")) {
-    const oid = t.dataset.id;
-    const order = orders.find(o => o.id === oid);
-    if (!order) return alert("Order not found");
+  const isCustomerOwner = order.customerId === CUSTOMER_ID;
+  const allowed =
+    currentAdmin ||
+    (currentHotelId && order.hotelId === currentHotelId) ||
+    isCustomerOwner;
 
-    const isCustomerOwner = currentCustomer && normalizeName(currentCustomer.name) === normalizeName(order.customerName) && normalizePhone(currentCustomer.phone) === normalizePhone(order.customerPhone);
-    const allowed = currentAdmin || (currentHotelId && order.hotelId === currentHotelId) || isCustomerOwner;
+  if (!allowed) return alert("No permission to delete this order");
+  if (!confirm("Delete this order permanently?")) return;
 
-    if (!allowed) return alert("No permission to delete this order");
-    if (!confirm("Delete this order permanently?")) return;
-
-    try {
-      await deleteDoc(doc(db, "orders", oid));
-      alert("Order deleted.");
-    } catch (err) {
-      console.error("Delete failed", err);
-      alert("Failed to delete order. Check console.");
-    }
-    return;
+  try {
+    await deleteDoc(doc(db, "orders", oid));
+    alert("Order deleted permanently");
+  } catch (err) {
+    console.error(err);
+    alert("Delete failed");
   }
+}
+
 
   // mark paid
   if (t.classList.contains("markPaid")) {
@@ -784,13 +794,8 @@ document.addEventListener("submit", async e => {
   e.preventDefault();
   const f = e.target;
 
-  
-  
-
-
-  
   // hotel login
- // hotel register ✅ FIXED
+ // hotel register FIXED
 if (f.id === "hotelRegister") {
   const name = f.name.value.trim();
   const phone = f.phone.value.trim();
@@ -803,7 +808,7 @@ if (f.id === "hotelRegister") {
   try {
     const docRef = await addDoc(collection(db, "hotels"), {
       name,
-      phone, // ✅ SAVED
+      phone, //  SAVED
       pass,
       till,
       approved: true,
@@ -825,9 +830,6 @@ if (f.id === "hotelRegister") {
 
   return;
 }
-
-
-
 // hotel login
 if (f.id === "hotelLogin") {
   const name = f.name.value.trim();
@@ -861,12 +863,6 @@ if (f.id === "hotelLogin") {
   render();
   return;
 }
-
-
-
-
-
- 
 
   // admin login
   if (f.id === "adminLogin") {
@@ -972,6 +968,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   const total = itemsTotal + SERVICE_FEE;
 
   const orderPayload = {
+    customerId: CUSTOMER_ID,
     customerName: cname,
     customerPhone: cphone,
     items: cart.map(i => ({ name: i.name, price: i.price, qty: i.qty || 1 })),
@@ -1029,9 +1026,6 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
 /* ---------- Initialize ---------- */
 updateNotificationBadges();
 render(); 
-
-
-
 
 /* =========================================================
    SIMULATED SMS SYSTEM (FIREBASE-BASED)
@@ -1096,9 +1090,7 @@ function viewSimulatedSMSInbox() {
 
   alert(output);
 }
-
-
-
+  
 </script>
 </body>
 </html>
