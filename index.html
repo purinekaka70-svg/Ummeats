@@ -23,28 +23,11 @@
 
   
 
-<!-- Button -->
-<button 
-  class="tab px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
-  id="openFeedbackBtn"
->
-  Feedback / Complaints
-</button>
+<!-- Normal Button -->
+<button id="openFeedbackBtn">Feedback / Complaints</button>
 
 <!-- Right side iframe -->
-<iframe id="rightFrame" src="" class="w-full h-screen border rounded-lg"></iframe>
-
-<!-- JS -->
-<script>
-  const button = document.getElementById("openFeedbackBtn");
-  const iframe = document.getElementById("rightFrame");
-
-  button.addEventListener("click", () => {
-    iframe.src = "https://purinekaka70-svg.github.io/feedback.tamu/";
-  });
-</script>
-
-
+<iframe id="rightFrame" src="" style="width:75%; height:500px; border:1px solid #000;"></iframe>
 
 
 
@@ -1134,6 +1117,19 @@ function viewSimulatedSMSInbox() {
 
   alert(output);
 }
+
+
+  const button = document.getElementById("openFeedbackBtn");
+  const iframe = document.getElementById("rightFrame");
+
+  button.addEventListener("click", () => {
+    iframe.src = "https://purinekaka70-svg.github.io/feedback.tamu/";
+  });
+
+
+
+
+
   
 </script>
 </body>
