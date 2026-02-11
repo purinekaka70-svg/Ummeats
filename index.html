@@ -203,7 +203,8 @@ onSnapshot(collection(db, "restaurants"), snap => {
   restaurants = snap.docs.map(d => {
     const data = d.data();
     const hotel = getHotelById(data.hotelId);
-    return { id: d.id, ...data, hotelName: hotel.name, till: hotel.till, approved: hotel.approved, blocked: hotel.blocked };
+    return { id: d.id, ...data, hotelName: hotel.name, phone: hotel.phone,
+till: hotel.till, approved: hotel.approved, blocked: hotel.blocked };
   });
   updateNotificationBadges();
   render();
@@ -256,6 +257,8 @@ function renderRestaurants() {
           <div>
             <h3 class="font-bold">${escapeHtml(r.hotelName)}</h3>
             <p class="text-sm text-gray-500">Till: ${escapeHtml(r.till || "N/A")}</p>
+            <p class="text-sm text-gray-500"> Contact: ${escapeHtml(r.phone || "N/A")}</p>
+
           </div>
           <div class="flex items-center gap-2">
             <button class="viewMenuBtn bg-green-500 text-white px-3 py-1 rounded" data-hotel="${r.hotelId}">View Menu</button>
