@@ -157,7 +157,6 @@ export function renderHotelPortal() {
             <div class="summary-item"><span>Till</span><strong>${escapeHtml(hotel.till || "N/A")}</strong></div>
             <div class="summary-item"><span>Approved</span><strong>${hotel.approved ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Subscription ends</span><strong>${formatDateOnly(hotel.subscriptionExpiry)}</strong></div>
-            <div class="summary-item"><span>Published menu items</span><strong>${restaurant.menu?.length || 0}</strong></div>
           </div>
         </article>
 
