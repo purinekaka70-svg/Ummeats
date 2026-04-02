@@ -521,6 +521,14 @@ button {
   font-weight: 700;
 }
 
+.launch-tagline {
+  margin: -6px 0 0;
+  color: var(--accent-strong);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .launch-title {
   margin: 0;
   color: var(--accent-strong);
