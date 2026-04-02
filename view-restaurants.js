@@ -83,7 +83,6 @@ function renderHotelLaunchCard(directoryOpen) {
   return `
     <article class="card launch-card">
       <p class="launch-eyebrow">Tamu Express</p>
-      <p class="launch-tagline">The fastest way to get what you want, right when you want it.</p>
       <h2 class="launch-title">Around Umma University</h2>
       <p class="launch-copy">Browse hotels and menus around campus.</p>
       ${

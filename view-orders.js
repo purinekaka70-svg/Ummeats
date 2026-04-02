@@ -24,7 +24,6 @@ export function renderOrders() {
           ? `
               <article class="card launch-card launch-card--hub">
                 <p class="launch-eyebrow">Tamu Express</p>
-                <p class="launch-tagline">The fastest way to get what you want, right when you want it.</p>
                 <h2 class="launch-title">Around Umma University</h2>
                 <p class="launch-copy">Browse hotels, orders, and hotel tools.</p>
                 ${renderBrowseMenuTabs("orders")}

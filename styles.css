@@ -96,6 +96,8 @@ button {
 }
 
 .brand-block {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -108,6 +110,14 @@ button {
   font-weight: 700;
   letter-spacing: -0.03em;
   text-decoration: none;
+}
+
+.brand-tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .topbar-actions {
@@ -519,14 +529,6 @@ button {
   color: var(--muted);
   font-size: 0.82rem;
   font-weight: 700;
-}
-
-.launch-tagline {
-  margin: -6px 0 0;
-  color: var(--accent-strong);
-  font-size: 0.92rem;
-  font-weight: 700;
-  line-height: 1.4;
 }
 
 .launch-title {
