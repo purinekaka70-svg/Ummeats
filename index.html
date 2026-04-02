@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="description"
+    content="Tamu Express lets customers browse hotel menus, place orders, and track deliveries in one cleaner dashboard."
+  />
+  <title>Tamu Express | Ummeats</title>
+  <link
+    rel="icon"
+    type="image/png"
+    href="https://i.ibb.co/KcFc8xn5/Gemini-Generated-Image-jokiqjjokiqjjoki.png"
+  />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar panel">
+      <div class="brand-block">
+        <a href="#" id="brandHome" class="brand">Tamu Express</a>
+      </div>
+    </header>
+
+    <main class="content-shell">
+      <div id="app" class="view-root"></div>
+    </main>
+
+    <footer id="footer" class="footer panel">
+      <p class="footer-title">Tamu Express | Umma-Kenya</p>
+      <p class="footer-title footer-brandline">
+        <span class="footer-mark">C</span>
+        <span>Teams Technologies</span>
+      </p>
+    </footer>
+  </div>
+
+  <div id="cartModalContainer" class="modal-backdrop is-hidden" aria-hidden="true">
+    <div id="cartModalBackdrop" class="modal-overlay"></div>
+    <div class="modal-card panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div id="cartModalContent"></div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

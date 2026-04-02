@@ -1,0 +1,17 @@
+export const firebaseConfig = {
+  apiKey: "AIzaSyApi2RjwEXEW2mTwCMiYERKUNAYL8Toddk",
+  authDomain: "tamuexpress-26e4a.firebaseapp.com",
+  projectId: "tamuexpress-26e4a",
+  storageBucket: "tamuexpress-26e4a.appspot.com",
+  messagingSenderId: "202068792631",
+  appId: "1:202068792631:web:8a9b97028ebd7a45af76b2",
+};
+
+export const SERVICE_FEE = 40;
+export const SERVICE_FEE_TILL = "0115613332 (Pochi Labiashara)";
+export const SUPPORT_CONTACTS = ["0115613332", "0116860686"];
+export const ADMIN_CRED = { user: "admin", pass: "TamuAdmin@2025" };
+export const SMS_SIMULATION_ENABLED = true;
+export const SHOP_HERE_URL = "https://purinekaka70-svg.github.io/feedback.tamu/";
+
+export const ANNOUNCEMENT_TEXT = "Order times: No morning orders | Lunch: 11:30 AM - 2:00 PM | Evening: 4:00 PM - 8:00 PM";
