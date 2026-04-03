@@ -11,6 +11,7 @@ import {
 import { ANNOUNCEMENT_TEXT, SERVICE_FEE, SERVICE_FEE_TILL, SMS_SIMULATION_ENABLED } from "./config.js";
 import { db } from "./firebase.js";
 import { escapeHtml, formatCurrency, inferToastTone } from "./helpers.js";
+import { registerPushSubscription, unregisterPushSubscription } from "./push.js";
 import {
   CUSTOMER_ID,
   elements,
@@ -290,6 +291,19 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("markNotifRead")) {
+    await updateDoc(doc(db, "notifications", button.dataset.id), { read: true });
+    return;
+  }
+
+  if (button.dataset.togglePanel) {
+    const panel = document.getElementById(button.dataset.togglePanel);
+    if (panel) {
+      panel.classList.toggle("is-hidden");
+    }
+    return;
+  }
+
   if (button.classList.contains("deleteOrder")) {
     await deleteOrder(button.dataset.id);
     return;
@@ -306,6 +320,7 @@ async function handleClick(event) {
   }
 
   if (button.id === "logoutHotel") {
+    await unregisterPushSubscription(state.currentHotelId);
     state.currentHotelId = null;
     state.currentAdmin = false;
     syncUi();
@@ -341,7 +356,7 @@ async function handleSubmit(event) {
   }
 
   if (form.id === "hotelLogin") {
-    loginHotel(form);
+    await loginHotel(form);
     return;
   }
 
@@ -569,7 +584,7 @@ async function registerHotel(form) {
   }
 }
 
-function loginHotel(form) {
+async function loginHotel(form) {
   const name = form.elements.hotelName.value.trim();
   const pass = form.elements.hotelPass.value.trim();
 
@@ -601,6 +616,7 @@ function loginHotel(form) {
 
   state.currentHotelId = hotel.id;
   state.currentAdmin = false;
+  await registerPushSubscription(hotel.id, hotel.name);
   switchTab("hotel");
   showToast("Hotel login successful.", "success");
 }

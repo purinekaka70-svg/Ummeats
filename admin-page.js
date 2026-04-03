@@ -14,6 +14,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { auth, db } from "./firebase.js";
 import { inferToastTone } from "./helpers.js";
+import { registerPushSubscription, unregisterPushSubscription } from "./push.js";
 import { elements, getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
@@ -77,6 +78,10 @@ function subscribeToCollections() {
 function subscribeToAuth() {
   onAuthStateChanged(auth, (user) => {
     state.currentAdmin = Boolean(user);
+
+    if (user) {
+      void registerPushSubscription("admin", user.email || "Admin");
+    }
 
     if (!user) {
       state.adminPanelSection = "dashboard";
@@ -158,6 +163,7 @@ async function handleClick(event) {
   }
 
   if (button.id === "logoutAdmin") {
+    await unregisterPushSubscription("admin");
     await signOut(auth);
     showToast("Admin logged out.", "info");
     return;
@@ -318,11 +324,11 @@ async function deleteFeedback(feedbackId) {
 }
 
 async function clearAllData() {
-  if (!window.confirm("Delete all hotels, restaurants, orders, feedbacks, and notifications?")) {
+  if (!window.confirm("Delete all hotels, restaurants, orders, feedbacks, notifications, and push subscriptions?")) {
     return;
   }
 
-  const collections = ["hotels", "restaurants", "orders", "feedbacks", "notifications"];
+  const collections = ["hotels", "restaurants", "orders", "feedbacks", "notifications", "pushSubscriptions"];
   for (const collectionName of collections) {
     const snapshot = await getDocs(collection(db, collectionName));
     for (const item of snapshot.docs) {

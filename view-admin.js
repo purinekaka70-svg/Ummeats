@@ -238,7 +238,7 @@ function renderDashboardSection(summary) {
         <div class="split-row">
           <div>
             <h3 class="card-title">Danger Zone</h3>
-            <p class="card-copy">This permanently deletes every hotel, menu, order, feedback, and notification.</p>
+            <p class="card-copy">This permanently deletes every hotel, menu, order, feedback, notification, and push subscription.</p>
           </div>
           <button class="button button-danger" id="clearAll" type="button">Clear All Data</button>
         </div>
