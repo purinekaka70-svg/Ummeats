@@ -42,8 +42,10 @@ function bootstrap() {
 function bindStaticEvents() {
   elements.brandHome.addEventListener("click", (event) => {
     event.preventDefault();
+    state.currentInfoSection = null;
     state.activeHotelMenuId = null;
     state.restaurantDirectoryOpen = false;
+    updateInfoSections();
     switchTab("restaurants");
   });
 
@@ -199,6 +201,15 @@ function setInfoSection(sectionId) {
 
 function updateInfoSections() {
   const currentSection = state.currentInfoSection;
+  const infoModeOpen = Boolean(currentSection);
+
+  if (elements.mainContent) {
+    elements.mainContent.classList.toggle("is-hidden", infoModeOpen);
+  }
+
+  if (elements.siteInfoShell) {
+    elements.siteInfoShell.classList.toggle("is-hidden", !infoModeOpen);
+  }
 
   document.querySelectorAll("[data-info-target]").forEach((trigger) => {
     trigger.classList.toggle("is-active", trigger.dataset.infoTarget === currentSection);

@@ -26,6 +26,7 @@ export const elements = {
   cartModalContainer: document.getElementById("cartModalContainer"),
   cartModalContent: document.getElementById("cartModalContent"),
   footer: document.getElementById("footer"),
+  mainContent: document.getElementById("mainContent"),
   heroHotelCount: document.getElementById("heroHotelCount"),
   heroOrderCount: document.getElementById("heroOrderCount"),
   heroRestaurantCount: document.getElementById("heroRestaurantCount"),
@@ -35,6 +36,7 @@ export const elements = {
   restBadge: document.getElementById("restBadge"),
   serviceFeeAmount: document.getElementById("serviceFeeAmount"),
   serviceFeeTill: document.getElementById("serviceFeeTill"),
+  siteInfoShell: document.getElementById("siteInfoShell"),
   toastContainer: document.getElementById("toastContainer"),
   year: document.getElementById("year"),
 };
