@@ -41,6 +41,7 @@ import { renderOrders } from "./view-orders.js";
 import { renderRestaurants } from "./view-restaurants.js";
 
 let deferredInstallPrompt = null;
+let installPromptWaiters = [];
 
 bootstrap();
 
@@ -98,6 +99,7 @@ function bindInstallFlow() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
+    resolveInstallPromptWaiters();
     updateInstallButtonState();
   });
 
@@ -108,6 +110,34 @@ function bindInstallFlow() {
   });
 
   window.matchMedia?.("(display-mode: standalone)")?.addEventListener("change", updateInstallButtonState);
+}
+
+function waitForInstallPrompt(timeout = 1800) {
+  if (deferredInstallPrompt) {
+    return Promise.resolve(deferredInstallPrompt);
+  }
+
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => {
+      installPromptWaiters = installPromptWaiters.filter((waiter) => waiter !== resolve);
+      resolve(null);
+    }, timeout);
+
+    installPromptWaiters.push((prompt) => {
+      window.clearTimeout(timer);
+      resolve(prompt);
+    });
+  });
+}
+
+function resolveInstallPromptWaiters(prompt = deferredInstallPrompt) {
+  if (!installPromptWaiters.length) {
+    return;
+  }
+
+  const waiters = installPromptWaiters;
+  installPromptWaiters = [];
+  waiters.forEach((resolve) => resolve(prompt));
 }
 
 function hydrateStaticShell() {
@@ -273,13 +303,22 @@ function setInfoSection(sectionId) {
 }
 
 async function handleInstallClick() {
+  if (isStandaloneDisplayMode()) {
+    showToast("Tamu Express is already installed on this device.", "success");
+    return;
+  }
+
+  if (!deferredInstallPrompt) {
+    await waitForInstallPrompt();
+  }
+
   if (!deferredInstallPrompt) {
     if (isIosInstallCandidate()) {
       showToast("On iPhone or iPad, tap Share then choose Add to Home Screen.", "info");
       return;
     }
 
-    showToast("Open your browser menu and choose Install app or Add to home screen.", "info");
+    showToast("Use Chrome, Edge, or Samsung Internet, then tap your browser menu and choose Install app.", "info");
     return;
   }
 
@@ -305,15 +344,7 @@ function updateInstallButtonState() {
   const shouldShow = !installed;
 
   elements.installAppButton.classList.toggle("is-hidden", !shouldShow);
-
-  if (isIosInstallCandidate()) {
-    elements.installAppButton.textContent = "Add Tamu to Home Screen";
-    return;
-  }
-
-  elements.installAppButton.textContent = deferredInstallPrompt
-    ? "Install Tamu App"
-    : "How to Install Tamu App";
+  elements.installAppButton.textContent = "Install Tamu App";
 }
 
 function isStandaloneDisplayMode() {
