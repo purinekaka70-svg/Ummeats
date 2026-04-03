@@ -413,6 +413,85 @@ button {
   margin-top: 18px;
 }
 
+.site-info-shell {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.site-info-hero {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(22, 163, 74, 0.14), transparent 30%),
+    linear-gradient(180deg, rgba(248, 251, 248, 0.98), rgba(234, 244, 236, 0.94));
+  border-color: rgba(21, 128, 61, 0.14);
+}
+
+.site-info-title {
+  max-width: 16ch;
+}
+
+.site-info-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.site-info-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.site-info-link:hover {
+  transform: translateY(-1px);
+  border-color: rgba(21, 128, 61, 0.22);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.site-info-grid {
+  align-items: stretch;
+}
+
+.site-info-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 246, 0.92));
+}
+
+.site-info-card-title {
+  font-size: 1.15rem;
+}
+
+.site-info-copy {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.site-info-inline-link {
+  color: var(--accent-strong);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.site-info-inline-link:hover {
+  text-decoration: underline;
+}
+
 .view-root {
   min-height: 520px;
 }
