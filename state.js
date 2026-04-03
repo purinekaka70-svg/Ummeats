@@ -12,7 +12,7 @@ export const state = {
   activeHotelMenuId: null,
   restaurantDirectoryOpen: false,
   currentTab: "restaurants",
-  currentInfoSection: "aboutSection",
+  currentInfoSection: null,
   currentHotelId: null,
   currentAdmin: false,
   adminPanelSection: "dashboard",

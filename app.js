@@ -188,17 +188,18 @@ function setBadge(element, count, tone) {
 }
 
 function setInfoSection(sectionId) {
-  state.currentInfoSection = sectionId || "aboutSection";
+  state.currentInfoSection =
+    state.currentInfoSection === sectionId ? null : sectionId || null;
   updateInfoSections();
 
-  const section = document.getElementById(state.currentInfoSection);
+  const section = state.currentInfoSection ? document.getElementById(state.currentInfoSection) : null;
   if (section) {
     section.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
 function updateInfoSections() {
-  const currentSection = state.currentInfoSection || "aboutSection";
+  const currentSection = state.currentInfoSection;
 
   document.querySelectorAll("[data-info-target]").forEach((trigger) => {
     trigger.classList.toggle("is-active", trigger.dataset.infoTarget === currentSection);

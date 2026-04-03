@@ -434,19 +434,6 @@ button {
   margin-top: 18px;
 }
 
-.site-info-hero {
-  display: grid;
-  gap: 18px;
-  background:
-    radial-gradient(circle at top right, rgba(22, 163, 74, 0.14), transparent 30%),
-    linear-gradient(180deg, rgba(248, 251, 248, 0.98), rgba(234, 244, 236, 0.94));
-  border-color: rgba(21, 128, 61, 0.14);
-}
-
-.site-info-title {
-  max-width: 16ch;
-}
-
 .site-info-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
