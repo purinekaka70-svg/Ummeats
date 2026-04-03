@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Ummeats by Tamu Express for Around Umma University shop orders, kibanda ordering, and customer feedback." />
+  <meta name="theme-color" content="#15803d" />
+  <title>Ummeats | Tamu Express Shop Orders and Feedback</title>
+  <link
+    rel="icon"
+    type="image/png"
+    href="https://i.ibb.co/KcFc8xn5/Gemini-Generated-Image-jokiqjjokiqjjoki.png"
+  />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar panel">
+      <div class="brand-block">
+        <p class="eyebrow">Around Umma University</p>
+        <a href="./umma-shop.html" class="brand">Ummeats</a>
+        <p class="brand-tagline">Send money, submit your shopping list, and let the support team buy the items for you.</p>
+      </div>
+
+      <div class="topbar-actions site-topbar-actions">
+        <button
+          id="ordersBtn"
+          class="button button-ghost button-small site-topbar-link is-active"
+          data-shop-view="orders"
+          type="button"
+        >
+          Orders
+        </button>
+        <button
+          id="paymentGuideBtn"
+          class="button button-ghost button-small site-topbar-link"
+          data-shop-view="payment"
+          type="button"
+        >
+          Payment Guide
+        </button>
+        <button
+          id="feedbackBtn"
+          class="button button-ghost button-small site-topbar-link"
+          data-shop-view="feedback"
+          type="button"
+        >
+          Feedback
+        </button>
+        <button id="backBtn" class="button button-outline button-small" type="button">
+          Back to Tamu Express
+        </button>
+      </div>
+    </header>
+
+    <main class="content-shell">
+      <section class="view-shell">
+        <article id="paymentGuideSection" class="card shop-card is-hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Payment Guide</p>
+              <h2 class="card-title">Send money to support, then submit your shopping request</h2>
+            </div>
+            <span class="summary-chip">Support payment flow</span>
+          </div>
+
+          <p class="card-copy">
+            Send the shopping amount to either support number below, then submit the order form with the amount and
+            transaction code. The support team can use that money to buy the requested items for you.
+          </p>
+
+          <div class="contact-support-grid">
+            <article class="support-card">
+              <p class="eyebrow">Payment line 1</p>
+              <h4 class="card-title">0115613332</h4>
+              <p class="site-info-copy">Pay here, then include the transaction code in your order.</p>
+              <div class="support-actions">
+                <a class="button button-primary" href="tel:0115613332">Call</a>
+                <a class="button button-outline" href="https://wa.me/254115613332?text=Hello%20I%20want%20to%20pay%20for%20a%20Shop%20Here%20order" target="_blank" rel="noreferrer">WhatsApp</a>
+              </div>
+            </article>
+
+            <article class="support-card">
+              <p class="eyebrow">Payment line 2</p>
+              <h4 class="card-title">0116860686</h4>
+              <p class="site-info-copy">Use this second line if the first number is unavailable.</p>
+              <div class="support-actions">
+                <a class="button button-primary" href="tel:0116860686">Call</a>
+                <a class="button button-outline" href="https://wa.me/254116860686?text=Hello%20I%20want%20to%20pay%20for%20a%20Shop%20Here%20order" target="_blank" rel="noreferrer">WhatsApp</a>
+              </div>
+            </article>
+          </div>
+        </article>
+
+        <div class="two-column shop-order-grid">
+          <section id="orderSection" class="card shop-card">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Place Order</p>
+                <h2 class="card-title">Submit your full shop order</h2>
+              </div>
+              <span class="summary-chip">Pay and submit</span>
+            </div>
+
+            <div class="stack">
+              <div class="field-grid">
+                <label class="field">
+                  <span class="field-label">Your name</span>
+                  <input id="customerName" class="input" placeholder="Your name" />
+                </label>
+
+                <label class="field">
+                  <span class="field-label">Your email</span>
+                  <input id="customerEmail" class="input" placeholder="your@email.com" />
+                </label>
+              </div>
+
+              <label class="field">
+                <span class="field-label">Shop or kibanda name</span>
+                <input id="shopName" class="input" placeholder="Shop or kibanda name" />
+              </label>
+
+              <label class="field">
+                <span class="field-label">Order items</span>
+                <textarea
+                  id="itemsTextarea"
+                  class="input textarea"
+                  placeholder="Enter your order list here, one item per line. Example: 2 noodles, 1 apple punch"
+                  rows="8"
+                ></textarea>
+              </label>
+
+              <div class="button-row">
+                <button id="addItemBtn" class="button button-secondary" type="button">Add Item</button>
+              </div>
+
+              <ul id="itemsList" class="order-list shop-item-list"></ul>
+
+              <div class="field-grid">
+                <label class="field">
+                  <span class="field-label">Amount paid or to send (KES)</span>
+                  <input id="totalAmount" class="input" placeholder="Amount paid or to send (KES)" />
+                </label>
+
+                <label class="field">
+                  <span class="field-label">Payment transaction code</span>
+                  <input id="mpesaCode" class="input" placeholder="Payment transaction code" />
+                </label>
+              </div>
+
+              <div class="button-row">
+                <button id="submitOrderBtn" class="button button-primary" type="button">Submit Full Order</button>
+              </div>
+
+              <p id="orderStatus" class="tiny shop-status-line" aria-live="polite"></p>
+            </div>
+          </section>
+
+          <section id="customerSection" class="card shop-card">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Your Orders</p>
+                <h2 class="card-title">Track what you already submitted</h2>
+              </div>
+              <span class="summary-chip">Around Umma University</span>
+            </div>
+
+            <div id="customerOrders" class="order-list"></div>
+          </section>
+        </div>
+
+        <section id="feedbackSection" class="card shop-card is-hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Customer Feedback</p>
+              <h2 class="card-title">Send feedback, complaints, or support notes</h2>
+            </div>
+            <span class="summary-chip">Support team</span>
+          </div>
+
+          <div class="stack">
+            <div class="field-grid">
+              <label class="field">
+                <span class="field-label">Your name</span>
+                <input id="fbName" class="input" placeholder="Your name" />
+              </label>
+
+              <label class="field">
+                <span class="field-label">Your email</span>
+                <input id="fbEmail" class="input" placeholder="your@email.com" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Feedback message</span>
+              <textarea id="fbMessage" class="input textarea" placeholder="Write your feedback here..." rows="5"></textarea>
+            </label>
+
+            <div class="button-row">
+              <button id="submitFeedbackBtn" class="button button-primary" type="button">Submit Feedback</button>
+            </div>
+
+            <p id="fbStatus" class="tiny shop-status-line" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section id="adminLoginSection" class="card auth-card is-hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Admin Access</p>
+              <h2 class="card-title">Sign in with your Firebase admin account</h2>
+            </div>
+            <span class="summary-chip">Same admin login</span>
+          </div>
+
+          <p class="card-copy">
+            This page uses the same Firebase Authentication admin credentials as the main admin panel. There are no
+            hard-coded login credentials here.
+          </p>
+
+          <div class="field-grid">
+            <label class="field">
+              <span class="field-label">Admin email</span>
+              <input id="adminEmailInput" class="input" placeholder="Admin email" />
+            </label>
+
+            <label class="field">
+              <span class="field-label">Password</span>
+              <input id="adminPasswordInput" type="password" class="input" placeholder="Password" />
+            </label>
+          </div>
+
+          <div class="button-row">
+            <button id="adminLoginBtn" class="button button-primary button-small" type="button">Login</button>
+          </div>
+
+          <p id="adminLoginStatus" class="tiny shop-status-line" aria-live="polite"></p>
+        </section>
+
+        <section id="adminPanel" class="view-shell is-hidden">
+          <article class="card shop-card">
+            <div class="view-header">
+              <div>
+                <p class="eyebrow">Admin Panel</p>
+                <h2 class="view-title shop-admin-title">Manage Umma shop orders and feedback</h2>
+                <p class="view-copy">Review submitted orders, confirm paid or delivered status, and monitor feedback.</p>
+              </div>
+
+              <div class="button-row">
+                <button id="logoutAdminBtn" class="button button-danger button-small" type="button">Logout</button>
+              </div>
+            </div>
+          </article>
+
+          <div class="two-column shop-admin-grid">
+            <section class="card shop-card">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Orders</p>
+                  <h3 class="card-title">Current shop orders</h3>
+                </div>
+              </div>
+
+              <div id="adminOrdersList" class="order-list"></div>
+            </section>
+
+            <section class="card shop-card">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Feedback</p>
+                  <h3 class="card-title">Customer complaints and comments</h3>
+                </div>
+              </div>
+
+              <div id="adminFeedbackList" class="notification-list"></div>
+            </section>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer id="footerTrigger" class="footer panel">
+      <p class="footer-title">Tamu Express | Umma-Kenya</p>
+      <p class="footer-title footer-brandline">
+        <span class="footer-mark">C</span>
+        <span>Teams Technologies</span>
+      </p>
+      <p class="footer-text">Powered by Teams Technologies, Mombasa, Kenya.</p>
+    </footer>
+  </div>
+
+  <script type="module" src="./umma-shop.js"></script>
+</body>
+</html>

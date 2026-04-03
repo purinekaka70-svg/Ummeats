@@ -19,9 +19,11 @@ import {
   getCartItemsTotal,
   getCheckoutDraft,
   getHotelById,
+  getLocationCards,
   getRestaurantByHotelId,
   getVisibleRestaurants,
   isHotelOpenForCustomers,
+  normalizeHotelLocation,
   state,
 } from "./state.js";
 import { saveCustomerProfile, saveOrderProfile } from "./storage.js";
@@ -30,11 +32,15 @@ import { renderHotelPortal } from "./view-hotel.js";
 import { renderOrders } from "./view-orders.js";
 import { renderRestaurants } from "./view-restaurants.js";
 
+let deferredInstallPrompt = null;
+
 bootstrap();
 
 function bootstrap() {
   bindStaticEvents();
+  bindInstallFlow();
   hydrateStaticShell();
+  registerAppServiceWorker();
   subscribeToCollections();
   updateInfoSections();
   syncUi();
@@ -45,6 +51,8 @@ function bindStaticEvents() {
     event.preventDefault();
     state.currentInfoSection = null;
     state.activeHotelMenuId = null;
+    state.locationDirectoryOpen = false;
+    state.selectedLocation = null;
     state.restaurantDirectoryOpen = false;
     updateInfoSections();
     switchTab("restaurants");
@@ -71,6 +79,25 @@ function bindStaticEvents() {
   });
 }
 
+function bindInstallFlow() {
+  if (elements.installAppButton) {
+    elements.installAppButton.textContent = "Install Tamu App";
+    elements.installAppButton.addEventListener("click", handleInstallClick);
+  }
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    elements.installAppButton?.classList.remove("is-hidden");
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    elements.installAppButton?.classList.add("is-hidden");
+    showToast("Tamu Express is ready to open from your device.", "success");
+  });
+}
+
 function hydrateStaticShell() {
   if (elements.noticeText) {
     elements.noticeText.textContent = ANNOUNCEMENT_TEXT;
@@ -92,6 +119,18 @@ function hydrateStaticShell() {
   };
 }
 
+async function registerAppServiceWorker() {
+  if (!("serviceWorker" in navigator)) {
+    return;
+  }
+
+  try {
+    await navigator.serviceWorker.register("./sw.js");
+  } catch (error) {
+    console.warn("App service worker registration failed", error);
+  }
+}
+
 function subscribeToCollections() {
   onSnapshot(collection(db, "hotels"), (snapshot) => {
     state.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -102,6 +141,13 @@ function subscribeToCollections() {
 
     if (state.activeHotelMenuId && !isHotelOpenForCustomers(state.activeHotelMenuId)) {
       state.activeHotelMenuId = null;
+    }
+
+    if (state.selectedLocation) {
+      const availableLocations = getLocationCards().map((item) => item.name);
+      if (!availableLocations.includes(state.selectedLocation)) {
+        state.selectedLocation = null;
+      }
     }
 
     syncUi();
@@ -136,6 +182,20 @@ function switchTab(tab) {
   renderCurrentView();
 }
 
+function normalizeHotelAccountName(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function openLocationDirectory(location) {
+  state.currentInfoSection = null;
+  state.selectedLocation = location ? normalizeHotelLocation(location) : null;
+  state.activeHotelMenuId = null;
+  state.locationDirectoryOpen = !location;
+  state.restaurantDirectoryOpen = true;
+  updateInfoSections();
+  switchTab("restaurants");
+}
+
 function renderCurrentView() {
   if (state.currentTab === "orders") {
     renderOrders();
@@ -151,7 +211,7 @@ function renderCurrentView() {
 }
 
 function updateHeaderMetrics() {
-  const visibleRestaurants = getVisibleRestaurants();
+  const visibleRestaurants = getVisibleRestaurants(null);
   const pendingOrders = state.orders.filter((order) => (order.status || "Pending") !== "Paid").length;
 
   if (elements.heroRestaurantCount) {
@@ -166,7 +226,7 @@ function updateHeaderMetrics() {
 }
 
 function updateBadges() {
-  setBadge(elements.restBadge, getVisibleRestaurants().length, "light");
+  setBadge(elements.restBadge, getVisibleRestaurants(null).length, "light");
 
   const hotelUnread = state.currentHotelId
     ? state.notifications.filter((item) => item.to === state.currentHotelId && !item.read).length
@@ -200,6 +260,21 @@ function setInfoSection(sectionId) {
   }
 }
 
+async function handleInstallClick() {
+  if (!deferredInstallPrompt) {
+    return;
+  }
+
+  deferredInstallPrompt.prompt();
+  const result = await deferredInstallPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
+  deferredInstallPrompt = null;
+  elements.installAppButton?.classList.add("is-hidden");
+
+  if (result.outcome === "accepted") {
+    showToast("Install started. You can pin Tamu Express on this device.", "success");
+  }
+}
+
 function updateInfoSections() {
   const currentSection = state.currentInfoSection;
   const infoModeOpen = Boolean(currentSection);
@@ -226,6 +301,17 @@ async function handleClick(event) {
   if (infoTrigger) {
     event.preventDefault();
     setInfoSection(infoTrigger.dataset.infoTarget);
+    return;
+  }
+
+  const locationTrigger = event.target.closest(".browseLocationBtn");
+  if (locationTrigger) {
+    openLocationDirectory(locationTrigger.dataset.location);
+    return;
+  }
+
+  if (event.target.closest(".browseAllHotelsBtn")) {
+    openLocationDirectory(null);
     return;
   }
 
@@ -257,6 +343,7 @@ async function handleClick(event) {
 
   if (button.classList.contains("browseNavBtn")) {
     state.restaurantDirectoryOpen = true;
+    state.locationDirectoryOpen = button.dataset.tab === "restaurants" && !state.selectedLocation && !state.activeHotelMenuId;
     switchTab(button.dataset.tab);
     return;
   }
@@ -416,6 +503,7 @@ function toggleMenu(hotelId) {
   }
 
   state.restaurantDirectoryOpen = true;
+  state.locationDirectoryOpen = false;
   state.activeHotelMenuId = state.activeHotelMenuId === hotelId ? null : hotelId;
   renderRestaurants();
 }
@@ -424,8 +512,14 @@ function toggleRestaurantDirectory() {
   const nextOpenState = !state.restaurantDirectoryOpen;
   state.restaurantDirectoryOpen = nextOpenState;
 
-  if (!nextOpenState) {
+  if (nextOpenState) {
+    state.locationDirectoryOpen = true;
+    state.selectedLocation = null;
     state.activeHotelMenuId = null;
+  } else {
+    state.locationDirectoryOpen = false;
+    state.activeHotelMenuId = null;
+    state.selectedLocation = null;
     state.currentTab = "restaurants";
   }
 
@@ -517,7 +611,8 @@ async function markOrderPaid(orderId) {
     return;
   }
 
-  if (state.currentHotelId && order.hotelId !== state.currentHotelId && !state.currentAdmin) {
+  const allowed = state.currentAdmin || state.currentHotelId === order.hotelId;
+  if (!allowed) {
     alert("No permission to mark this order as paid.");
     return;
   }
@@ -554,9 +649,16 @@ async function registerHotel(form) {
   const phone = form.elements.hotelPhone.value.trim();
   const pass = form.elements.hotelPass.value.trim();
   const till = form.elements.hotelTill.value.trim();
+  const location = normalizeHotelLocation(form.elements.hotelLocation?.value);
+  const normalizedName = normalizeHotelAccountName(name);
 
   if (!name || !phone || !pass || !till) {
     alert("Fill in all hotel details.");
+    return;
+  }
+
+  if (state.hotels.some((item) => normalizeHotelAccountName(item.name) === normalizedName)) {
+    alert("A hotel with this name is already registered.");
     return;
   }
 
@@ -566,9 +668,10 @@ async function registerHotel(form) {
       phone,
       pass,
       till,
-      approved: true,
+      location,
+      approved: false,
       blocked: false,
-      subscriptionExpiry: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      subscriptionExpiry: null,
     });
 
     await setDoc(doc(db, "restaurants", docRef.id), {
@@ -576,8 +679,20 @@ async function registerHotel(form) {
       menu: [],
     });
 
+    try {
+      await addDoc(collection(db, "notifications"), {
+        message: `New hotel registration: ${name} (${phone})`,
+        read: false,
+        timestamp: Date.now(),
+        to: "admin",
+        type: "hotel",
+      });
+    } catch (error) {
+      console.warn("Hotel registration notification write failed", error);
+    }
+
     form.reset();
-    showToast("Hotel registered successfully. You can now log in.", "success");
+    showToast("Hotel registered. Wait for admin approval and subscription activation.", "success");
   } catch (error) {
     console.error(error);
     showToast("Registration failed.", "error");
@@ -587,13 +702,16 @@ async function registerHotel(form) {
 async function loginHotel(form) {
   const name = form.elements.hotelName.value.trim();
   const pass = form.elements.hotelPass.value.trim();
+  const normalizedName = normalizeHotelAccountName(name);
 
   if (!name || !pass) {
     alert("Enter hotel name and password.");
     return;
   }
 
-  const hotel = state.hotels.find((item) => item.name === name && item.pass === pass);
+  const hotel = state.hotels.find(
+    (item) => normalizeHotelAccountName(item.name) === normalizedName && item.pass === pass,
+  );
   if (!hotel) {
     alert("Wrong hotel name or password.");
     return;

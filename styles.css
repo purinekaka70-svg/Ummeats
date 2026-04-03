@@ -133,6 +133,21 @@ button {
   max-width: 560px;
 }
 
+.install-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 55;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  box-shadow: 0 18px 36px rgba(17, 83, 57, 0.32);
+}
+
+.install-fab:hover {
+  transform: translateY(-2px);
+}
+
 .site-topbar-link {
   text-decoration: none;
 }
@@ -497,6 +512,70 @@ button {
   text-decoration: underline;
 }
 
+.shop-notice-strip {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 246, 0.9));
+}
+
+.shop-hero-card {
+  background: linear-gradient(180deg, rgba(248, 251, 248, 0.98), rgba(237, 247, 239, 0.94));
+}
+
+.shop-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 248, 0.92));
+}
+
+.shop-chip-stack {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.shop-order-grid,
+.shop-admin-grid {
+  align-items: start;
+}
+
+.shop-admin-title {
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+}
+
+.shop-item-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop-item-row {
+  list-style: none;
+}
+
+.shop-item-row--empty {
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.shop-meta-block--wide {
+  grid-column: span 2;
+}
+
+.shop-action-row {
+  margin-top: 2px;
+}
+
+.shop-status-line {
+  min-height: 20px;
+  margin: 0;
+}
+
+.shop-status-line--success {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.shop-status-line--error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
 .view-root {
   min-height: 520px;
 }
@@ -747,6 +826,36 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+}
+
+.location-directory,
+.location-focus-card {
+  display: grid;
+  gap: 14px;
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.location-card {
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(220, 252, 231, 0.88));
+  border-color: rgba(21, 128, 61, 0.14);
+}
+
+.location-card .card-title {
+  margin: 6px 0 0;
+  color: var(--accent-strong);
+}
+
+.location-focus-card {
+  padding: 18px;
+  border-radius: 26px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .browse-menu-row {
@@ -1415,6 +1524,14 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .shop-chip-stack {
+    justify-items: start;
+  }
+
+  .shop-meta-block--wide {
+    grid-column: span 1;
+  }
+
   .notice-strip {
     grid-template-columns: 1fr;
   }
@@ -1456,5 +1573,12 @@ button {
 
   .qty-input {
     width: 100%;
+  }
+
+  .install-fab {
+    right: 14px;
+    bottom: 14px;
+    min-height: 48px;
+    padding: 0 16px;
   }
 }

@@ -1,4 +1,4 @@
-import { CUSTOMER_ID, elements, getHotelById, getVisibleOrders, state, getCartItemsTotal } from "./state.js";
+import { CUSTOMER_ID, elements, getCartItemsTotal, getHotelById, getHotelLocation, getVisibleOrders, state } from "./state.js";
 import { escapeHtml, formatCurrency, formatTime, pluralize } from "./helpers.js";
 import { SERVICE_FEE, SERVICE_FEE_TILL } from "./config.js";
 import { renderBrowseMenuTabs, renderEmptyState, renderStatusPill } from "./view-common.js";
@@ -89,24 +89,32 @@ function renderOrderCard(order) {
           <strong>${escapeHtml(hotel.till || "N/A")}</strong>
         </div>
         <div class="meta-block">
+          <span>Location</span>
+          <strong>${escapeHtml(getHotelLocation(hotel))}</strong>
+        </div>
+        <div class="meta-block">
           <span>Service fee till</span>
           <strong>${escapeHtml(order.serviceFeeTill || SERVICE_FEE_TILL)}</strong>
         </div>
       </div>
 
       <div class="menu-list">
-        ${items
-          .map(
-            (item) => `
-              <div class="order-item">
-                <div class="split-row">
-                  <strong>${escapeHtml(`${item.qty || 1} x ${item.name}`)}</strong>
-                  <span class="item-price">${formatCurrency((item.qty || 1) * Number(item.price || 0))}</span>
-                </div>
-              </div>
-            `,
-          )
-          .join("")}
+        ${
+          items.length
+            ? items
+                .map(
+                  (item) => `
+                    <div class="order-item">
+                      <div class="split-row">
+                        <strong>${escapeHtml(`${item.qty || 1} x ${item.name}`)}</strong>
+                        <span class="item-price">${formatCurrency((item.qty || 1) * Number(item.price || 0))}</span>
+                      </div>
+                    </div>
+                  `,
+                )
+                .join("")
+            : `<div class="order-item"><p class="is-muted">No order items were saved for this record.</p></div>`
+        }
       </div>
 
       <div class="summary-list">

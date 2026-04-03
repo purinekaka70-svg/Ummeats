@@ -1,5 +1,5 @@
 import { SERVICE_FEE, SERVICE_FEE_TILL } from "./config.js";
-import { elements, getCartItemsTotal, getHotelById, getNotificationsForTarget, state } from "./state.js";
+import { elements, getCartItemsTotal, getHotelById, getHotelLocation, getNotificationsForTarget, state } from "./state.js";
 import { escapeHtml, formatCurrency, formatDateOnly, formatTime, pluralize } from "./helpers.js";
 import { renderEmptyState, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
@@ -41,6 +41,8 @@ export function renderAdmin() {
   ).length;
   const paidOrders = state.orders.filter((order) => (order.status || "Pending") === "Paid").length;
   const pendingOrders = state.orders.filter((order) => (order.status || "Pending") !== "Paid").length;
+  const totalShopOrders = state.ummaShopOrders.length;
+  const pendingShopOrders = state.ummaShopOrders.filter((order) => !order.paid).length;
   const totalFeedbacks = state.feedbacks.length;
   const unreadFeedbacks = state.feedbacks.filter((item) => (item.status || "New") !== "Reviewed").length;
   const totalOrders = state.orders.length;
@@ -64,6 +66,7 @@ export function renderAdmin() {
           ${renderAdminNavButton("dashboard", "Dashboard", `${pendingOrders} pending orders`, currentSection)}
           ${renderAdminNavButton("hotels", "Registered Hotels", `${state.hotels.length} hotel${pluralize(state.hotels.length)}`, currentSection)}
           ${renderAdminNavButton("orders", "Orders", `${totalOrders} total order${pluralize(totalOrders)}`, currentSection)}
+          ${renderAdminNavButton("shopOrders", "Shop Here Orders", `${totalShopOrders} shop order${pluralize(totalShopOrders)}`, currentSection)}
           ${renderAdminNavButton("feedbacks", "Feedbacks", `${unreadFeedbacks} open complaint${pluralize(unreadFeedbacks)}`, currentSection)}
         </div>
 
@@ -110,8 +113,10 @@ export function renderAdmin() {
           paidOrders,
           pendingHotels,
           pendingOrders,
+          pendingShopOrders,
           totalFeedbacks,
           totalOrders,
+          totalShopOrders,
           unreadFeedbacks,
           unreadNotifications,
         })}
@@ -145,6 +150,10 @@ function renderAdminSection(section, summary) {
 
   if (section === "orders") {
     return renderOrdersSection();
+  }
+
+  if (section === "shopOrders") {
+    return renderShopOrdersSection();
   }
 
   if (section === "feedbacks") {
@@ -192,6 +201,14 @@ function renderDashboardSection(summary) {
           <strong>${summary.paidOrders}</strong>
         </article>
         <article class="stat-card">
+          <span class="stat-label">Shop Here Orders</span>
+          <strong>${summary.totalShopOrders}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Shop Here Pending</span>
+          <strong>${summary.pendingShopOrders}</strong>
+        </article>
+        <article class="stat-card">
           <span class="stat-label">Unread Alerts</span>
           <strong>${summary.unreadNotifications}</strong>
         </article>
@@ -215,6 +232,7 @@ function renderDashboardSection(summary) {
             <div class="summary-item"><span>Registered hotels</span><strong>${state.hotels.length}</strong></div>
             <div class="summary-item"><span>Orders placed</span><strong>${summary.totalOrders}</strong></div>
             <div class="summary-item"><span>Orders still pending</span><strong>${summary.pendingOrders}</strong></div>
+            <div class="summary-item"><span>Shop Here orders</span><strong>${summary.totalShopOrders}</strong></div>
             <div class="summary-item"><span>Hotels awaiting approval</span><strong>${summary.pendingHotels}</strong></div>
           </div>
         </article>
@@ -226,10 +244,10 @@ function renderDashboardSection(summary) {
           </div>
           <div class="summary-list">
             <div class="summary-item"><span>Use Orders</span><strong>Mark paid or delete</strong></div>
+            <div class="summary-item"><span>Use Shop Here Orders</span><strong>Manage separate shopping requests</strong></div>
             <div class="summary-item"><span>Use Registered Hotels</span><strong>Approve and manage</strong></div>
             <div class="summary-item"><span>Use Feedbacks</span><strong>Review support complaints</strong></div>
             <div class="summary-item"><span>Notifications</span><strong>${summary.unreadNotifications} unread</strong></div>
-            <div class="summary-item"><span>Subscription control</span><strong>Active from hotel list</strong></div>
           </div>
         </article>
       </div>
@@ -302,6 +320,25 @@ function renderFeedbacksSection() {
   `;
 }
 
+function renderShopOrdersSection() {
+  const orders = [...state.ummaShopOrders].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Shop Here Orders</h4>
+        <span class="summary-chip">${orders.length} shop order${pluralize(orders.length)}</span>
+      </div>
+
+      ${
+        orders.length
+          ? `<div class="order-list">${orders.map(renderShopOrderCard).join("")}</div>`
+          : renderEmptyState("No Shop Here orders yet", "Orders placed through the shopping page will appear here separately from hotel orders.")
+      }
+    </section>
+  `;
+}
+
 function renderAdminHotelCard(hotel) {
   const subscriptionActive = hotel.subscriptionExpiry && hotel.subscriptionExpiry >= Date.now();
 
@@ -316,6 +353,7 @@ function renderAdminHotelCard(hotel) {
           <div class="summary-list">
             <div class="summary-item"><span>Phone</span><strong>${escapeHtml(hotel.phone || "N/A")}</strong></div>
             <div class="summary-item"><span>Till</span><strong>${escapeHtml(hotel.till || "N/A")}</strong></div>
+            <div class="summary-item"><span>Location</span><strong>${escapeHtml(getHotelLocation(hotel))}</strong></div>
             <div class="summary-item"><span>Approved</span><strong>${hotel.approved ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Blocked</span><strong>${hotel.blocked ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Subscription</span><strong>${formatDateOnly(hotel.subscriptionExpiry)}</strong></div>
@@ -343,6 +381,74 @@ function renderAdminHotelCard(hotel) {
         <button class="button button-outline button-small expireSub" data-id="${escapeHtml(hotel.id)}" type="button">
           Expire Now
         </button>
+      </div>
+    </article>
+  `;
+}
+
+function renderShopOrderCard(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsText = items.length
+    ? items.map((item) => `${item.qty || 1} x ${item.name}`).join(", ")
+    : "No items recorded";
+
+  return `
+    <article class="card order-card">
+      <div class="order-header">
+        <div>
+          <p class="eyebrow">Shop Here order</p>
+          <h3>${escapeHtml(order.customerName || "Unknown customer")}</h3>
+          <p class="tiny">${formatTime(order.createdAt)}</p>
+        </div>
+        <div class="inline-list">
+          ${renderStatusPill(order.paid ? "Paid" : "Pending", order.paid ? "active" : "pending")}
+          ${renderStatusPill(order.delivered ? "Delivered" : "Shopping", order.delivered ? "active" : "inactive")}
+        </div>
+      </div>
+
+      <div class="order-meta-grid">
+        <div class="meta-block">
+          <span>Customer email</span>
+          <strong>${escapeHtml(order.customerEmail || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Shop request</span>
+          <strong>${escapeHtml(order.shopName || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Location</span>
+          <strong>${escapeHtml(order.location || "Around Umma University")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Amount sent</span>
+          <strong>KES ${escapeHtml(String(order.totalAmount || "0"))}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Payment code</span>
+          <strong>${escapeHtml(order.mpesaCode || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Order source</span>
+          <strong>Shop Here</strong>
+        </div>
+      </div>
+
+      <div class="notification-item feedback-message-card">
+        <p><strong>Items requested:</strong> ${escapeHtml(itemsText)}</p>
+      </div>
+
+      <div class="button-row">
+        ${
+          order.paid
+            ? ""
+            : `<button class="button button-success markShopOrderPaid" data-id="${escapeHtml(order.id)}" type="button">Mark as Paid</button>`
+        }
+        ${
+          order.delivered
+            ? ""
+            : `<button class="button button-secondary markShopOrderDelivered" data-id="${escapeHtml(order.id)}" type="button">Mark Delivered</button>`
+        }
+        <button class="button button-danger deleteShopOrder" data-id="${escapeHtml(order.id)}" type="button">Delete Order</button>
       </div>
     </article>
   `;
@@ -377,6 +483,10 @@ function renderAdminOrderCard(order) {
         <div class="meta-block">
           <span>Hotel till</span>
           <strong>${escapeHtml(hotel.till || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Location</span>
+          <strong>${escapeHtml(getHotelLocation(hotel))}</strong>
         </div>
         <div class="meta-block">
           <span>Service fee till</span>

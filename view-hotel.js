@@ -1,4 +1,5 @@
-import { elements, getHotelById, getNotificationsForTarget, getRestaurantByHotelId, state } from "./state.js";
+import { HOTEL_LOCATION_SUGGESTIONS } from "./config.js";
+import { elements, getHotelById, getHotelLocation, getNotificationsForTarget, getRestaurantByHotelId, state } from "./state.js";
 import { escapeHtml, formatCurrency, formatDateOnly, pluralize } from "./helpers.js";
 import { renderBrowseMenuTabs, renderGateCard, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
@@ -23,7 +24,7 @@ export function renderHotelPortal() {
           <div>
             <p class="eyebrow">Hotel workspace</p>
             <h2 class="view-title">Hotel Portal</h2>
-            <p class="view-copy">Login or register.</p>
+            <p class="view-copy">Login or register. New accounts wait for admin approval and activation.</p>
           </div>
         </div>
 
@@ -42,7 +43,7 @@ export function renderHotelPortal() {
               <input class="input" name="hotelPass" placeholder="Password" type="password" />
             </label>
 
-            <button class="button button-primary" type="submit">Login</button>
+            <button class="button button-primary button-small" type="submit">Login</button>
           </form>
 
           <form id="hotelRegister" class="card auth-card">
@@ -69,7 +70,16 @@ export function renderHotelPortal() {
               <input class="input" name="hotelTill" placeholder="Till number" />
             </label>
 
-            <button class="button button-secondary" type="submit">Register</button>
+            <label class="field">
+              <span class="field-label">Location / building</span>
+              <input class="input" list="hotelLocationOptions" name="hotelLocation" placeholder="Around Umma University" />
+            </label>
+
+            <datalist id="hotelLocationOptions">
+              ${HOTEL_LOCATION_SUGGESTIONS.map((location) => `<option value="${escapeHtml(location)}"></option>`).join("")}
+            </datalist>
+
+            <button class="button button-secondary button-small" type="submit">Register</button>
           </form>
         </div>
       </section>
@@ -155,6 +165,7 @@ export function renderHotelPortal() {
           <div class="summary-list">
             <div class="summary-item"><span>Phone</span><strong>${escapeHtml(hotel.phone || "N/A")}</strong></div>
             <div class="summary-item"><span>Till</span><strong>${escapeHtml(hotel.till || "N/A")}</strong></div>
+            <div class="summary-item"><span>Location</span><strong>${escapeHtml(getHotelLocation(hotel))}</strong></div>
             <div class="summary-item"><span>Approved</span><strong>${hotel.approved ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Subscription ends</span><strong>${formatDateOnly(hotel.subscriptionExpiry)}</strong></div>
           </div>
@@ -236,18 +247,22 @@ function renderHotelOrderCard(order) {
       </div>
 
       <div class="menu-list">
-        ${(order.items || [])
-          .map(
-            (item) => `
-              <div class="order-item">
-                <div class="split-row">
-                  <strong>${escapeHtml(`${item.qty || 1} x ${item.name}`)}</strong>
-                  <span class="item-price">${formatCurrency((item.qty || 1) * Number(item.price || 0))}</span>
-                </div>
-              </div>
-            `,
-          )
-          .join("")}
+        ${
+          (order.items || []).length
+            ? (order.items || [])
+                .map(
+                  (item) => `
+                    <div class="order-item">
+                      <div class="split-row">
+                        <strong>${escapeHtml(`${item.qty || 1} x ${item.name}`)}</strong>
+                        <span class="item-price">${formatCurrency((item.qty || 1) * Number(item.price || 0))}</span>
+                      </div>
+                    </div>
+                  `,
+                )
+                .join("")
+            : `<div class="order-item"><p class="is-muted">No order items were saved for this record.</p></div>`
+        }
       </div>
 
       <div class="button-row">

@@ -1,4 +1,3 @@
-import { SHOP_HERE_URL } from "./config.js";
 import { escapeHtml, formatTime, inferStatusTone } from "./helpers.js";
 
 export function renderNotifications(items) {
@@ -82,9 +81,6 @@ export function renderBrowseMenuTabs(currentTab) {
           `,
         )
         .join("")}
-      <a class="button button-ghost button-small" href="${SHOP_HERE_URL}" target="_blank" rel="noreferrer">
-        Shop Here
-      </a>
       <button class="button button-outline button-small browseDirectoryBtn" type="button">Hide Hotels</button>
     </div>
   `;

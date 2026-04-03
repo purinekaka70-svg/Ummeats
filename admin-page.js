@@ -64,6 +64,11 @@ function subscribeToCollections() {
     renderAdmin();
   });
 
+  onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
+    state.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    renderAdmin();
+  });
+
   onSnapshot(collection(db, "feedbacks"), (snapshot) => {
     state.feedbacks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderAdmin();
@@ -147,8 +152,23 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("markShopOrderPaid")) {
+    await markShopOrderPaid(button.dataset.id);
+    return;
+  }
+
+  if (button.classList.contains("markShopOrderDelivered")) {
+    await markShopOrderDelivered(button.dataset.id);
+    return;
+  }
+
   if (button.classList.contains("deleteOrder")) {
     await deleteOrder(button.dataset.id);
+    return;
+  }
+
+  if (button.classList.contains("deleteShopOrder")) {
+    await deleteShopOrder(button.dataset.id);
     return;
   }
 
@@ -287,6 +307,58 @@ async function deleteOrder(orderId) {
   }
 }
 
+async function markShopOrderPaid(orderId) {
+  const order = state.ummaShopOrders.find((item) => item.id === orderId);
+  if (!order) {
+    alert("Shop order not found.");
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "ummaShopOrders", orderId), { paid: true });
+    showToast("Shop Here order marked as paid.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to mark Shop Here order as paid.", "error");
+  }
+}
+
+async function markShopOrderDelivered(orderId) {
+  const order = state.ummaShopOrders.find((item) => item.id === orderId);
+  if (!order) {
+    alert("Shop order not found.");
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "ummaShopOrders", orderId), { delivered: true });
+    showToast("Shop Here order marked as delivered.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to update Shop Here order.", "error");
+  }
+}
+
+async function deleteShopOrder(orderId) {
+  const order = state.ummaShopOrders.find((item) => item.id === orderId);
+  if (!order) {
+    alert("Shop order not found.");
+    return;
+  }
+
+  if (!window.confirm("Delete this Shop Here order permanently?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "ummaShopOrders", orderId));
+    showToast("Shop Here order deleted.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to delete Shop Here order.", "error");
+  }
+}
+
 async function resolveFeedback(feedbackId) {
   const feedback = state.feedbacks.find((item) => item.id === feedbackId);
   if (!feedback) {
@@ -328,7 +400,16 @@ async function clearAllData() {
     return;
   }
 
-  const collections = ["hotels", "restaurants", "orders", "feedbacks", "notifications", "pushSubscriptions"];
+  const collections = [
+    "hotels",
+    "restaurants",
+    "orders",
+    "ummaShopOrders",
+    "feedbacks",
+    "ummaShopFeedbacks",
+    "notifications",
+    "pushSubscriptions",
+  ];
   for (const collectionName of collections) {
     const snapshot = await getDocs(collection(db, collectionName));
     for (const item of snapshot.docs) {
