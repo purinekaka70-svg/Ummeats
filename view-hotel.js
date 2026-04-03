@@ -1,6 +1,15 @@
 import { HOTEL_LOCATION_SUGGESTIONS } from "./config.js";
 import { elements, getHotelById, getHotelLocation, getNotificationsForTarget, getRestaurantByHotelId, state } from "./state.js";
-import { escapeHtml, formatCurrency, formatDateOnly, pluralize } from "./helpers.js";
+import {
+  escapeHtml,
+  formatCurrency,
+  formatDateOnly,
+  getMenuScheduleDetails,
+  MENU_DAY_OPTIONS,
+  MENU_MEAL_PERIOD_OPTIONS,
+  pluralize,
+  sortMenuItems,
+} from "./helpers.js";
 import { renderBrowseMenuTabs, renderGateCard, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
 export function renderHotelPortal() {
@@ -116,6 +125,7 @@ export function renderHotelPortal() {
 
   const hotelNotifications = getNotificationsForTarget(state.currentHotelId);
   const restaurant = getRestaurantByHotelId(state.currentHotelId) || { id: state.currentHotelId, menu: [] };
+  const sortedMenu = sortMenuItems(restaurant.menu || []);
   const hotelOrders = state.orders
     .filter((order) => order.hotelId === state.currentHotelId)
     .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -188,23 +198,54 @@ export function renderHotelPortal() {
               <input class="input" name="itemPrice" placeholder="Price in KSh" type="number" />
             </label>
 
+            <label class="field">
+              <span class="field-label">Availability</span>
+              <select class="input" name="itemAvailability">
+                <option value="daily">Daily menu</option>
+                <option value="scheduled">Specific day</option>
+              </select>
+            </label>
+
+            <div class="field-grid is-hidden" data-menu-schedule-fields>
+              <label class="field">
+                <span class="field-label">Day</span>
+                <select class="input" name="itemDay" disabled>
+                  <option value="">Choose day</option>
+                  ${MENU_DAY_OPTIONS.map((day) => `<option value="${escapeHtml(day)}">${escapeHtml(day)}</option>`).join("")}
+                </select>
+              </label>
+
+              <label class="field">
+                <span class="field-label">Meal time</span>
+                <select class="input" name="itemMealPeriod" disabled>
+                  <option value="">Any meal</option>
+                  ${MENU_MEAL_PERIOD_OPTIONS.map((period) => `<option value="${escapeHtml(period)}">${escapeHtml(period)}</option>`).join("")}
+                </select>
+              </label>
+            </div>
+
+            <p class="tiny">Leave the item on Daily menu if it is available every day. Choose a day only for scheduled items.</p>
+
             <button class="button button-primary" type="submit">Add Menu Item</button>
           </form>
 
           ${
-            restaurant.menu?.length
+            sortedMenu.length
               ? `<div class="menu-admin-list">
-                  ${restaurant.menu
+                  ${sortedMenu
                     .map(
-                      (item, index) => `
+                      (item) => `
                         <div class="menu-item">
-                          <div>
+                          <div class="menu-item-copy">
                             <p class="menu-item-name">${escapeHtml(item.name)}</p>
+                            <div class="inline-list menu-item-meta">
+                              <span class="summary-chip">${escapeHtml(getMenuScheduleDetails(item).label)}</span>
+                            </div>
                             <p class="item-price">${formatCurrency(item.price)}</p>
                           </div>
                           <button
                             class="button button-danger-soft button-small removeMenu"
-                            data-index="${escapeHtml(String(index))}"
+                            data-index="${escapeHtml(String(restaurant.menu.indexOf(item)))}"
                             type="button"
                           >
                             Remove

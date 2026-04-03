@@ -10,15 +10,23 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { ANNOUNCEMENT_TEXT, SERVICE_FEE, SERVICE_FEE_TILL, SMS_SIMULATION_ENABLED } from "./config.js";
 import { db } from "./firebase.js";
-import { escapeHtml, formatCurrency, inferToastTone } from "./helpers.js";
+import {
+  escapeHtml,
+  formatCurrency,
+  inferToastTone,
+  normalizeMenuDay,
+  normalizeMenuMealPeriod,
+} from "./helpers.js";
 import { registerPushSubscription, unregisterPushSubscription } from "./push.js";
 import {
   CUSTOMER_ID,
   elements,
   getCart,
+  getCartItemCount,
   getCartItemsTotal,
   getCheckoutDraft,
   getHotelById,
+  getHotelLocation,
   getLocationCards,
   getRestaurantByHotelId,
   getVisibleRestaurants,
@@ -72,6 +80,7 @@ function bindStaticEvents() {
   document.addEventListener("click", handleClick);
   document.addEventListener("submit", handleSubmit);
   document.addEventListener("input", handleInput);
+  document.addEventListener("change", handleChange);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
       closeCartModal();
@@ -331,6 +340,11 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("openHotelCartBtn")) {
+    openHotelCartShortcut(button.dataset.hotel);
+    return;
+  }
+
   if (button.classList.contains("viewMenuBtn")) {
     toggleMenu(button.dataset.hotel);
     return;
@@ -428,6 +442,13 @@ function handleInput(event) {
   state.checkoutDrafts[hotelId][field] = input.value;
 }
 
+function handleChange(event) {
+  const form = event.target.form;
+  if (form?.id === "addMenu" && event.target.name === "itemAvailability") {
+    syncMenuScheduleFields(form);
+  }
+}
+
 async function handleSubmit(event) {
   event.preventDefault();
   const form = event.target;
@@ -506,6 +527,34 @@ function toggleMenu(hotelId) {
   state.locationDirectoryOpen = false;
   state.activeHotelMenuId = state.activeHotelMenuId === hotelId ? null : hotelId;
   renderRestaurants();
+}
+
+function openHotelCartShortcut(hotelId) {
+  const cart = getCart(hotelId);
+  if (cart.length) {
+    openCartModal(hotelId);
+    return;
+  }
+
+  if (!isHotelOpenForCustomers(hotelId)) {
+    state.activeHotelMenuId = null;
+    showToast("This hotel is not available right now.", "info");
+    syncUi();
+    return;
+  }
+
+  state.restaurantDirectoryOpen = true;
+  state.locationDirectoryOpen = false;
+  state.activeHotelMenuId = hotelId;
+  renderRestaurants();
+
+  window.requestAnimationFrame(() => {
+    const menuSection = [...document.querySelectorAll("[data-hotel-menu-id]")]
+      .find((section) => section.dataset.hotelMenuId === hotelId);
+    menuSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  showToast("Cart is empty. Add items from this menu first.", "info");
 }
 
 function toggleRestaurantDirectory() {
@@ -742,14 +791,32 @@ async function loginHotel(form) {
 async function addMenuItem(form) {
   const name = form.elements.itemName.value.trim();
   const price = Number.parseFloat(form.elements.itemPrice.value);
+  const availability = form.elements.itemAvailability?.value === "scheduled" ? "scheduled" : "daily";
+  const day = availability === "scheduled" ? normalizeMenuDay(form.elements.itemDay?.value) : "";
+  const mealPeriod = availability === "scheduled"
+    ? normalizeMenuMealPeriod(form.elements.itemMealPeriod?.value)
+    : "";
 
   if (!name || Number.isNaN(price)) {
     alert("Fill a valid menu item and price.");
     return;
   }
 
+  if (availability === "scheduled" && !day) {
+    alert("Choose the day for this scheduled menu item.");
+    return;
+  }
+
   const restaurant = getRestaurantByHotelId(state.currentHotelId);
-  const nextMenu = [...(restaurant?.menu || []), { name, price }];
+  const nextMenu = [
+    ...(restaurant?.menu || []),
+    {
+      name,
+      price,
+      ...(day ? { day } : {}),
+      ...(mealPeriod ? { mealPeriod } : {}),
+    },
+  ];
   const docId = restaurant?.id || state.currentHotelId;
 
   await setDoc(doc(db, "restaurants", docId), {
@@ -758,7 +825,31 @@ async function addMenuItem(form) {
   });
 
   form.reset();
+  syncMenuScheduleFields(form);
   showToast("Menu item added.", "success");
+}
+
+function syncMenuScheduleFields(form) {
+  const isScheduled = form?.elements.itemAvailability?.value === "scheduled";
+  const scheduleFields = form?.querySelector("[data-menu-schedule-fields]");
+  const daySelect = form?.elements.itemDay;
+  const mealPeriodSelect = form?.elements.itemMealPeriod;
+
+  scheduleFields?.classList.toggle("is-hidden", !isScheduled);
+
+  if (daySelect) {
+    daySelect.disabled = !isScheduled;
+    if (!isScheduled) {
+      daySelect.value = "";
+    }
+  }
+
+  if (mealPeriodSelect) {
+    mealPeriodSelect.disabled = !isScheduled;
+    if (!isScheduled) {
+      mealPeriodSelect.value = "";
+    }
+  }
 }
 
 function openCartModal(hotelId) {
@@ -777,6 +868,7 @@ function openCartModal(hotelId) {
 
   const hotel = getHotelById(hotelId);
   const draft = getCheckoutDraft(hotelId);
+  const cartItemCount = getCartItemCount(cart);
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + SERVICE_FEE;
 
@@ -784,9 +876,10 @@ function openCartModal(hotelId) {
     <div class="stack">
       <div class="split-row">
         <div>
-          <p class="eyebrow">Confirm order</p>
+          <p class="eyebrow">Cart</p>
           <h3 id="modalTitle" class="card-title">${escapeHtml(hotel.name)}</h3>
         </div>
+        <span class="summary-chip">${cartItemCount} item${cartItemCount === 1 ? "" : "s"}</span>
         <button class="button button-outline button-small" id="closeCartModal" type="button">Close</button>
       </div>
 
@@ -809,6 +902,23 @@ function openCartModal(hotelId) {
         <div class="summary-item"><span>Items total</span><strong>${formatCurrency(itemsTotal)}</strong></div>
         <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(SERVICE_FEE)}</strong></div>
         <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
+      </div>
+
+      <div class="cart-alert">
+        <strong>Before placing order</strong>
+        <p>
+          Please call
+          <a href="tel:${escapeHtml(hotel.phone || "")}">${escapeHtml(hotel.phone || "the hotel")}</a>
+          before placing order for food confirmation.
+        </p>
+        <p class="tiny">Pay the delivery fee in till ${escapeHtml(SERVICE_FEE_TILL)}.</p>
+      </div>
+
+      <div class="info-box">
+        <p><strong>${escapeHtml(hotel.name)}</strong> location: ${escapeHtml(getHotelLocation(hotel))}</p>
+        <p><strong>${escapeHtml(hotel.name)}</strong> phone: ${escapeHtml(hotel.phone || "N/A")}</p>
+        <p><strong>${escapeHtml(hotel.name)}</strong> food till: ${escapeHtml(hotel.till || "N/A")}</p>
+        <p class="tiny">Service fee till: ${escapeHtml(SERVICE_FEE_TILL)}</p>
       </div>
 
       <div class="field-grid">
@@ -861,10 +971,10 @@ function openCartModal(hotelId) {
         <button class="button button-primary" data-hotel="${escapeHtml(hotelId)}" id="confirmOrderBtn" type="button">
           Confirm Order
         </button>
-        <button class="button button-outline" id="closeCartModal" type="button">Return to Cart</button>
+        <button class="button button-outline" id="closeCartModal" type="button">Keep Shopping</button>
       </div>
 
-      <p class="tiny">Closing the dialog returns you to the cart so you can keep editing the order.</p>
+      <p class="tiny">You can continue payment details here without scrolling down the page.</p>
     </div>
   `;
 

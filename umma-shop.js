@@ -13,7 +13,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { SUPPORT_CONTACTS } from "./config.js";
+import { SERVICE_FEE_TILL, SUPPORT_CONTACTS } from "./config.js";
 import { auth, db } from "./firebase.js";
 import { escapeHtml } from "./helpers.js";
 
@@ -59,6 +59,7 @@ const elements = {
   shopName: document.getElementById("shopName"),
   submitFeedbackBtn: document.getElementById("submitFeedbackBtn"),
   submitOrderBtn: document.getElementById("submitOrderBtn"),
+  serviceFeeTillTargets: document.querySelectorAll("[data-service-fee-till]"),
   totalAmount: document.getElementById("totalAmount"),
 };
 
@@ -72,11 +73,18 @@ bootstrap();
 
 function bootstrap() {
   bindEvents();
+  hydrateStaticCopy();
   renderItems();
   hydrateCustomerOrders();
   subscribeToAdminAuth();
   setViewMode("orders");
   window.setUmmaShopView = setViewMode;
+}
+
+function hydrateStaticCopy() {
+  elements.serviceFeeTillTargets.forEach((element) => {
+    element.textContent = SERVICE_FEE_TILL;
+  });
 }
 
 function bindEvents() {

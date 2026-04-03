@@ -1,6 +1,6 @@
 /* global importScripts, firebase */
 
-const APP_CACHE = "tamu-app-v12";
+const APP_CACHE = "tamu-app-v22";
 const APP_SHELL = [
   "./",
   "./index.html",

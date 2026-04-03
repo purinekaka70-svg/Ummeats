@@ -2,6 +2,22 @@ export function formatCurrency(value) {
   return `KSh ${Number(value || 0).toLocaleString("en-KE")}`;
 }
 
+export const MENU_DAY_OPTIONS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
+
+export const MENU_MEAL_PERIOD_OPTIONS = [
+  "Breakfast",
+  "Lunch",
+  "Supper",
+];
+
 export function formatTime(timestamp) {
   try {
     return new Date(timestamp).toLocaleString("en-KE", {
@@ -28,6 +44,68 @@ export function formatDateOnly(timestamp) {
 
 export function pluralize(count) {
   return Number(count) === 1 ? "" : "s";
+}
+
+export function normalizeMenuDay(value) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return MENU_DAY_OPTIONS.find((item) => item.toLowerCase() === normalizedValue) || "";
+}
+
+export function normalizeMenuMealPeriod(value) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return MENU_MEAL_PERIOD_OPTIONS.find((item) => item.toLowerCase() === normalizedValue) || "";
+}
+
+export function getMenuScheduleDetails(item) {
+  const day = normalizeMenuDay(item?.day);
+  const mealPeriod = normalizeMenuMealPeriod(item?.mealPeriod);
+  const isScheduled = Boolean(day || mealPeriod);
+  const label = day
+    ? `${day}${mealPeriod ? ` ${mealPeriod}` : ""}`
+    : mealPeriod
+      ? mealPeriod
+      : "Daily menu";
+
+  return {
+    day,
+    isScheduled,
+    label,
+    mealPeriod,
+  };
+}
+
+export function sortMenuItems(items) {
+  return [...(Array.isArray(items) ? items : [])].sort((left, right) => {
+    const leftSchedule = getMenuScheduleDetails(left);
+    const rightSchedule = getMenuScheduleDetails(right);
+
+    if (leftSchedule.isScheduled !== rightSchedule.isScheduled) {
+      return leftSchedule.isScheduled ? 1 : -1;
+    }
+
+    const leftDayIndex = leftSchedule.day ? MENU_DAY_OPTIONS.indexOf(leftSchedule.day) : -1;
+    const rightDayIndex = rightSchedule.day ? MENU_DAY_OPTIONS.indexOf(rightSchedule.day) : -1;
+    if (leftDayIndex !== rightDayIndex) {
+      return leftDayIndex - rightDayIndex;
+    }
+
+    const leftMealIndex = leftSchedule.mealPeriod
+      ? MENU_MEAL_PERIOD_OPTIONS.indexOf(leftSchedule.mealPeriod)
+      : -1;
+    const rightMealIndex = rightSchedule.mealPeriod
+      ? MENU_MEAL_PERIOD_OPTIONS.indexOf(rightSchedule.mealPeriod)
+      : -1;
+    if (leftMealIndex !== rightMealIndex) {
+      return leftMealIndex - rightMealIndex;
+    }
+
+    const nameCompare = String(left?.name || "").localeCompare(String(right?.name || ""));
+    if (nameCompare !== 0) {
+      return nameCompare;
+    }
+
+    return Number(left?.price || 0) - Number(right?.price || 0);
+  });
 }
 
 export function escapeHtml(value) {

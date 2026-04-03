@@ -926,6 +926,45 @@ button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  gap: 10px;
+}
+
+.restaurant-card-instruction {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.button-cart-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(21, 128, 61, 0.18);
+  background: rgba(21, 128, 61, 0.1);
+  color: var(--accent-strong);
+}
+
+.button-cart-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.restaurant-card-cart-count {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 0.72rem;
 }
 
 .card-head {
@@ -1033,12 +1072,30 @@ button {
   background: rgba(255, 255, 255, 0.86);
 }
 
+.menu-cart-summary,
 .menu-panel,
 .cart-panel {
   padding: 18px;
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.82);
+}
+
+.menu-cart-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  background: linear-gradient(180deg, rgba(22, 163, 74, 0.06), rgba(255, 255, 255, 0.96));
+}
+
+.menu-cart-summary-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.menu-cart-summary-copy h4 {
+  margin: 0;
 }
 
 .cart-panel {
@@ -1094,6 +1151,15 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.menu-item-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.menu-item-meta {
+  margin-top: 2px;
 }
 
 .menu-item-name,
@@ -1509,6 +1575,7 @@ button {
   .topbar,
   .view-header,
   .card-head,
+  .menu-cart-summary,
   .menu-detail-head,
   .order-header,
   .split-row,
