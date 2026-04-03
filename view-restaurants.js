@@ -31,9 +31,9 @@ export function renderRestaurants() {
             ? ""
             : `
                 <article class="card launch-card">
-                  <p class="launch-eyebrow">Shop Here</p>
+                  <p class="launch-eyebrow">Delivery Marketplace</p>
                   <h2 class="launch-title">Go Live Supermarkets</h2>
-                  <p class="launch-copy">Supermarkets and more around Kajiado.</p>
+                  <p class="launch-copy">Shop supermarkets, essentials, and delivery-ready items around Kajiado.</p>
                   <div class="launch-actions">
                     <a class="button button-ghost" href="${SHOP_HERE_URL}" target="_blank" rel="noreferrer">
                       Shop Here
@@ -82,9 +82,9 @@ export function renderRestaurants() {
 function renderHotelLaunchCard(directoryOpen) {
   return `
     <article class="card launch-card">
-      <p class="launch-eyebrow">Tamu Express</p>
-      <h2 class="launch-title">Around Umma University</h2>
-      <p class="launch-copy">Browse hotels and menus around campus.</p>
+      <p class="launch-eyebrow">Tamu Express Delivery</p>
+      <h1 class="launch-title">Food Delivery and Hotel Orders in Kenya</h1>
+      <p class="launch-copy">Browse hotel menus, place food orders, and access fast campus delivery support with Tamu Express.</p>
       ${
         directoryOpen
           ? renderBrowseMenuTabs("restaurants")
