@@ -15,8 +15,8 @@ export function renderAdmin() {
 
         <form id="adminLogin" class="card auth-card">
           <label class="field">
-            <span class="field-label">Username</span>
-            <input class="input" name="adminUser" placeholder="Username" />
+            <span class="field-label">Admin email</span>
+            <input class="input" name="adminEmail" placeholder="admin@example.com" type="email" />
           </label>
 
           <label class="field">
@@ -24,6 +24,7 @@ export function renderAdmin() {
             <input class="input" name="adminPass" placeholder="Password" type="password" />
           </label>
 
+          <p class="tiny">Use the admin account you added in Firebase Authentication.</p>
           <button class="button button-primary" type="submit">Login</button>
         </form>
       </section>
@@ -40,6 +41,8 @@ export function renderAdmin() {
   ).length;
   const paidOrders = state.orders.filter((order) => (order.status || "Pending") === "Paid").length;
   const pendingOrders = state.orders.filter((order) => (order.status || "Pending") !== "Paid").length;
+  const totalFeedbacks = state.feedbacks.length;
+  const unreadFeedbacks = state.feedbacks.filter((item) => (item.status || "New") !== "Reviewed").length;
   const totalOrders = state.orders.length;
   const currentSection = state.adminPanelSection || "dashboard";
   const unreadNotifications = adminNotifications.filter((item) => !item.read).length;
@@ -61,10 +64,11 @@ export function renderAdmin() {
           ${renderAdminNavButton("dashboard", "Dashboard", `${pendingOrders} pending orders`, currentSection)}
           ${renderAdminNavButton("hotels", "Registered Hotels", `${state.hotels.length} hotel${pluralize(state.hotels.length)}`, currentSection)}
           ${renderAdminNavButton("orders", "Orders", `${totalOrders} total order${pluralize(totalOrders)}`, currentSection)}
+          ${renderAdminNavButton("feedbacks", "Feedbacks", `${unreadFeedbacks} open complaint${pluralize(unreadFeedbacks)}`, currentSection)}
         </div>
 
         <div class="info-box admin-sidebar-note">
-          <p>Open a section from this menu to review hotels, track orders, mark orders as paid, or delete them.</p>
+          <p>Open a section from this menu to review hotels, track orders, handle customer feedback, and manage platform activity.</p>
         </div>
       </aside>
 
@@ -106,7 +110,9 @@ export function renderAdmin() {
           paidOrders,
           pendingHotels,
           pendingOrders,
+          totalFeedbacks,
           totalOrders,
+          unreadFeedbacks,
           unreadNotifications,
         })}
       </div>
@@ -139,6 +145,10 @@ function renderAdminSection(section, summary) {
 
   if (section === "orders") {
     return renderOrdersSection();
+  }
+
+  if (section === "feedbacks") {
+    return renderFeedbacksSection();
   }
 
   return renderDashboardSection(summary);
@@ -185,6 +195,14 @@ function renderDashboardSection(summary) {
           <span class="stat-label">Unread Alerts</span>
           <strong>${summary.unreadNotifications}</strong>
         </article>
+        <article class="stat-card">
+          <span class="stat-label">Feedbacks</span>
+          <strong>${summary.totalFeedbacks}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Open Complaints</span>
+          <strong>${summary.unreadFeedbacks}</strong>
+        </article>
       </div>
 
       <div class="two-column">
@@ -209,6 +227,7 @@ function renderDashboardSection(summary) {
           <div class="summary-list">
             <div class="summary-item"><span>Use Orders</span><strong>Mark paid or delete</strong></div>
             <div class="summary-item"><span>Use Registered Hotels</span><strong>Approve and manage</strong></div>
+            <div class="summary-item"><span>Use Feedbacks</span><strong>Review support complaints</strong></div>
             <div class="summary-item"><span>Notifications</span><strong>${summary.unreadNotifications} unread</strong></div>
             <div class="summary-item"><span>Subscription control</span><strong>Active from hotel list</strong></div>
           </div>
@@ -219,7 +238,7 @@ function renderDashboardSection(summary) {
         <div class="split-row">
           <div>
             <h3 class="card-title">Danger Zone</h3>
-            <p class="card-copy">This permanently deletes every hotel, menu, order, and notification.</p>
+            <p class="card-copy">This permanently deletes every hotel, menu, order, feedback, and notification.</p>
           </div>
           <button class="button button-danger" id="clearAll" type="button">Clear All Data</button>
         </div>
@@ -259,6 +278,25 @@ function renderOrdersSection() {
         orders.length
           ? `<div class="order-list">${orders.map(renderAdminOrderCard).join("")}</div>`
           : renderEmptyState("No orders yet", "Placed orders will appear here for the admin immediately.")
+      }
+    </section>
+  `;
+}
+
+function renderFeedbacksSection() {
+  const feedbacks = [...state.feedbacks].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Feedbacks</h4>
+        <span class="summary-chip">${feedbacks.length} complaint${pluralize(feedbacks.length)}</span>
+      </div>
+
+      ${
+        feedbacks.length
+          ? `<div class="order-list">${feedbacks.map(renderFeedbackCard).join("")}</div>`
+          : renderEmptyState("No feedback yet", "Customer complaints and support feedback will appear here.")
       }
     </section>
   `;
@@ -380,6 +418,47 @@ function renderAdminOrderCard(order) {
             : ""
         }
         <button class="button button-danger deleteOrder" data-id="${escapeHtml(order.id)}" type="button">Delete Order</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderFeedbackCard(feedback) {
+  const feedbackStatus = feedback.status || "New";
+
+  return `
+    <article class="card order-card">
+      <div class="order-header">
+        <div>
+          <p class="eyebrow">Customer feedback</p>
+          <h3>${escapeHtml(feedback.name || "Anonymous sender")}</h3>
+          <p class="tiny">${formatTime(feedback.createdAt)}</p>
+        </div>
+        ${renderStatusPill(feedbackStatus, feedbackStatus === "Reviewed" ? "active" : "pending")}
+      </div>
+
+      <div class="order-meta-grid">
+        <div class="meta-block">
+          <span>Phone</span>
+          <strong>${escapeHtml(feedback.phone || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Type</span>
+          <strong>Support complaint</strong>
+        </div>
+      </div>
+
+      <div class="notification-item feedback-message-card">
+        <p>${escapeHtml(feedback.message || "No message provided.")}</p>
+      </div>
+
+      <div class="button-row">
+        ${
+          feedbackStatus !== "Reviewed"
+            ? `<button class="button button-success resolveFeedback" data-id="${escapeHtml(feedback.id)}" type="button">Mark Reviewed</button>`
+            : ""
+        }
+        <button class="button button-danger deleteFeedback" data-id="${escapeHtml(feedback.id)}" type="button">Delete Feedback</button>
       </div>
     </article>
   `;

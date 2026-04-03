@@ -56,7 +56,8 @@ a {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -453,6 +454,37 @@ button {
   margin: 12px 0 0;
   color: var(--muted);
   line-height: 1.7;
+}
+
+.contact-support-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.support-card {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.support-card h4 {
+  margin-top: 8px;
+}
+
+.support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.feedback-form {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
 }
 
 .site-info-inline-link {
@@ -983,6 +1015,12 @@ button {
   color: var(--ink);
 }
 
+.textarea {
+  min-height: 148px;
+  padding: 14px;
+  resize: vertical;
+}
+
 .qty-input {
   width: 82px;
   text-align: center;
@@ -1134,6 +1172,10 @@ button {
 .notification-item {
   display: grid;
   gap: 8px;
+}
+
+.feedback-message-card {
+  background: rgba(255, 255, 255, 0.8);
 }
 
 .notification-item p {

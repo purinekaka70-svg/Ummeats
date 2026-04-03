@@ -330,6 +330,11 @@ async function handleSubmit(event) {
   event.preventDefault();
   const form = event.target;
 
+  if (form.id === "feedbackForm") {
+    await submitFeedback(form);
+    return;
+  }
+
   if (form.id === "hotelRegister") {
     await registerHotel(form);
     return;
@@ -343,6 +348,48 @@ async function handleSubmit(event) {
   if (form.id === "addMenu") {
     await addMenuItem(form);
   }
+}
+
+async function submitFeedback(form) {
+  const name = form.elements.feedbackName.value.trim();
+  const phone = form.elements.feedbackPhone.value.trim();
+  const message = form.elements.feedbackMessage.value.trim();
+
+  if (!name || !phone || !message) {
+    alert("Fill your name, phone number, and feedback message.");
+    return;
+  }
+
+  const feedbackPayload = {
+    createdAt: Date.now(),
+    message,
+    name,
+    phone,
+    status: "New",
+  };
+
+  try {
+    await addDoc(collection(db, "feedbacks"), feedbackPayload);
+  } catch (error) {
+    console.error("Feedback write failed", error);
+    showToast("Failed to send feedback.", "error");
+    return;
+  }
+
+  try {
+    await addDoc(collection(db, "notifications"), {
+      message: `New feedback from ${name} (${phone})`,
+      read: false,
+      timestamp: Date.now(),
+      to: "admin",
+      type: "feedback",
+    });
+  } catch (error) {
+    console.warn("Feedback notification write failed", error);
+  }
+
+  form.reset();
+  showToast("Feedback sent successfully.", "success");
 }
 
 function toggleMenu(hotelId) {

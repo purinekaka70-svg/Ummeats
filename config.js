@@ -10,7 +10,6 @@ export const firebaseConfig = {
 export const SERVICE_FEE = 40;
 export const SERVICE_FEE_TILL = "0115613332 (Pochi Labiashara)";
 export const SUPPORT_CONTACTS = ["0115613332", "0116860686"];
-export const ADMIN_CRED = { user: "admin", pass: "TamuAdmin@2025" };
 export const SMS_SIMULATION_ENABLED = true;
 export const SHOP_HERE_URL = "https://purinekaka70-svg.github.io/feedback.tamu/";
 

@@ -7,8 +7,12 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { ADMIN_CRED } from "./config.js";
-import { db } from "./firebase.js";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { auth, db } from "./firebase.js";
 import { inferToastTone } from "./helpers.js";
 import { elements, getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
@@ -22,6 +26,7 @@ function bootstrap() {
   state.adminSidebarOpen = false;
   bindEvents();
   hydrateShell();
+  subscribeToAuth();
   subscribeToCollections();
   renderAdmin();
 }
@@ -58,8 +63,26 @@ function subscribeToCollections() {
     renderAdmin();
   });
 
+  onSnapshot(collection(db, "feedbacks"), (snapshot) => {
+    state.feedbacks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    renderAdmin();
+  });
+
   onSnapshot(collection(db, "notifications"), (snapshot) => {
     state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    renderAdmin();
+  });
+}
+
+function subscribeToAuth() {
+  onAuthStateChanged(auth, (user) => {
+    state.currentAdmin = Boolean(user);
+
+    if (!user) {
+      state.adminPanelSection = "dashboard";
+      state.adminSidebarOpen = false;
+    }
+
     renderAdmin();
   });
 }
@@ -124,11 +147,19 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("resolveFeedback")) {
+    await resolveFeedback(button.dataset.id);
+    return;
+  }
+
+  if (button.classList.contains("deleteFeedback")) {
+    await deleteFeedback(button.dataset.id);
+    return;
+  }
+
   if (button.id === "logoutAdmin") {
-    state.currentAdmin = false;
-    state.adminPanelSection = "dashboard";
-    state.adminSidebarOpen = false;
-    renderAdmin();
+    await signOut(auth);
+    showToast("Admin logged out.", "info");
     return;
   }
 
@@ -153,19 +184,22 @@ async function handleSubmit(event) {
     return;
   }
 
-  const user = form.elements.adminUser.value.trim();
+  const user = form.elements.adminEmail.value.trim();
   const pass = form.elements.adminPass.value.trim();
 
-  if (user === ADMIN_CRED.user && pass === ADMIN_CRED.pass) {
-    state.currentAdmin = true;
-    state.adminPanelSection = "dashboard";
-    state.adminSidebarOpen = false;
-    showToast("Admin login successful.", "success");
-    renderAdmin();
+  if (!user || !pass) {
+    alert("Enter admin email and password.");
     return;
   }
 
-  alert("Wrong admin credentials.");
+  try {
+    await signInWithEmailAndPassword(auth, user, pass);
+    form.reset();
+    showToast("Admin login successful.", "success");
+  } catch (error) {
+    console.error(error);
+    alert("Wrong admin email or password.");
+  }
 }
 
 async function toggleHotelBlock(hotelId) {
@@ -247,12 +281,48 @@ async function deleteOrder(orderId) {
   }
 }
 
-async function clearAllData() {
-  if (!window.confirm("Delete all hotels, restaurants, orders, and notifications?")) {
+async function resolveFeedback(feedbackId) {
+  const feedback = state.feedbacks.find((item) => item.id === feedbackId);
+  if (!feedback) {
+    alert("Feedback not found.");
     return;
   }
 
-  const collections = ["hotels", "restaurants", "orders", "notifications"];
+  try {
+    await updateDoc(doc(db, "feedbacks", feedbackId), { status: "Reviewed" });
+    showToast("Feedback marked as reviewed.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to update feedback.", "error");
+  }
+}
+
+async function deleteFeedback(feedbackId) {
+  const feedback = state.feedbacks.find((item) => item.id === feedbackId);
+  if (!feedback) {
+    alert("Feedback not found.");
+    return;
+  }
+
+  if (!window.confirm("Delete this feedback permanently?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "feedbacks", feedbackId));
+    showToast("Feedback deleted.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to delete feedback.", "error");
+  }
+}
+
+async function clearAllData() {
+  if (!window.confirm("Delete all hotels, restaurants, orders, feedbacks, and notifications?")) {
+    return;
+  }
+
+  const collections = ["hotels", "restaurants", "orders", "feedbacks", "notifications"];
   for (const collectionName of collections) {
     const snapshot = await getDocs(collection(db, collectionName));
     for (const item of snapshot.docs) {

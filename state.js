@@ -6,6 +6,7 @@ export const state = {
   hotels: [],
   restaurants: [],
   orders: [],
+  feedbacks: [],
   notifications: [],
   cartByHotel: {},
   checkoutDrafts: {},

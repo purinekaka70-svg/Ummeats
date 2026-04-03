@@ -79,14 +79,67 @@
           <p class="eyebrow">Contact</p>
           <h3 class="card-title site-info-card-title">Reach the support team</h3>
           <p class="site-info-copy">
-            For customer help, hotel onboarding, partnerships, or general service inquiries, you can contact the team on
-            <a class="site-info-inline-link" href="tel:0115613332">0115613332</a> or
-            <a class="site-info-inline-link" href="tel:0116860686">0116860686</a>.
+            For support, partnerships, hotel onboarding, or general service assistance, you can start a WhatsApp chat,
+            place a direct call, or send feedback from the form below.
           </p>
-          <p class="site-info-copy">
-            We welcome conversations with customers, hotels, institutions, and firms that are looking for dependable
-            support or a strong digital presence.
-          </p>
+
+          <div class="contact-support-grid">
+            <article class="support-card">
+              <p class="eyebrow">Support line 1</p>
+              <h4 class="card-title">0115613332</h4>
+              <p class="site-info-copy">Chat on WhatsApp or call directly for faster support.</p>
+              <div class="support-actions">
+                <a class="button button-primary" href="https://wa.me/254115613332?text=Hello%20Tamu%20Express%20support" target="_blank" rel="noreferrer">
+                  Chat WhatsApp
+                </a>
+                <a class="button button-outline" href="tel:0115613332">
+                  Call
+                </a>
+              </div>
+            </article>
+
+            <article class="support-card">
+              <p class="eyebrow">Support line 2</p>
+              <h4 class="card-title">0116860686</h4>
+              <p class="site-info-copy">Use this second support line for help, follow-up, or business inquiries.</p>
+              <div class="support-actions">
+                <a class="button button-primary" href="https://wa.me/254116860686?text=Hello%20Tamu%20Express%20support" target="_blank" rel="noreferrer">
+                  Chat WhatsApp
+                </a>
+                <a class="button button-outline" href="tel:0116860686">
+                  Call
+                </a>
+              </div>
+            </article>
+          </div>
+
+          <form id="feedbackForm" class="feedback-form stack">
+            <div class="section-head">
+              <h4>Feedback</h4>
+              <span class="summary-chip">Admin receives complaints here</span>
+            </div>
+
+            <div class="field-grid">
+              <label class="field">
+                <span class="field-label">Your name</span>
+                <input class="input" name="feedbackName" placeholder="Your name" />
+              </label>
+
+              <label class="field">
+                <span class="field-label">Phone number</span>
+                <input class="input" name="feedbackPhone" placeholder="07XXXXXXXX" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field-label">Complaint or feedback</span>
+              <textarea class="input textarea" name="feedbackMessage" placeholder="Write your complaint, concern, or suggestion here."></textarea>
+            </label>
+
+            <div class="button-row">
+              <button class="button button-primary" type="submit">Send Feedback</button>
+            </div>
+          </form>
         </article>
 
         <article id="locationSection" class="card site-info-card is-hidden">
