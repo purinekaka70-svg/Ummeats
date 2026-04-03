@@ -188,8 +188,7 @@ function setBadge(element, count, tone) {
 }
 
 function setInfoSection(sectionId) {
-  state.currentInfoSection =
-    state.currentInfoSection === sectionId ? null : sectionId || null;
+  state.currentInfoSection = sectionId || null;
   updateInfoSections();
 
   const section = state.currentInfoSection ? document.getElementById(state.currentInfoSection) : null;
