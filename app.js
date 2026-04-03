@@ -35,6 +35,7 @@ function bootstrap() {
   bindStaticEvents();
   hydrateStaticShell();
   subscribeToCollections();
+  updateInfoSections();
   syncUi();
 }
 
@@ -186,7 +187,36 @@ function setBadge(element, count, tone) {
     : "";
 }
 
+function setInfoSection(sectionId) {
+  state.currentInfoSection = sectionId || "aboutSection";
+  updateInfoSections();
+
+  const section = document.getElementById(state.currentInfoSection);
+  if (section) {
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+function updateInfoSections() {
+  const currentSection = state.currentInfoSection || "aboutSection";
+
+  document.querySelectorAll("[data-info-target]").forEach((trigger) => {
+    trigger.classList.toggle("is-active", trigger.dataset.infoTarget === currentSection);
+  });
+
+  document.querySelectorAll(".site-info-card").forEach((card) => {
+    card.classList.toggle("is-hidden", card.id !== currentSection);
+  });
+}
+
 async function handleClick(event) {
+  const infoTrigger = event.target.closest("[data-info-target]");
+  if (infoTrigger) {
+    event.preventDefault();
+    setInfoSection(infoTrigger.dataset.infoTarget);
+    return;
+  }
+
   const switchTrigger = event.target.closest("[data-switch-tab]");
   if (switchTrigger) {
     switchTab(switchTrigger.dataset.switchTab);

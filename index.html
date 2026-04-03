@@ -24,10 +24,18 @@
       </div>
 
       <div class="topbar-actions site-topbar-actions">
-        <a class="button button-ghost button-small site-topbar-link" href="#aboutSection">About</a>
-        <a class="button button-ghost button-small site-topbar-link" href="#visionSection">Vision</a>
-        <a class="button button-ghost button-small site-topbar-link" href="#contactSection">Contact</a>
-        <a class="button button-ghost button-small site-topbar-link" href="#locationSection">Location</a>
+        <button class="button button-ghost button-small site-topbar-link is-active" data-info-target="aboutSection" type="button">
+          About
+        </button>
+        <button class="button button-ghost button-small site-topbar-link" data-info-target="visionSection" type="button">
+          Vision
+        </button>
+        <button class="button button-ghost button-small site-topbar-link" data-info-target="contactSection" type="button">
+          Contact
+        </button>
+        <button class="button button-ghost button-small site-topbar-link" data-info-target="locationSection" type="button">
+          Location
+        </button>
       </div>
     </header>
 
@@ -48,7 +56,7 @@
         </div>
       </article>
 
-      <div class="two-column site-info-grid">
+      <div class="site-info-grid">
         <article id="aboutSection" class="card site-info-card">
           <p class="eyebrow">About</p>
           <h3 class="card-title site-info-card-title">Powered by Teams Technologies</h3>
@@ -65,7 +73,7 @@
           </p>
         </article>
 
-        <article id="visionSection" class="card site-info-card">
+        <article id="visionSection" class="card site-info-card is-hidden">
           <p class="eyebrow">Vision</p>
           <h3 class="card-title site-info-card-title">To make service feel direct, modern, and reliable.</h3>
           <p class="site-info-copy">
@@ -79,7 +87,7 @@
           </p>
         </article>
 
-        <article id="contactSection" class="card site-info-card">
+        <article id="contactSection" class="card site-info-card is-hidden">
           <p class="eyebrow">Contact</p>
           <h3 class="card-title site-info-card-title">Reach the support team</h3>
           <p class="site-info-copy">
@@ -93,7 +101,7 @@
           </p>
         </article>
 
-        <article id="locationSection" class="card site-info-card">
+        <article id="locationSection" class="card site-info-card is-hidden">
           <p class="eyebrow">Location</p>
           <h3 class="card-title site-info-card-title">Mombasa, Kenya</h3>
           <p class="site-info-copy">

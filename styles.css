@@ -136,6 +136,13 @@ button {
   text-decoration: none;
 }
 
+.site-topbar-link.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 12px 26px rgba(17, 83, 57, 0.2);
+}
+
 .nav-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -441,6 +448,9 @@ button {
 }
 
 .site-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
   align-items: stretch;
 }
 
