@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin.html
 
-Sitemap: https://tamuexpress.vercel.app/sitemap.xml
+Sitemap: https://ummeats.vercel.app/sitemap.xml
