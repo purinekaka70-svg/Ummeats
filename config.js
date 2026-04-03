@@ -8,6 +8,7 @@ export const firebaseConfig = {
 };
 
 export const SERVICE_FEE = 40;
+export const STAFF_LOUNGE_SERVICE_FEE = 30;
 export const SERVICE_FEE_TILL = "7312380";
 export const SUPPORT_CONTACTS = ["0115613332", "0116860686"];
 export const FCM_WEB_PUSH_PUBLIC_KEY = "BD77JSoEwUOLMjLRerGARPzlysRE4CfhHl66Q9mZhtwECoHg0bbV_hukzoJCcytG3jNc9k74VWrmg9ldi2TzxEI";
@@ -24,3 +25,14 @@ export const HOTEL_LOCATION_SUGGESTIONS = [
 ];
 
 export const ANNOUNCEMENT_TEXT = "Order times: No morning orders | Lunch: 11:30 AM - 2:00 PM | Evening: 4:00 PM - 8:00 PM";
+
+export function getServiceFeeForHotel(hotelOrName) {
+  const hotelName = typeof hotelOrName === "string" ? hotelOrName : hotelOrName?.name;
+  const normalizedName = String(hotelName || "").trim().replace(/\s+/g, " ").toLowerCase();
+
+  if (normalizedName.includes("staff lounge")) {
+    return STAFF_LOUNGE_SERVICE_FEE;
+  }
+
+  return SERVICE_FEE;
+}

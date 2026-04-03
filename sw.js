@@ -1,6 +1,6 @@
 /* global importScripts, firebase */
 
-const APP_CACHE = "tamu-app-v22";
+const APP_CACHE = "tamu-app-v27";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -23,10 +23,12 @@ const APP_SHELL = [
   "./view-orders.js",
   "./view-restaurants.js",
   "./manifest.webmanifest",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
 ];
-const APP_ICON = "./icons/icon-192.svg";
+const APP_ICON = "./icons/icon-192.png";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

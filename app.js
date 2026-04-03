@@ -8,7 +8,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { ANNOUNCEMENT_TEXT, SERVICE_FEE, SERVICE_FEE_TILL, SMS_SIMULATION_ENABLED } from "./config.js";
+import { ANNOUNCEMENT_TEXT, getServiceFeeForHotel, SERVICE_FEE, SERVICE_FEE_TILL, SMS_SIMULATION_ENABLED } from "./config.js";
 import { db } from "./firebase.js";
 import {
   escapeHtml,
@@ -869,8 +869,9 @@ function openCartModal(hotelId) {
   const hotel = getHotelById(hotelId);
   const draft = getCheckoutDraft(hotelId);
   const cartItemCount = getCartItemCount(cart);
+  const serviceFee = getServiceFeeForHotel(hotel);
   const itemsTotal = getCartItemsTotal(cart);
-  const total = itemsTotal + SERVICE_FEE;
+  const total = itemsTotal + serviceFee;
 
   elements.cartModalContent.innerHTML = `
     <div class="stack">
@@ -900,7 +901,7 @@ function openCartModal(hotelId) {
 
       <div class="summary-list">
         <div class="summary-item"><span>Items total</span><strong>${formatCurrency(itemsTotal)}</strong></div>
-        <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(SERVICE_FEE)}</strong></div>
+        <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(serviceFee)}</strong></div>
         <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
       </div>
 
@@ -1042,9 +1043,10 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     return;
   }
 
-  const itemsTotal = getCartItemsTotal(cart);
-  const total = itemsTotal + SERVICE_FEE;
   const hotel = getHotelById(hotelId);
+  const serviceFee = getServiceFeeForHotel(hotel);
+  const itemsTotal = getCartItemsTotal(cart);
+  const total = itemsTotal + serviceFee;
 
   const orderPayload = {
     createdAt: Date.now(),
@@ -1060,7 +1062,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     itemsTotal,
     mpesaName,
     mpesaNumber,
-    serviceFee: SERVICE_FEE,
+    serviceFee,
     serviceFeeTill: SERVICE_FEE_TILL,
     status: "Pending",
     total,

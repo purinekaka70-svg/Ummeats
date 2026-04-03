@@ -421,6 +421,8 @@ button {
 
 .notice-marquee {
   position: relative;
+  display: block;
+  width: 100%;
   min-width: 0;
   overflow: hidden;
 }
@@ -431,10 +433,14 @@ button {
   gap: 40px;
   width: max-content;
   min-width: 100%;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
   animation: notice-scroll 28s linear infinite;
+  -webkit-animation: notice-scroll 28s linear infinite;
 }
 
 .notice-copy {
+  display: inline-block;
   flex: 0 0 auto;
   color: var(--muted);
   white-space: nowrap;
@@ -1537,9 +1543,20 @@ button {
   }
 }
 
+@-webkit-keyframes notice-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - 20px));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .notice-track {
-    animation: none;
+    animation-duration: 45s;
+    -webkit-animation-duration: 45s;
   }
 }
 
@@ -1604,13 +1621,15 @@ button {
   }
 
   .notice-track {
-    width: 100%;
-    min-width: 0;
-    animation: none;
+    gap: 24px;
+    width: max-content;
+    min-width: 100%;
+    animation: notice-scroll 22s linear infinite;
+    -webkit-animation: notice-scroll 22s linear infinite;
   }
 
   .notice-copy {
-    white-space: normal;
+    white-space: nowrap;
   }
 
   .menu-item,

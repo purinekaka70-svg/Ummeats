@@ -1,6 +1,7 @@
 import {
   ANNOUNCEMENT_TEXT,
   DEFAULT_HOTEL_LOCATION,
+  getServiceFeeForHotel,
   MARKETPLACE_SHOP_HERE_URL,
   SERVICE_FEE,
   SHOP_HERE_URL,
@@ -297,8 +298,9 @@ function renderMenuForHotel(hotelId) {
   const restaurant = getRestaurantByHotelId(hotelId) || { menu: [] };
   const sortedMenu = sortMenuItems(restaurant.menu || []);
   const cart = getCart(hotelId);
+  const serviceFee = getServiceFeeForHotel(hotel);
   const itemsTotal = getCartItemsTotal(cart);
-  const total = itemsTotal + SERVICE_FEE;
+  const total = itemsTotal + serviceFee;
 
   return `
     <section class="menu-detail-shell" data-hotel-menu-id="${escapeHtml(hotelId)}">
@@ -321,7 +323,8 @@ function renderMenuForHotel(hotelId) {
                   <p class="eyebrow">Cart ready</p>
                   <h4>${getCartItemCount(cart)} item${pluralize(getCartItemCount(cart))} in cart</h4>
                   <p class="launch-copy">
-                    Items total ${formatCurrency(itemsTotal)}. Total to pay ${formatCurrency(total)}.
+                    Items total ${formatCurrency(itemsTotal)}. Delivery fee ${formatCurrency(serviceFee)}.
+                    Total to pay ${formatCurrency(total)}.
                     Pay the delivery fee to till ${escapeHtml(SERVICE_FEE_TILL)} and open cart to continue with payment details.
                   </p>
                 </div>
