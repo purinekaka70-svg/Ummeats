@@ -1,6 +1,7 @@
-import { elements, getNotificationsForTarget, state } from "./state.js";
-import { escapeHtml, formatDateOnly, pluralize } from "./helpers.js";
-import { renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
+import { SERVICE_FEE, SERVICE_FEE_TILL } from "./config.js";
+import { elements, getCartItemsTotal, getHotelById, getNotificationsForTarget, state } from "./state.js";
+import { escapeHtml, formatCurrency, formatDateOnly, formatTime, pluralize } from "./helpers.js";
+import { renderEmptyState, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
 export function renderAdmin() {
   if (!state.currentAdmin) {
@@ -32,29 +33,123 @@ export function renderAdmin() {
 
   const adminNotifications = getNotificationsForTarget("admin");
   const approvedHotels = state.hotels.filter((hotel) => hotel.approved).length;
+  const blockedHotels = state.hotels.filter((hotel) => hotel.blocked).length;
+  const pendingHotels = state.hotels.filter((hotel) => !hotel.approved).length;
   const activeSubscriptions = state.hotels.filter(
     (hotel) => hotel.subscriptionExpiry && hotel.subscriptionExpiry >= Date.now(),
   ).length;
+  const paidOrders = state.orders.filter((order) => (order.status || "Pending") === "Paid").length;
+  const pendingOrders = state.orders.filter((order) => (order.status || "Pending") !== "Paid").length;
   const totalOrders = state.orders.length;
+  const currentSection = state.adminPanelSection || "dashboard";
+  const unreadNotifications = adminNotifications.filter((item) => !item.read).length;
 
   elements.app.innerHTML = `
-    <section class="view-shell">
-      <div class="view-header">
-        <div>
-          <h2 class="view-title">Admin Panel</h2>
-        </div>
-
-        <div class="toolbar">
-          <button class="button button-outline" data-toggle-panel="adminNotifBox" type="button">
-            Notifications
-            ${renderInlineBadge(adminNotifications.filter((item) => !item.read).length, "alert")}
+    <section class="view-shell admin-panel-shell">
+      <aside class="card admin-sidebar ${state.adminSidebarOpen ? "is-open" : ""}" aria-label="Admin navigation">
+        <div class="admin-sidebar-head">
+          <div>
+            <p class="eyebrow">Admin menu</p>
+            <h3 class="card-title">Control Center</h3>
+          </div>
+          <button class="button button-ghost button-small admin-sidebar-close" id="adminSidebarClose" type="button">
+            Close
           </button>
-          <button class="button button-ghost" id="logoutAdmin" type="button">Logout</button>
         </div>
-      </div>
 
-      <div id="adminNotifBox" class="disclosure-card is-hidden">
-        ${renderNotifications(adminNotifications)}
+        <div class="admin-nav-list">
+          ${renderAdminNavButton("dashboard", "Dashboard", `${pendingOrders} pending orders`, currentSection)}
+          ${renderAdminNavButton("hotels", "Registered Hotels", `${state.hotels.length} hotel${pluralize(state.hotels.length)}`, currentSection)}
+          ${renderAdminNavButton("orders", "Orders", `${totalOrders} total order${pluralize(totalOrders)}`, currentSection)}
+        </div>
+
+        <div class="info-box admin-sidebar-note">
+          <p>Open a section from this menu to review hotels, track orders, mark orders as paid, or delete them.</p>
+        </div>
+      </aside>
+
+      ${state.adminSidebarOpen ? `<button class="admin-sidebar-backdrop" id="adminSidebarBackdrop" type="button" aria-label="Close admin navigation"></button>` : ""}
+
+      <div class="admin-main-stack">
+        <div class="view-header admin-main-header">
+          <div>
+            <p class="eyebrow">Admin workspace</p>
+            <h2 class="view-title">Admin Panel</h2>
+            <p class="view-copy">Monitor all registered hotels and every order placed on the platform.</p>
+          </div>
+
+          <div class="toolbar">
+            <button class="button button-outline admin-menu-button" id="adminMenuToggle" type="button">
+              <span class="hamburger-icon" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+              Menu
+            </button>
+            <button class="button button-outline" data-toggle-panel="adminNotifBox" type="button">
+              Notifications
+              ${renderInlineBadge(unreadNotifications, "alert")}
+            </button>
+            <button class="button button-ghost" id="logoutAdmin" type="button">Logout</button>
+          </div>
+        </div>
+
+        <div id="adminNotifBox" class="disclosure-card is-hidden">
+          ${renderNotifications(adminNotifications)}
+        </div>
+
+        ${renderAdminSection(currentSection, {
+          activeSubscriptions,
+          approvedHotels,
+          blockedHotels,
+          paidOrders,
+          pendingHotels,
+          pendingOrders,
+          totalOrders,
+          unreadNotifications,
+        })}
+      </div>
+    </section>
+  `;
+}
+
+function renderAdminNavButton(sectionId, label, meta, currentSection) {
+  const activeClass = currentSection === sectionId ? " is-active" : "";
+
+  return `
+    <button
+      class="adminNavBtn admin-nav-btn${activeClass}"
+      data-section="${escapeHtml(sectionId)}"
+      type="button"
+    >
+      <span class="admin-nav-copy">
+        <span class="admin-nav-title">${escapeHtml(label)}</span>
+        <span class="admin-nav-meta">${escapeHtml(meta)}</span>
+      </span>
+      <span class="summary-chip admin-nav-pill">${escapeHtml(label)}</span>
+    </button>
+  `;
+}
+
+function renderAdminSection(section, summary) {
+  if (section === "hotels") {
+    return renderRegisteredHotelsSection();
+  }
+
+  if (section === "orders") {
+    return renderOrdersSection();
+  }
+
+  return renderDashboardSection(summary);
+}
+
+function renderDashboardSection(summary) {
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Dashboard</h4>
+        <span class="summary-chip">${summary.totalOrders} order${pluralize(summary.totalOrders)}</span>
       </div>
 
       <div class="stats-grid">
@@ -64,15 +159,59 @@ export function renderAdmin() {
         </article>
         <article class="stat-card">
           <span class="stat-label">Approved</span>
-          <strong>${approvedHotels}</strong>
+          <strong>${summary.approvedHotels}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Awaiting Approval</span>
+          <strong>${summary.pendingHotels}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Blocked</span>
+          <strong>${summary.blockedHotels}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Active Subscriptions</span>
-          <strong>${activeSubscriptions}</strong>
+          <strong>${summary.activeSubscriptions}</strong>
         </article>
         <article class="stat-card">
-          <span class="stat-label">Orders</span>
-          <strong>${totalOrders}</strong>
+          <span class="stat-label">Pending Orders</span>
+          <strong>${summary.pendingOrders}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Paid Orders</span>
+          <strong>${summary.paidOrders}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Unread Alerts</span>
+          <strong>${summary.unreadNotifications}</strong>
+        </article>
+      </div>
+
+      <div class="two-column">
+        <article class="card">
+          <div class="section-head">
+            <h4>Platform Summary</h4>
+            ${renderStatusPill(summary.pendingOrders ? "Action Needed" : "Stable", summary.pendingOrders ? "pending" : "active")}
+          </div>
+          <div class="summary-list">
+            <div class="summary-item"><span>Registered hotels</span><strong>${state.hotels.length}</strong></div>
+            <div class="summary-item"><span>Orders placed</span><strong>${summary.totalOrders}</strong></div>
+            <div class="summary-item"><span>Orders still pending</span><strong>${summary.pendingOrders}</strong></div>
+            <div class="summary-item"><span>Hotels awaiting approval</span><strong>${summary.pendingHotels}</strong></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="section-head">
+            <h4>Admin Actions</h4>
+            ${renderStatusPill("Live Data", "active")}
+          </div>
+          <div class="summary-list">
+            <div class="summary-item"><span>Use Orders</span><strong>Mark paid or delete</strong></div>
+            <div class="summary-item"><span>Use Registered Hotels</span><strong>Approve and manage</strong></div>
+            <div class="summary-item"><span>Notifications</span><strong>${summary.unreadNotifications} unread</strong></div>
+            <div class="summary-item"><span>Subscription control</span><strong>Active from hotel list</strong></div>
+          </div>
         </article>
       </div>
 
@@ -85,19 +224,42 @@ export function renderAdmin() {
           <button class="button button-danger" id="clearAll" type="button">Clear All Data</button>
         </div>
       </article>
+    </section>
+  `;
+}
 
-      <section class="view-shell">
-        <div class="section-head">
-          <h4>Registered Hotels</h4>
-          <span class="summary-chip">${state.hotels.length} hotel${pluralize(state.hotels.length)}</span>
-        </div>
+function renderRegisteredHotelsSection() {
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Registered Hotels</h4>
+        <span class="summary-chip">${state.hotels.length} hotel${pluralize(state.hotels.length)}</span>
+      </div>
 
-        ${
-          state.hotels.length
-            ? `<div class="menu-list">${state.hotels.map(renderAdminHotelCard).join("")}</div>`
-            : `<div class="notification-item"><p class="is-muted">No hotels have registered yet.</p></div>`
-        }
-      </section>
+      ${
+        state.hotels.length
+          ? `<div class="menu-list">${state.hotels.map(renderAdminHotelCard).join("")}</div>`
+          : renderEmptyState("No hotels yet", "Hotels will appear here after they register on the platform.")
+      }
+    </section>
+  `;
+}
+
+function renderOrdersSection() {
+  const orders = [...state.orders].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Orders</h4>
+        <span class="summary-chip">${orders.length} order${pluralize(orders.length)}</span>
+      </div>
+
+      ${
+        orders.length
+          ? `<div class="order-list">${orders.map(renderAdminOrderCard).join("")}</div>`
+          : renderEmptyState("No orders yet", "Placed orders will appear here for the admin immediately.")
+      }
     </section>
   `;
 }
@@ -143,6 +305,81 @@ function renderAdminHotelCard(hotel) {
         <button class="button button-outline button-small expireSub" data-id="${escapeHtml(hotel.id)}" type="button">
           Expire Now
         </button>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminOrderCard(order) {
+  const hotel = getHotelById(order.hotelId);
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsTotal = items.length ? getCartItemsTotal(items) : Number(order.itemsTotal || 0);
+  const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
+
+  return `
+    <article class="card order-card">
+      <div class="order-header">
+        <div>
+          <p class="eyebrow">Order detail</p>
+          <h3>${escapeHtml(order.customerName || "Unknown customer")}</h3>
+          <p class="tiny">${formatTime(order.createdAt)}</p>
+        </div>
+        ${renderStatusPill(order.status || "Pending")}
+      </div>
+
+      <div class="order-meta-grid">
+        <div class="meta-block">
+          <span>Customer phone</span>
+          <strong>${escapeHtml(order.customerPhone || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Hotel</span>
+          <strong>${escapeHtml(hotel.name)}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Hotel till</span>
+          <strong>${escapeHtml(hotel.till || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Service fee till</span>
+          <strong>${escapeHtml(order.serviceFeeTill || SERVICE_FEE_TILL)}</strong>
+        </div>
+      </div>
+
+      <div class="menu-list">
+        ${
+          items.length
+            ? items
+                .map(
+                  (item) => `
+                    <div class="order-item">
+                      <div class="split-row">
+                        <strong>${escapeHtml(`${item.qty || 1} x ${item.name}`)}</strong>
+                        <span class="item-price">${formatCurrency((item.qty || 1) * Number(item.price || 0))}</span>
+                      </div>
+                    </div>
+                  `,
+                )
+                .join("")
+            : `<div class="order-item"><p class="is-muted">No order items were saved for this record.</p></div>`
+        }
+      </div>
+
+      <div class="summary-list">
+        <div class="summary-item"><span>Items total</span><strong>${formatCurrency(itemsTotal)}</strong></div>
+        <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(order.serviceFee ?? SERVICE_FEE)}</strong></div>
+        <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
+        <div class="summary-item"><span>M-PESA name</span><strong>${escapeHtml(order.mpesaName || "N/A")}</strong></div>
+        <div class="summary-item"><span>M-PESA number</span><strong>${escapeHtml(order.mpesaNumber || "N/A")}</strong></div>
+      </div>
+
+      <div class="button-row">
+        ${
+          order.status !== "Paid"
+            ? `<button class="button button-success markPaid" data-id="${escapeHtml(order.id)}" type="button">Mark as Paid</button>`
+            : ""
+        }
+        <button class="button button-danger deleteOrder" data-id="${escapeHtml(order.id)}" type="button">Delete Order</button>
       </div>
     </article>
   `;

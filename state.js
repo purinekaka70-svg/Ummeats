@@ -14,6 +14,8 @@ export const state = {
   currentTab: "restaurants",
   currentHotelId: null,
   currentAdmin: false,
+  adminPanelSection: "dashboard",
+  adminSidebarOpen: false,
   currentCustomer: loadSavedCustomerProfile(),
 };
 

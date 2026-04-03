@@ -18,6 +18,8 @@ bootstrap();
 
 function bootstrap() {
   state.currentAdmin = false;
+  state.adminPanelSection = "dashboard";
+  state.adminSidebarOpen = false;
   bindEvents();
   hydrateShell();
   subscribeToCollections();
@@ -68,6 +70,25 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.id === "adminMenuToggle") {
+    state.adminSidebarOpen = !state.adminSidebarOpen;
+    renderAdmin();
+    return;
+  }
+
+  if (button.id === "adminSidebarClose" || button.id === "adminSidebarBackdrop") {
+    state.adminSidebarOpen = false;
+    renderAdmin();
+    return;
+  }
+
+  if (button.classList.contains("adminNavBtn")) {
+    state.adminPanelSection = button.dataset.section || "dashboard";
+    state.adminSidebarOpen = false;
+    renderAdmin();
+    return;
+  }
+
   if (button.classList.contains("toggleBlock")) {
     await toggleHotelBlock(button.dataset.id);
     return;
@@ -93,8 +114,20 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("markPaid")) {
+    await markOrderPaid(button.dataset.id);
+    return;
+  }
+
+  if (button.classList.contains("deleteOrder")) {
+    await deleteOrder(button.dataset.id);
+    return;
+  }
+
   if (button.id === "logoutAdmin") {
     state.currentAdmin = false;
+    state.adminPanelSection = "dashboard";
+    state.adminSidebarOpen = false;
     renderAdmin();
     return;
   }
@@ -125,6 +158,8 @@ async function handleSubmit(event) {
 
   if (user === ADMIN_CRED.user && pass === ADMIN_CRED.pass) {
     state.currentAdmin = true;
+    state.adminPanelSection = "dashboard";
+    state.adminSidebarOpen = false;
     showToast("Admin login successful.", "success");
     renderAdmin();
     return;
@@ -173,6 +208,42 @@ async function expireSubscription(hotelId) {
   } catch (error) {
     console.error(error);
     showToast("Failed to expire subscription.", "error");
+  }
+}
+
+async function markOrderPaid(orderId) {
+  const order = state.orders.find((item) => item.id === orderId);
+  if (!order) {
+    alert("Order not found.");
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "orders", orderId), { status: "Paid" });
+    showToast("Order marked as paid.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to mark order as paid.", "error");
+  }
+}
+
+async function deleteOrder(orderId) {
+  const order = state.orders.find((item) => item.id === orderId);
+  if (!order) {
+    alert("Order not found.");
+    return;
+  }
+
+  if (!window.confirm("Delete this order permanently?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "orders", orderId));
+    showToast("Order deleted.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Delete failed.", "error");
   }
 }
 
