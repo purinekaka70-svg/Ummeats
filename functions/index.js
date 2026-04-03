@@ -1,10 +1,62 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 
 const db = admin.firestore();
 const messaging = admin.messaging();
+
+function normalizePushSubscriptionData(data = {}) {
+  const label = String(data.label || "").trim().slice(0, 160);
+  const target = String(data.target || "").trim().slice(0, 160);
+  const token = String(data.token || "").trim();
+
+  if (!target || !token) {
+    throw new HttpsError("invalid-argument", "Push subscription target and token are required.");
+  }
+
+  return { label, target, token };
+}
+
+exports.upsertPushSubscription = onCall(async (request) => {
+  const { label, target, token } = normalizePushSubscriptionData(request.data);
+  const snapshot = await db.collection("pushSubscriptions").where("token", "==", token).get();
+  const match = snapshot.docs.find((item) => item.data().target === target);
+  const payload = {
+    label,
+    target,
+    token,
+    updatedAt: Date.now(),
+  };
+
+  if (match) {
+    await match.ref.update(payload);
+    return { ok: true, mode: "updated" };
+  }
+
+  await db.collection("pushSubscriptions").add({
+    ...payload,
+    createdAt: Date.now(),
+  });
+
+  return { ok: true, mode: "created" };
+});
+
+exports.removePushSubscription = onCall(async (request) => {
+  const { target, token } = normalizePushSubscriptionData(request.data);
+  const snapshot = await db.collection("pushSubscriptions").where("token", "==", token).get();
+  const deletions = [];
+
+  snapshot.forEach((item) => {
+    if (item.data().target === target) {
+      deletions.push(item.ref.delete());
+    }
+  });
+
+  await Promise.all(deletions);
+  return { ok: true, deleted: deletions.length };
+});
 
 exports.sendOrderPushNotifications = onDocumentCreated("orders/{orderId}", async (event) => {
   const order = event.data?.data();

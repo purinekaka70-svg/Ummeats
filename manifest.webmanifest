@@ -1,6 +1,7 @@
 {
   "name": "Tamu Express",
   "short_name": "Tamu",
+  "id": "./",
   "description": "Food delivery, hotel orders, and location-based hotel browsing with Tamu Express.",
   "start_url": "./index.html",
   "scope": "./",

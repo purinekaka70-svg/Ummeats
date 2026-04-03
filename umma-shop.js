@@ -13,9 +13,10 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { SERVICE_FEE_TILL, SUPPORT_CONTACTS } from "./config.js";
+import { SERVICE_FEE_TILL } from "./config.js";
 import { auth, db } from "./firebase.js";
 import { escapeHtml } from "./helpers.js";
+import { registerPushSubscription, unregisterPushSubscription } from "./push.js";
 
 const ACTIVE_CLASS = "is-active";
 const HIDDEN_CLASS = "is-hidden";
@@ -30,6 +31,7 @@ const elements = {
   adminEmailInput: document.getElementById("adminEmailInput"),
   adminFeedbackList: document.getElementById("adminFeedbackList"),
   adminLoginBtn: document.getElementById("adminLoginBtn"),
+  adminLoginForm: document.getElementById("shopAdminLoginForm"),
   adminLoginSection: document.getElementById("adminLoginSection"),
   adminLoginStatus: document.getElementById("adminLoginStatus"),
   adminOrdersList: document.getElementById("adminOrdersList"),
@@ -97,7 +99,7 @@ function bindEvents() {
   elements.addItemBtn?.addEventListener("click", addItemsFromTextarea);
   elements.submitOrderBtn?.addEventListener("click", submitOrder);
   elements.submitFeedbackBtn?.addEventListener("click", submitFeedback);
-  elements.adminLoginBtn?.addEventListener("click", loginAdmin);
+  elements.adminLoginForm?.addEventListener("submit", handleAdminLoginSubmit);
   elements.logoutAdminBtn?.addEventListener("click", logoutAdmin);
 
   elements.customerEmail?.addEventListener("change", () => {
@@ -149,6 +151,13 @@ function hydrateCustomerOrders() {
 function subscribeToAdminAuth() {
   onAuthStateChanged(auth, (user) => {
     if (user) {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        void registerPushSubscription("admin", user.email || "Admin", {
+          requestPermission: false,
+          silent: true,
+        });
+      }
+
       showAdminPanel();
       listenForAdminOrders();
       listenForAdminFeedbacks();
@@ -224,6 +233,11 @@ function setViewMode(view) {
 }
 
 function showAdminLogin() {
+  if (auth.currentUser) {
+    showAdminPanel();
+    return;
+  }
+
   setTopAction(null);
   hideElement(elements.paymentGuideSection);
   hideElement(elements.feedbackSection);
@@ -383,8 +397,9 @@ async function submitOrder() {
       items: orderItems.map((item) => ({ name: item.name, qty: item.qty })),
       location: LOCATION_NAME,
       mpesaCode,
-      paymentTargets: SUPPORT_CONTACTS,
+      paymentTargets: [`Till ${SERVICE_FEE_TILL}`],
       paid: false,
+      serviceFeeTill: SERVICE_FEE_TILL,
       shopName,
       source: "shop-here",
       totalAmount,
@@ -486,6 +501,11 @@ function renderCustomerOrders(orders) {
     .join("");
 }
 
+async function handleAdminLoginSubmit(event) {
+  event.preventDefault();
+  await loginAdmin();
+}
+
 async function loginAdmin() {
   const email = elements.adminEmailInput.value.trim();
   const password = elements.adminPasswordInput.value.trim();
@@ -496,10 +516,15 @@ async function loginAdmin() {
   }
 
   try {
-    await signInWithEmailAndPassword(auth, email, password);
+    const credentials = await signInWithEmailAndPassword(auth, email, password);
+    await registerPushSubscription("admin", credentials.user.email || email, {
+      requestPermission: true,
+      silent: false,
+    });
     elements.adminEmailInput.value = "";
     elements.adminPasswordInput.value = "";
-    setStatusLine(elements.adminLoginStatus, "", "");
+    setStatusLine(elements.adminLoginStatus, "Admin login successful.", "success");
+    showAdminPanel();
   } catch (error) {
     console.error(error);
     setStatusLine(elements.adminLoginStatus, "Wrong admin email or password.", "error");
@@ -507,6 +532,7 @@ async function loginAdmin() {
 }
 
 async function logoutAdmin() {
+  await unregisterPushSubscription("admin");
   await signOut(auth);
   hideElement(elements.adminPanel);
   setViewMode("orders");
@@ -695,7 +721,7 @@ function formatPaymentTargets(targets) {
     return targets.trim();
   }
 
-  return SUPPORT_CONTACTS.join(" / ");
+  return `Till ${SERVICE_FEE_TILL}`;
 }
 
 function formatTime(value) {

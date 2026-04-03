@@ -90,21 +90,24 @@ function bindStaticEvents() {
 
 function bindInstallFlow() {
   if (elements.installAppButton) {
-    elements.installAppButton.textContent = "Install Tamu App";
     elements.installAppButton.addEventListener("click", handleInstallClick);
   }
+
+  updateInstallButtonState();
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    elements.installAppButton?.classList.remove("is-hidden");
+    updateInstallButtonState();
   });
 
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
-    elements.installAppButton?.classList.add("is-hidden");
+    updateInstallButtonState();
     showToast("Tamu Express is ready to open from your device.", "success");
   });
+
+  window.matchMedia?.("(display-mode: standalone)")?.addEventListener("change", updateInstallButtonState);
 }
 
 function hydrateStaticShell() {
@@ -271,17 +274,55 @@ function setInfoSection(sectionId) {
 
 async function handleInstallClick() {
   if (!deferredInstallPrompt) {
+    if (isIosInstallCandidate()) {
+      showToast("On iPhone or iPad, tap Share then choose Add to Home Screen.", "info");
+      return;
+    }
+
+    showToast("Open your browser menu and choose Install app or Add to home screen.", "info");
     return;
   }
 
   deferredInstallPrompt.prompt();
   const result = await deferredInstallPrompt.userChoice.catch(() => ({ outcome: "dismissed" }));
   deferredInstallPrompt = null;
-  elements.installAppButton?.classList.add("is-hidden");
 
   if (result.outcome === "accepted") {
+    elements.installAppButton?.classList.add("is-hidden");
     showToast("Install started. You can pin Tamu Express on this device.", "success");
+    return;
   }
+
+  updateInstallButtonState();
+}
+
+function updateInstallButtonState() {
+  if (!elements.installAppButton) {
+    return;
+  }
+
+  const installed = isStandaloneDisplayMode();
+  const shouldShow = !installed;
+
+  elements.installAppButton.classList.toggle("is-hidden", !shouldShow);
+
+  if (isIosInstallCandidate()) {
+    elements.installAppButton.textContent = "Add Tamu to Home Screen";
+    return;
+  }
+
+  elements.installAppButton.textContent = deferredInstallPrompt
+    ? "Install Tamu App"
+    : "How to Install Tamu App";
+}
+
+function isStandaloneDisplayMode() {
+  return window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+}
+
+function isIosInstallCandidate() {
+  const userAgent = window.navigator.userAgent || window.navigator.vendor || "";
+  return /iphone|ipad|ipod/i.test(userAgent) && !isStandaloneDisplayMode();
 }
 
 function updateInfoSections() {

@@ -13,20 +13,23 @@ import {
   isSupported,
   onMessage,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-messaging.js";
+import { httpsCallable } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-functions.js";
 import { FCM_WEB_PUSH_PUBLIC_KEY } from "./config.js";
-import { db } from "./firebase.js";
+import { db, functions } from "./firebase.js";
 import { showToast } from "./ui.js";
 
 const PUSH_SUBSCRIPTIONS = "pushSubscriptions";
 const PUSH_TOKEN_STORAGE_KEY = "TAMU_PUSH_TOKEN";
 let foregroundListenerBound = false;
+const upsertPushSubscriptionCallable = httpsCallable(functions, "upsertPushSubscription");
+const removePushSubscriptionCallable = httpsCallable(functions, "removePushSubscription");
 
 async function getMessagingContext() {
   if (!FCM_WEB_PUSH_PUBLIC_KEY) {
     return null;
   }
 
-  if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+  if (!window.isSecureContext || !("Notification" in window) || !("serviceWorker" in navigator)) {
     return null;
   }
 
@@ -35,7 +38,9 @@ async function getMessagingContext() {
     return null;
   }
 
-  const registration = await navigator.serviceWorker.register("./sw.js");
+  const existingRegistration = await navigator.serviceWorker.getRegistration("./");
+  const registration = existingRegistration || (await navigator.serviceWorker.register("./sw.js"));
+  const readyRegistration = await navigator.serviceWorker.ready.catch(() => registration);
   const messaging = getMessaging();
 
   if (!foregroundListenerBound) {
@@ -47,10 +52,11 @@ async function getMessagingContext() {
     });
   }
 
-  return { messaging, registration };
+  return { messaging, registration: readyRegistration || registration };
 }
 
-async function resolvePushToken(requestPermission = true) {
+async function resolvePushToken(options = {}) {
+  const { requestPermission = true, silent = false } = options;
   const context = await getMessagingContext();
   if (!context) {
     return null;
@@ -59,13 +65,16 @@ async function resolvePushToken(requestPermission = true) {
   if (requestPermission && Notification.permission === "default") {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      showToast("Push notifications were not enabled.", "warn");
+      if (!silent) {
+        showToast("Push notifications were not enabled.", "warn");
+      }
       return null;
     }
   }
 
   if (Notification.permission !== "granted") {
-    return localStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
+    localStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
+    return null;
   }
 
   const token = await getToken(context.messaging, {
@@ -73,7 +82,9 @@ async function resolvePushToken(requestPermission = true) {
     serviceWorkerRegistration: context.registration,
   }).catch((error) => {
     console.error("Push token request failed", error);
-    showToast("Failed to enable push notifications.", "error");
+    if (!silent) {
+      showToast("Failed to enable push notifications.", "error");
+    }
     return null;
   });
 
@@ -84,19 +95,59 @@ async function resolvePushToken(requestPermission = true) {
   return token || localStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
 }
 
-export async function registerPushSubscription(target, label) {
+async function upsertSubscriptionRecord(payload) {
+  try {
+    await upsertPushSubscriptionCallable(payload);
+    return true;
+  } catch (error) {
+    console.warn("Callable push subscription save failed, trying Firestore fallback", error);
+  }
+
+  const snapshot = await getDocs(query(collection(db, PUSH_SUBSCRIPTIONS), where("token", "==", payload.token)));
+  const match = snapshot.docs.find((item) => item.data().target === payload.target);
+
+  if (match) {
+    await updateDoc(match.ref, payload);
+    return true;
+  }
+
+  await addDoc(collection(db, PUSH_SUBSCRIPTIONS), {
+    ...payload,
+    createdAt: Date.now(),
+  });
+
+  return true;
+}
+
+async function removeSubscriptionRecord(target, token) {
+  try {
+    await removePushSubscriptionCallable({ target, token });
+    return true;
+  } catch (error) {
+    console.warn("Callable push subscription removal failed, trying Firestore fallback", error);
+  }
+
+  const snapshot = await getDocs(query(collection(db, PUSH_SUBSCRIPTIONS), where("token", "==", token)));
+  for (const item of snapshot.docs) {
+    if (item.data().target === target) {
+      await deleteDoc(item.ref);
+    }
+  }
+
+  return true;
+}
+
+export async function registerPushSubscription(target, label, options = {}) {
   if (!target) {
     return false;
   }
 
   try {
-    const token = await resolvePushToken(true);
+    const token = await resolvePushToken(options);
     if (!token) {
       return false;
     }
 
-    const snapshot = await getDocs(query(collection(db, PUSH_SUBSCRIPTIONS), where("token", "==", token)));
-    const match = snapshot.docs.find((item) => item.data().target === target);
     const payload = {
       label,
       target,
@@ -104,19 +155,12 @@ export async function registerPushSubscription(target, label) {
       updatedAt: Date.now(),
     };
 
-    if (match) {
-      await updateDoc(match.ref, payload);
-    } else {
-      await addDoc(collection(db, PUSH_SUBSCRIPTIONS), {
-        ...payload,
-        createdAt: Date.now(),
-      });
-    }
-
-    return true;
+    return upsertSubscriptionRecord(payload);
   } catch (error) {
     console.error("Push registration failed", error);
-    showToast("Push notifications could not be enabled.", "warn");
+    if (!options.silent) {
+      showToast("Push notifications could not be enabled.", "warn");
+    }
     return false;
   }
 }
@@ -127,17 +171,12 @@ export async function unregisterPushSubscription(target) {
   }
 
   try {
-    const token = localStorage.getItem(PUSH_TOKEN_STORAGE_KEY) || (await resolvePushToken(false));
+    const token = localStorage.getItem(PUSH_TOKEN_STORAGE_KEY) || (await resolvePushToken({ requestPermission: false, silent: true }));
     if (!token) {
       return false;
     }
 
-    const snapshot = await getDocs(query(collection(db, PUSH_SUBSCRIPTIONS), where("token", "==", token)));
-    for (const item of snapshot.docs) {
-      if (item.data().target === target) {
-        await deleteDoc(item.ref);
-      }
-    }
+    await removeSubscriptionRecord(target, token);
 
     return true;
   } catch (error) {

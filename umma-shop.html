@@ -67,31 +67,27 @@
           </div>
 
           <p class="card-copy">
-            Send the shopping amount to either support number below, then submit the order form with the amount and
-            transaction code. The support team can use that money to buy the requested items for you.
+            Pay the service fee to the till number below, then submit the order form with the amount and
+            transaction code. Contact support only if you need help with the payment or order follow-up.
           </p>
 
           <div class="info-box">
             <p>
-              Pay the delivery fee in till <strong><span data-service-fee-till></span></strong>.
+              Pay the delivery fee in till <strong><span data-service-fee-till>7312380</span></strong>.
             </p>
           </div>
 
           <div class="contact-support-grid">
             <article class="support-card">
-              <p class="eyebrow">Payment line 1</p>
-              <h4 class="card-title">0115613332</h4>
-              <p class="site-info-copy">Pay here, then include the transaction code in your order.</p>
-              <div class="support-actions">
-                <a class="button button-primary" href="tel:0115613332">Call</a>
-                <a class="button button-outline" href="https://wa.me/254115613332?text=Hello%20I%20want%20to%20pay%20for%20a%20Shop%20Here%20order" target="_blank" rel="noreferrer">WhatsApp</a>
-              </div>
+              <p class="eyebrow">Service fee till</p>
+              <h4 class="card-title"><span data-service-fee-till>7312380</span></h4>
+              <p class="site-info-copy">Use this till number for the Shop Here service fee.</p>
             </article>
 
             <article class="support-card">
-              <p class="eyebrow">Payment line 2</p>
+              <p class="eyebrow">Support line</p>
               <h4 class="card-title">0116860686</h4>
-              <p class="site-info-copy">Use this second line if the first number is unavailable.</p>
+              <p class="site-info-copy">Use this number only if you need help after paying to the till.</p>
               <div class="support-actions">
                 <a class="button button-primary" href="tel:0116860686">Call</a>
                 <a class="button button-outline" href="https://wa.me/254116860686?text=Hello%20I%20want%20to%20pay%20for%20a%20Shop%20Here%20order" target="_blank" rel="noreferrer">WhatsApp</a>
@@ -114,7 +110,7 @@
               <div class="info-box">
                 <p>
                   Before submitting the shop order, pay the delivery fee in till
-                  <strong><span data-service-fee-till></span></strong>.
+                  <strong><span data-service-fee-till>7312380</span></strong>.
                 </p>
               </div>
 
@@ -223,31 +219,33 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">Admin Access</p>
-              <h2 class="card-title">Sign in with your Firebase admin account</h2>
+              <h2 class="card-title">Sign in with the same admin account</h2>
             </div>
-            <span class="summary-chip">Same admin login</span>
+            <span class="summary-chip">Main admin credentials</span>
           </div>
 
           <p class="card-copy">
-            This page uses the same Firebase Authentication admin credentials as the main admin panel. There are no
-            hard-coded login credentials here.
+            Use the same admin email and password you use on the main Tamu Express admin page.
           </p>
 
-          <div class="field-grid">
-            <label class="field">
-              <span class="field-label">Admin email</span>
-              <input id="adminEmailInput" class="input" placeholder="Admin email" />
-            </label>
+          <form id="shopAdminLoginForm" class="stack">
+            <div class="field-grid">
+              <label class="field">
+                <span class="field-label">Admin email</span>
+                <input id="adminEmailInput" class="input" placeholder="Admin email" />
+              </label>
 
-            <label class="field">
-              <span class="field-label">Password</span>
-              <input id="adminPasswordInput" type="password" class="input" placeholder="Password" />
-            </label>
-          </div>
+              <label class="field">
+                <span class="field-label">Password</span>
+                <input id="adminPasswordInput" type="password" class="input" placeholder="Password" />
+              </label>
+            </div>
 
-          <div class="button-row">
-            <button id="adminLoginBtn" class="button button-primary button-small" type="button">Login</button>
-          </div>
+            <div class="button-row">
+              <button id="adminLoginBtn" class="button button-primary button-small" type="submit">Login</button>
+              <a class="button button-outline button-small" href="./admin.html">Open Main Admin</a>
+            </div>
+          </form>
 
           <p id="adminLoginStatus" class="tiny shop-status-line" aria-live="polite"></p>
         </section>
@@ -300,7 +298,7 @@
         <span class="footer-mark">C</span>
         <span>Teams Technologies</span>
       </p>
-      <p class="footer-text">Powered by Teams Technologies, Mombasa, Kenya.</p>
+      <p class="footer-text">Powered by Teams Technologies, Kajiado, Kenya.</p>
     </footer>
   </div>
 

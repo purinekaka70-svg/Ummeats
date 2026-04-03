@@ -947,10 +947,11 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
+  width: auto;
   min-width: 42px;
   height: 42px;
-  padding: 0;
+  padding: 0 14px;
+  gap: 8px;
   border-radius: 999px;
   border: 1px solid rgba(21, 128, 61, 0.18);
   background: rgba(21, 128, 61, 0.1);
@@ -963,14 +964,10 @@ button {
   fill: currentColor;
 }
 
-.restaurant-card-cart-count {
-  position: absolute;
-  top: -7px;
-  right: -7px;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  font-size: 0.72rem;
+.button-cart-icon-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .card-head {

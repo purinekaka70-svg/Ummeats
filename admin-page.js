@@ -84,8 +84,11 @@ function subscribeToAuth() {
   onAuthStateChanged(auth, (user) => {
     state.currentAdmin = Boolean(user);
 
-    if (user) {
-      void registerPushSubscription("admin", user.email || "Admin");
+    if (user && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      void registerPushSubscription("admin", user.email || "Admin", {
+        requestPermission: false,
+        silent: true,
+      });
     }
 
     if (!user) {
@@ -219,7 +222,11 @@ async function handleSubmit(event) {
   }
 
   try {
-    await signInWithEmailAndPassword(auth, user, pass);
+    const credentials = await signInWithEmailAndPassword(auth, user, pass);
+    await registerPushSubscription("admin", credentials.user.email || user, {
+      requestPermission: true,
+      silent: false,
+    });
     form.reset();
     showToast("Admin login successful.", "success");
   } catch (error) {

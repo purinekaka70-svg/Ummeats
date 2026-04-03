@@ -21,7 +21,7 @@ export const HOTEL_LOCATION_SUGGESTIONS = [
   DEFAULT_HOTEL_LOCATION,
   "My Qwetu Residence",
   "Kajiado Town",
-  "Mombasa CBD",
+  "Kajiado CBD",
 ];
 
 export const ANNOUNCEMENT_TEXT = "Order times: No morning orders | Lunch: 11:30 AM - 2:00 PM | Evening: 4:00 PM - 8:00 PM";
