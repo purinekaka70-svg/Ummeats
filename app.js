@@ -48,6 +48,7 @@ bootstrap();
 function bootstrap() {
   bindStaticEvents();
   bindInstallFlow();
+  bindPushSyncEvents();
   hydrateStaticShell();
   registerAppServiceWorker();
   subscribeToCollections();
@@ -110,6 +111,31 @@ function bindInstallFlow() {
   });
 
   window.matchMedia?.("(display-mode: standalone)")?.addEventListener("change", updateInstallButtonState);
+}
+
+function bindPushSyncEvents() {
+  window.addEventListener("focus", syncHotelPushSubscription);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      syncHotelPushSubscription();
+    }
+  });
+}
+
+function syncHotelPushSubscription() {
+  if (!state.currentHotelId || typeof Notification === "undefined" || Notification.permission !== "granted") {
+    return;
+  }
+
+  const hotel = getHotelById(state.currentHotelId);
+  if (!hotel.id) {
+    return;
+  }
+
+  void registerPushSubscription(hotel.id, hotel.name, {
+    requestPermission: false,
+    silent: true,
+  });
 }
 
 function waitForInstallPrompt(timeout = 1800) {

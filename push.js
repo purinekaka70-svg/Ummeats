@@ -20,9 +20,46 @@ import { showToast } from "./ui.js";
 
 const PUSH_SUBSCRIPTIONS = "pushSubscriptions";
 const PUSH_TOKEN_STORAGE_KEY = "TAMU_PUSH_TOKEN";
+const PUSH_NOTIFICATION_ICON = "./icons/icon-192.png";
 let foregroundListenerBound = false;
 const upsertPushSubscriptionCallable = httpsCallable(functions, "upsertPushSubscription");
 const removePushSubscriptionCallable = httpsCallable(functions, "removePushSubscription");
+
+async function showForegroundNotification(title, body, registration, link) {
+  if (Notification.permission !== "granted") {
+    return;
+  }
+
+  const options = {
+    badge: PUSH_NOTIFICATION_ICON,
+    body,
+    data: {
+      link: link || window.location.href,
+    },
+    icon: PUSH_NOTIFICATION_ICON,
+  };
+
+  if (registration?.showNotification) {
+    try {
+      await registration.showNotification(title, options);
+      return;
+    } catch (error) {
+      console.warn("Foreground browser notification failed", error);
+    }
+  }
+
+  try {
+    const notification = new Notification(title, options);
+    notification.onclick = () => {
+      window.focus();
+      if (options.data?.link) {
+        window.location.href = options.data.link;
+      }
+    };
+  } catch (error) {
+    console.warn("Fallback notification failed", error);
+  }
+}
 
 async function getMessagingContext() {
   if (!FCM_WEB_PUSH_PUBLIC_KEY) {
@@ -49,6 +86,7 @@ async function getMessagingContext() {
       const title = payload.notification?.title || payload.data?.title || "New notification";
       const body = payload.notification?.body || payload.data?.body || "You have a new update.";
       showToast(`${title}: ${body}`, "info");
+      void showForegroundNotification(title, body, readyRegistration || registration, payload.data?.link);
     });
   }
 
@@ -77,6 +115,7 @@ async function resolvePushToken(options = {}) {
     return null;
   }
 
+  const storedToken = localStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
   const token = await getToken(context.messaging, {
     vapidKey: FCM_WEB_PUSH_PUBLIC_KEY,
     serviceWorkerRegistration: context.registration,
@@ -90,9 +129,12 @@ async function resolvePushToken(options = {}) {
 
   if (token) {
     localStorage.setItem(PUSH_TOKEN_STORAGE_KEY, token);
+    if (!silent && token !== storedToken) {
+      showToast("Push notifications enabled on this device.", "success");
+    }
   }
 
-  return token || localStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
+  return token || storedToken;
 }
 
 async function upsertSubscriptionRecord(payload) {

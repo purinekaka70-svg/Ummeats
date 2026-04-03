@@ -4,7 +4,12 @@ export function renderNotifications(items) {
   const sorted = [...items].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
   if (!sorted.length) {
-    return `<div class="notification-item"><p class="is-muted">No notifications yet.</p></div>`;
+    return `
+      <div class="notification-item">
+        <p class="is-muted">No notifications yet.</p>
+        <p class="tiny is-muted">Allowing browser notifications only enables alerts. New order and admin updates will appear here after they are created.</p>
+      </div>
+    `;
   }
 
   return `

@@ -26,6 +26,7 @@ function bootstrap() {
   state.adminPanelSection = "dashboard";
   state.adminSidebarOpen = false;
   bindEvents();
+  bindPushSyncEvents();
   hydrateShell();
   subscribeToAuth();
   subscribeToCollections();
@@ -35,6 +36,27 @@ function bootstrap() {
 function bindEvents() {
   document.addEventListener("click", handleClick);
   document.addEventListener("submit", handleSubmit);
+}
+
+function bindPushSyncEvents() {
+  window.addEventListener("focus", syncAdminPushSubscription);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      syncAdminPushSubscription();
+    }
+  });
+}
+
+function syncAdminPushSubscription() {
+  const user = auth.currentUser;
+  if (!user || typeof Notification === "undefined" || Notification.permission !== "granted") {
+    return;
+  }
+
+  void registerPushSubscription("admin", user.email || "Admin", {
+    requestPermission: false,
+    silent: true,
+  });
 }
 
 function hydrateShell() {

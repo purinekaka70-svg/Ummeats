@@ -75,6 +75,7 @@ bootstrap();
 
 function bootstrap() {
   bindEvents();
+  bindPushSyncEvents();
   hydrateStaticCopy();
   renderItems();
   hydrateCustomerOrders();
@@ -120,6 +121,27 @@ function bindEvents() {
 
     footerClickCount = 0;
     showAdminLogin();
+  });
+}
+
+function bindPushSyncEvents() {
+  window.addEventListener("focus", syncAdminPushSubscription);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      syncAdminPushSubscription();
+    }
+  });
+}
+
+function syncAdminPushSubscription() {
+  const user = auth.currentUser;
+  if (!user || typeof Notification === "undefined" || Notification.permission !== "granted") {
+    return;
+  }
+
+  void registerPushSubscription("admin", user.email || "Admin", {
+    requestPermission: false,
+    silent: true,
   });
 }
 
