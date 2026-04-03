@@ -128,6 +128,14 @@ button {
   gap: 12px;
 }
 
+.site-topbar-actions {
+  max-width: 560px;
+}
+
+.site-topbar-link {
+  text-decoration: none;
+}
+
 .nav-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -430,38 +438,6 @@ button {
 
 .site-info-title {
   max-width: 16ch;
-}
-
-.site-info-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.site-info-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.78);
-  color: var(--ink);
-  font-weight: 700;
-  text-decoration: none;
-  transition:
-    transform 160ms ease,
-    border-color 160ms ease,
-    background-color 160ms ease,
-    color 160ms ease;
-}
-
-.site-info-link:hover {
-  transform: translateY(-1px);
-  border-color: rgba(21, 128, 61, 0.22);
-  background: var(--accent-soft);
-  color: var(--accent-strong);
 }
 
 .site-info-grid {
