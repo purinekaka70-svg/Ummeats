@@ -6,6 +6,10 @@ admin.initializeApp();
 
 const db = admin.firestore();
 const messaging = admin.messaging();
+const INVALID_TOKEN_CODES = new Set([
+  "messaging/invalid-registration-token",
+  "messaging/registration-token-not-registered",
+]);
 
 function normalizePushSubscriptionData(data = {}) {
   const label = String(data.label || "").trim().slice(0, 160);
@@ -17,6 +21,76 @@ function normalizePushSubscriptionData(data = {}) {
   }
 
   return { label, target, token };
+}
+
+function buildTargetBuckets(snapshot, targets) {
+  const buckets = new Map(targets.map((target) => [target, { refsByToken: new Map(), tokens: [] }]));
+
+  snapshot.forEach((docSnapshot) => {
+    const target = String(docSnapshot.data().target || "").trim();
+    const token = String(docSnapshot.data().token || "").trim();
+
+    if (!target || !token || !buckets.has(target)) {
+      return;
+    }
+
+    const bucket = buckets.get(target);
+    if (!bucket.refsByToken.has(token)) {
+      bucket.tokens.push(token);
+      bucket.refsByToken.set(token, []);
+    }
+
+    bucket.refsByToken.get(token).push(docSnapshot.ref);
+  });
+
+  return buckets;
+}
+
+async function sendPushToTargets({ title, body, data = {}, linksByTarget = {}, targets = [] }) {
+  const uniqueTargets = [...new Set(targets.filter(Boolean))];
+  if (!uniqueTargets.length) {
+    return;
+  }
+
+  const subscriptionSnapshot = await db
+    .collection("pushSubscriptions")
+    .where("target", "in", uniqueTargets)
+    .get();
+
+  if (subscriptionSnapshot.empty) {
+    return;
+  }
+
+  const buckets = buildTargetBuckets(subscriptionSnapshot, uniqueTargets);
+  const deletions = [];
+
+  for (const target of uniqueTargets) {
+    const bucket = buckets.get(target);
+    if (!bucket?.tokens.length) {
+      continue;
+    }
+
+    const response = await messaging.sendEachForMulticast({
+      tokens: bucket.tokens,
+      data: {
+        ...data,
+        body,
+        link: linksByTarget[target] || "./",
+        target,
+        title,
+      },
+    });
+
+    response.responses.forEach((item, index) => {
+      if (!item.success && INVALID_TOKEN_CODES.has(item.error?.code)) {
+        const token = bucket.tokens[index];
+        const refs = bucket.refsByToken.get(token) || [];
+        refs.forEach((ref) => deletions.push(ref.delete()));
+      }
+    });
+  }
+
+  await Promise.all(deletions);
 }
 
 exports.upsertPushSubscription = onCall(async (request) => {
@@ -64,19 +138,7 @@ exports.sendOrderPushNotifications = onDocumentCreated("orders/{orderId}", async
     return;
   }
 
-  const targets = ["admin"];
-  if (order.hotelId) {
-    targets.push(order.hotelId);
-  }
-
-  const subscriptionSnapshot = await db
-    .collection("pushSubscriptions")
-    .where("target", "in", targets)
-    .get();
-
-  if (subscriptionSnapshot.empty) {
-    return;
-  }
+  const orderId = String(event.params.orderId || "");
 
   let hotelName = "selected hotel";
   if (order.hotelId) {
@@ -86,49 +148,55 @@ exports.sendOrderPushNotifications = onDocumentCreated("orders/{orderId}", async
     }
   }
 
-  const cleanTokens = [];
-  const refsByToken = new Map();
-
-  subscriptionSnapshot.forEach((docSnapshot) => {
-    const token = docSnapshot.data().token;
-    if (!token) {
-      return;
-    }
-
-    cleanTokens.push(token);
-    refsByToken.set(token, refsByToken.get(token) || []);
-    refsByToken.get(token).push(docSnapshot.ref);
-  });
-
-  if (!cleanTokens.length) {
-    return;
-  }
-
   const title = "New order received";
   const body = `${order.customerName || "A customer"} placed an order for ${hotelName}.`;
+  const targets = ["admin"];
+  const linksByTarget = {
+    admin: "./admin.html",
+  };
 
-  const response = await messaging.sendEachForMulticast({
-    tokens: cleanTokens,
+  if (order.hotelId) {
+    targets.push(order.hotelId);
+    linksByTarget[order.hotelId] = "./index.html";
+  }
+
+  await sendPushToTargets({
+    title,
+    body,
+    targets,
+    linksByTarget,
     data: {
-      body,
-      title,
+      hotelId: String(order.hotelId || ""),
+      orderId,
+      tag: `order-${orderId}`,
       type: "order",
     },
   });
+});
 
-  const invalidCodes = new Set([
-    "messaging/invalid-registration-token",
-    "messaging/registration-token-not-registered",
-  ]);
+exports.sendUmmaShopOrderPushNotifications = onDocumentCreated("ummaShopOrders/{orderId}", async (event) => {
+  const order = event.data?.data();
+  if (!order) {
+    return;
+  }
 
-  const deletions = [];
-  response.responses.forEach((item, index) => {
-    if (!item.success && invalidCodes.has(item.error?.code)) {
-      const token = cleanTokens[index];
-      const refs = refsByToken.get(token) || [];
-      refs.forEach((ref) => deletions.push(ref.delete()));
-    }
+  const orderId = String(event.params.orderId || "");
+  const shopName = String(order.shopName || "Around Umma University");
+  const title = "New Shop Here order";
+  const body = `${order.customerName || "A customer"} submitted a Shop Here order for ${shopName}.`;
+
+  await sendPushToTargets({
+    title,
+    body,
+    targets: ["admin"],
+    linksByTarget: {
+      admin: "./umma-shop.html",
+    },
+    data: {
+      orderId,
+      shopName,
+      tag: `umma-shop-order-${orderId}`,
+      type: "umma-shop-order",
+    },
   });
-
-  await Promise.all(deletions);
 });

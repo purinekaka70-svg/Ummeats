@@ -14,10 +14,20 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { auth, db } from "./firebase.js";
 import { inferToastTone } from "./helpers.js";
-import { registerPushSubscription, unregisterPushSubscription } from "./push.js";
+import {
+  claimNotificationTag,
+  registerPushSubscription,
+  showBrowserNotification,
+  unregisterPushSubscription,
+} from "./push.js";
 import { elements, getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
+
+const adminOrderAlertTracker = {
+  ids: new Set(),
+  ready: false,
+};
 
 bootstrap();
 
@@ -82,6 +92,7 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
+    handleAdminOrderAlerts(snapshot);
     state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderAdmin();
   });
@@ -99,6 +110,47 @@ function subscribeToCollections() {
   onSnapshot(collection(db, "notifications"), (snapshot) => {
     state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderAdmin();
+  });
+}
+
+function collectNewSnapshotDocs(snapshot, tracker) {
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  if (!tracker.ready) {
+    tracker.ready = true;
+    tracker.ids = currentIds;
+    return [];
+  }
+
+  const additions = snapshot.docs
+    .filter((item) => !tracker.ids.has(item.id) && !item.metadata.hasPendingWrites)
+    .map((item) => ({ id: item.id, ...item.data() }));
+
+  tracker.ids = currentIds;
+  return additions;
+}
+
+function handleAdminOrderAlerts(snapshot) {
+  const user = auth.currentUser;
+  const newOrders = collectNewSnapshotDocs(snapshot, adminOrderAlertTracker);
+  if (!user || !newOrders.length) {
+    return;
+  }
+
+  newOrders.forEach((order) => {
+    const tag = `order-${order.id}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    const hotelName = state.hotels.find((item) => item.id === order.hotelId)?.name || "selected hotel";
+    const title = "New order received";
+    const body = `${order.customerName || "A customer"} placed an order for ${hotelName}.`;
+    showToast(`${title}: ${body}`, "info");
+    void showBrowserNotification(title, body, {
+      link: "./admin.html",
+      tag,
+    });
   });
 }
 

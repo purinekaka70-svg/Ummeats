@@ -17,7 +17,12 @@ import {
   normalizeMenuDay,
   normalizeMenuMealPeriod,
 } from "./helpers.js";
-import { registerPushSubscription, unregisterPushSubscription } from "./push.js";
+import {
+  claimNotificationTag,
+  registerPushSubscription,
+  showBrowserNotification,
+  unregisterPushSubscription,
+} from "./push.js";
 import {
   CUSTOMER_ID,
   elements,
@@ -42,6 +47,10 @@ import { renderRestaurants } from "./view-restaurants.js";
 
 let deferredInstallPrompt = null;
 let installPromptWaiters = [];
+const hotelOrderAlertTracker = {
+  ids: new Set(),
+  ready: false,
+};
 
 bootstrap();
 
@@ -227,6 +236,7 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
+    handleHotelOrderAlerts(snapshot);
     state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncUi();
   });
@@ -235,6 +245,48 @@ function subscribeToCollections() {
     state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncUi();
   });
+}
+
+function collectNewSnapshotDocs(snapshot, tracker) {
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  if (!tracker.ready) {
+    tracker.ready = true;
+    tracker.ids = currentIds;
+    return [];
+  }
+
+  const additions = snapshot.docs
+    .filter((item) => !tracker.ids.has(item.id) && !item.metadata.hasPendingWrites)
+    .map((item) => ({ id: item.id, ...item.data() }));
+
+  tracker.ids = currentIds;
+  return additions;
+}
+
+function handleHotelOrderAlerts(snapshot) {
+  const newOrders = collectNewSnapshotDocs(snapshot, hotelOrderAlertTracker);
+  if (!state.currentHotelId || !newOrders.length) {
+    return;
+  }
+
+  const hotel = getHotelById(state.currentHotelId);
+  newOrders
+    .filter((order) => order.hotelId === state.currentHotelId)
+    .forEach((order) => {
+      const tag = `order-${order.id}`;
+      if (!claimNotificationTag(tag)) {
+        return;
+      }
+
+      const title = "New order received";
+      const body = `${order.customerName || "A customer"} placed an order worth ${formatCurrency(order.total || 0)}.`;
+      showToast(`${hotel.name || "Hotel"}: ${body}`, "info");
+      void showBrowserNotification(title, body, {
+        link: "./index.html",
+        tag,
+      });
+    });
 }
 
 function syncUi() {
@@ -699,7 +751,8 @@ function addToCart(button) {
     state.cartByHotel[hotelId].push({ name, price, qty });
   }
 
-  showToast("Item added to cart. Please call before placing order for food confirmation.", "warn");
+  const itemLabel = qty === 1 ? name : `${qty} x ${name}`;
+  showToast(`Added to cart: ${itemLabel}.`, "success");
   syncUi();
 }
 

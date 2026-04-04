@@ -16,7 +16,12 @@ import {
 import { SERVICE_FEE_TILL } from "./config.js";
 import { auth, db } from "./firebase.js";
 import { escapeHtml } from "./helpers.js";
-import { registerPushSubscription, unregisterPushSubscription } from "./push.js";
+import {
+  claimNotificationTag,
+  registerPushSubscription,
+  showBrowserNotification,
+  unregisterPushSubscription,
+} from "./push.js";
 
 const ACTIVE_CLASS = "is-active";
 const HIDDEN_CLASS = "is-hidden";
@@ -70,6 +75,10 @@ let orderItems = [];
 let unsubscribeCustomerOrders = null;
 let unsubscribeAdminOrders = null;
 let unsubscribeAdminFeedbacks = null;
+const adminShopOrderAlertTracker = {
+  ids: new Set(),
+  ready: false,
+};
 
 bootstrap();
 
@@ -566,11 +575,51 @@ function listenForAdminOrders() {
   }
 
   unsubscribeAdminOrders = onSnapshot(ordersCollection, (snapshot) => {
+    handleAdminOrderAlerts(snapshot);
     const orders = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
 
     renderAdminOrders(orders);
+  });
+}
+
+function collectNewSnapshotDocs(snapshot, tracker) {
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  if (!tracker.ready) {
+    tracker.ready = true;
+    tracker.ids = currentIds;
+    return [];
+  }
+
+  const additions = snapshot.docs
+    .filter((item) => !tracker.ids.has(item.id) && !item.metadata.hasPendingWrites)
+    .map((item) => ({ id: item.id, ...item.data() }));
+
+  tracker.ids = currentIds;
+  return additions;
+}
+
+function handleAdminOrderAlerts(snapshot) {
+  if (!auth.currentUser) {
+    collectNewSnapshotDocs(snapshot, adminShopOrderAlertTracker);
+    return;
+  }
+
+  const newOrders = collectNewSnapshotDocs(snapshot, adminShopOrderAlertTracker);
+  newOrders.forEach((order) => {
+    const tag = `umma-shop-order-${order.id}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    const title = "New Shop Here order";
+    const body = `${order.customerName || "A customer"} submitted an order for ${order.shopName || LOCATION_NAME}.`;
+    void showBrowserNotification(title, body, {
+      link: "./umma-shop.html",
+      tag,
+    });
   });
 }
 

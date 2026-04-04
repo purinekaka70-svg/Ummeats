@@ -21,12 +21,23 @@ import { showToast } from "./ui.js";
 const PUSH_SUBSCRIPTIONS = "pushSubscriptions";
 const PUSH_TOKEN_STORAGE_KEY = "TAMU_PUSH_TOKEN";
 const PUSH_NOTIFICATION_ICON = "./icons/icon-192.png";
+const NOTIFICATION_TAG_TTL_MS = 8000;
 let foregroundListenerBound = false;
+let notificationRegistrationPromise = null;
+const recentNotificationTags = new Map();
 const upsertPushSubscriptionCallable = httpsCallable(functions, "upsertPushSubscription");
 const removePushSubscriptionCallable = httpsCallable(functions, "removePushSubscription");
 
-async function showForegroundNotification(title, body, registration, link) {
-  if (Notification.permission !== "granted") {
+function pruneRecentNotificationTags(now = Date.now()) {
+  recentNotificationTags.forEach((timestamp, tag) => {
+    if (now - timestamp > NOTIFICATION_TAG_TTL_MS) {
+      recentNotificationTags.delete(tag);
+    }
+  });
+}
+
+async function showForegroundNotification(title, body, registration, notificationOptions = {}) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") {
     return;
   }
 
@@ -34,9 +45,10 @@ async function showForegroundNotification(title, body, registration, link) {
     badge: PUSH_NOTIFICATION_ICON,
     body,
     data: {
-      link: link || window.location.href,
+      link: notificationOptions.link || window.location.href,
     },
     icon: PUSH_NOTIFICATION_ICON,
+    tag: notificationOptions.tag,
   };
 
   if (registration?.showNotification) {
@@ -61,12 +73,33 @@ async function showForegroundNotification(title, body, registration, link) {
   }
 }
 
+async function getNotificationRegistration() {
+  if (!window.isSecureContext || !("Notification" in window) || !("serviceWorker" in navigator)) {
+    return null;
+  }
+
+  if (!notificationRegistrationPromise) {
+    notificationRegistrationPromise = (async () => {
+      const existingRegistration = await navigator.serviceWorker.getRegistration();
+      const registration = existingRegistration || (await navigator.serviceWorker.register("./sw.js"));
+      return navigator.serviceWorker.ready.catch(() => registration);
+    })().catch((error) => {
+      console.warn("Notification service worker registration failed", error);
+      notificationRegistrationPromise = null;
+      return null;
+    });
+  }
+
+  return notificationRegistrationPromise;
+}
+
 async function getMessagingContext() {
   if (!FCM_WEB_PUSH_PUBLIC_KEY) {
     return null;
   }
 
-  if (!window.isSecureContext || !("Notification" in window) || !("serviceWorker" in navigator)) {
+  const registration = await getNotificationRegistration();
+  if (!registration) {
     return null;
   }
 
@@ -75,9 +108,6 @@ async function getMessagingContext() {
     return null;
   }
 
-  const existingRegistration = await navigator.serviceWorker.getRegistration("./");
-  const registration = existingRegistration || (await navigator.serviceWorker.register("./sw.js"));
-  const readyRegistration = await navigator.serviceWorker.ready.catch(() => registration);
   const messaging = getMessaging();
 
   if (!foregroundListenerBound) {
@@ -85,12 +115,20 @@ async function getMessagingContext() {
     onMessage(messaging, (payload) => {
       const title = payload.notification?.title || payload.data?.title || "New notification";
       const body = payload.notification?.body || payload.data?.body || "You have a new update.";
+      const tag = payload.data?.tag;
+      if (!claimNotificationTag(tag)) {
+        return;
+      }
+
       showToast(`${title}: ${body}`, "info");
-      void showForegroundNotification(title, body, readyRegistration || registration, payload.data?.link);
+      void showForegroundNotification(title, body, registration, {
+        link: payload.data?.link,
+        tag,
+      });
     });
   }
 
-  return { messaging, registration: readyRegistration || registration };
+  return { messaging, registration };
 }
 
 async function resolvePushToken(options = {}) {
@@ -225,4 +263,28 @@ export async function unregisterPushSubscription(target) {
     console.error("Push unregistration failed", error);
     return false;
   }
+}
+
+export async function showBrowserNotification(title, body, options = {}) {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+    return false;
+  }
+
+  const registration = await getNotificationRegistration();
+  await showForegroundNotification(title, body, registration, options);
+  return true;
+}
+
+export function claimNotificationTag(tag) {
+  const normalizedTag = String(tag || "").trim();
+  if (!normalizedTag) {
+    return true;
+  }
+
+  const now = Date.now();
+  pruneRecentNotificationTags(now);
+
+  const lastSeenAt = recentNotificationTags.get(normalizedTag);
+  recentNotificationTags.set(normalizedTag, now);
+  return !lastSeenAt || now - lastSeenAt > NOTIFICATION_TAG_TTL_MS;
 }

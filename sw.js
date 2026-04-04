@@ -1,6 +1,6 @@
 /* global importScripts, firebase */
 
-const APP_CACHE = "tamu-app-v29";
+const APP_CACHE = "tamu-app-v30";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -29,6 +29,16 @@ const APP_SHELL = [
   "./icons/icon-512.svg",
 ];
 const APP_ICON = "./icons/icon-192.png";
+
+function resolveNotificationLink(link) {
+  const fallback = self.registration.scope || "./";
+
+  try {
+    return new URL(link || "./", self.registration.scope).href;
+  } catch (error) {
+    return fallback;
+  }
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -120,20 +130,31 @@ messaging.onBackgroundMessage((payload) => {
     icon: APP_ICON,
     badge: APP_ICON,
     data: {
-      link: data.link || self.registration.scope || "./",
+      link: resolveNotificationLink(data.link),
     },
+    tag: data.tag || undefined,
   });
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const targetUrl = event.notification.data?.link || self.registration.scope || "./";
+  const targetUrl = resolveNotificationLink(event.notification.data?.link);
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clientList) => {
+      const exactClient = clientList.find((client) => "focus" in client && client.url === targetUrl);
+
+      if (exactClient) {
+        return exactClient.focus();
+      }
+
       const existingClient = clientList.find((client) => "focus" in client);
 
       if (existingClient) {
+        if ("navigate" in existingClient) {
+          await existingClient.navigate(targetUrl).catch(() => undefined);
+        }
+
         return existingClient.focus();
       }
 
