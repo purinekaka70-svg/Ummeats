@@ -20,6 +20,7 @@ import {
   showBrowserNotification,
   unregisterPushSubscription,
 } from "./push.js";
+import { notifyPaidOrderStatus } from "./order-status-notifications.js";
 import { elements, getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
@@ -59,12 +60,13 @@ function bindPushSyncEvents() {
 
 function syncAdminPushSubscription() {
   const user = auth.currentUser;
-  if (!user || typeof Notification === "undefined" || Notification.permission !== "granted") {
+  if (!user) {
     return;
   }
 
   void registerPushSubscription("admin", user.email || "Admin", {
     requestPermission: false,
+    role: "admin",
     silent: true,
   });
 }
@@ -158,9 +160,10 @@ function subscribeToAuth() {
   onAuthStateChanged(auth, (user) => {
     state.currentAdmin = Boolean(user);
 
-    if (user && typeof Notification !== "undefined" && Notification.permission === "granted") {
+    if (user) {
       void registerPushSubscription("admin", user.email || "Admin", {
         requestPermission: false,
+        role: "admin",
         silent: true,
       });
     }
@@ -299,6 +302,7 @@ async function handleSubmit(event) {
     const credentials = await signInWithEmailAndPassword(auth, user, pass);
     await registerPushSubscription("admin", credentials.user.email || user, {
       requestPermission: true,
+      role: "admin",
       silent: false,
     });
     form.reset();
@@ -359,12 +363,26 @@ async function markOrderPaid(orderId) {
     return;
   }
 
+  if ((order.status || "Pending") === "Paid") {
+    showToast("Order is already marked as paid.", "info");
+    return;
+  }
+
   try {
     await updateDoc(doc(db, "orders", orderId), { status: "Paid" });
-    showToast("Order marked as paid.", "success");
   } catch (error) {
     console.error(error);
     showToast("Failed to mark order as paid.", "error");
+    return;
+  }
+
+  try {
+    const hotelName = state.hotels.find((item) => item.id === order.hotelId)?.name || "selected hotel";
+    await notifyPaidOrderStatus(order, hotelName);
+    showToast("Order marked as paid.", "success");
+  } catch (error) {
+    console.warn("Paid order notification failed", error);
+    showToast("Order marked as paid, but notification delivery failed.", "warn");
   }
 }
 

@@ -1,32 +1,21 @@
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  getDocs,
-  query,
-  updateDoc,
-  where,
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import {
-  getMessaging,
-  getToken,
-  isSupported,
-  onMessage,
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-messaging.js";
-import { httpsCallable } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-functions.js";
-import { FCM_WEB_PUSH_PUBLIC_KEY } from "./config.js";
-import { db, functions } from "./firebase.js";
+  ONESIGNAL_APP_ID,
+  ONESIGNAL_SAFARI_WEB_ID,
+  ONESIGNAL_SERVICE_WORKER_PATH,
+  ONESIGNAL_SERVICE_WORKER_SCOPE,
+} from "./config.js";
 import { showToast } from "./ui.js";
 
-const PUSH_SUBSCRIPTIONS = "pushSubscriptions";
-const PUSH_TOKEN_STORAGE_KEY = "TAMU_PUSH_TOKEN";
+const ONESIGNAL_SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
 const PUSH_NOTIFICATION_ICON = "./icons/icon-192.png";
 const NOTIFICATION_TAG_TTL_MS = 8000;
 let foregroundListenerBound = false;
+let identityListenersBound = false;
 let notificationRegistrationPromise = null;
+let oneSignalReadyPromise = null;
+let activePushIdentity = null;
+let identitySyncPromise = null;
 const recentNotificationTags = new Map();
-const upsertPushSubscriptionCallable = httpsCallable(functions, "upsertPushSubscription");
-const removePushSubscriptionCallable = httpsCallable(functions, "removePushSubscription");
 
 function pruneRecentNotificationTags(now = Date.now()) {
   recentNotificationTags.forEach((timestamp, tag) => {
@@ -34,6 +23,29 @@ function pruneRecentNotificationTags(now = Date.now()) {
       recentNotificationTags.delete(tag);
     }
   });
+}
+
+function isLocalhostOrigin() {
+  return ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
+function normalizePushTarget(target) {
+  return String(target || "").trim();
+}
+
+function resolveOneSignalPath(pathname) {
+  return new URL(pathname, window.location.href).pathname;
+}
+
+function ensureOneSignalPageScript() {
+  if (document.querySelector(`script[src="${ONESIGNAL_SDK_URL}"]`)) {
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.defer = true;
+  script.src = ONESIGNAL_SDK_URL;
+  document.head.appendChild(script);
 }
 
 async function showForegroundNotification(title, body, registration, notificationOptions = {}) {
@@ -93,151 +105,265 @@ async function getNotificationRegistration() {
   return notificationRegistrationPromise;
 }
 
-async function getMessagingContext() {
-  if (!FCM_WEB_PUSH_PUBLIC_KEY) {
-    return null;
+function bindOneSignalForegroundListeners(OneSignal) {
+  if (foregroundListenerBound) {
+    return;
   }
 
-  const registration = await getNotificationRegistration();
-  if (!registration) {
-    return null;
-  }
+  foregroundListenerBound = true;
+  OneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
+    const title = event.notification?.title || "New notification";
+    const body = event.notification?.body || "You have a new update.";
+    const link = event.notification?.launchURL || window.location.href;
+    const tag = event.notification?.notificationId || `${title}:${body}`;
 
-  const supported = await isSupported().catch(() => false);
-  if (!supported) {
-    return null;
-  }
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
 
-  const messaging = getMessaging();
-
-  if (!foregroundListenerBound) {
-    foregroundListenerBound = true;
-    onMessage(messaging, (payload) => {
-      const title = payload.notification?.title || payload.data?.title || "New notification";
-      const body = payload.notification?.body || payload.data?.body || "You have a new update.";
-      const tag = payload.data?.tag;
-      if (!claimNotificationTag(tag)) {
-        return;
-      }
-
-      showToast(`${title}: ${body}`, "info");
-      void showForegroundNotification(title, body, registration, {
-        link: payload.data?.link,
-        tag,
-      });
+    showToast(`${title}: ${body}`, "info");
+    void showBrowserNotification(title, body, {
+      link,
+      tag,
     });
-  }
-
-  return { messaging, registration };
+  });
 }
 
-async function resolvePushToken(options = {}) {
-  const { requestPermission = true, silent = false } = options;
-  const context = await getMessagingContext();
-  if (!context) {
+function buildPushIdentity(target, label, options = {}) {
+  const externalId = normalizePushTarget(target);
+  if (!externalId) {
     return null;
   }
 
-  if (requestPermission && Notification.permission === "default") {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      if (!silent) {
-        showToast("Push notifications were not enabled.", "warn");
+  const role = String(options.role || (externalId === "admin" ? "admin" : "hotel")).trim().toLowerCase();
+  const identity = {
+    customerId: "",
+    externalId,
+    hotelId: "",
+    label: String(label || externalId).trim().slice(0, 80),
+    role,
+  };
+
+  if (role === "hotel") {
+    identity.hotelId = String(options.hotelId || externalId).trim();
+  }
+
+  if (role === "customer") {
+    identity.customerId = String(options.customerId || externalId).trim();
+  }
+
+  return identity;
+}
+
+function createPushTags(identity) {
+  const tags = {
+    notification_label: identity.label,
+    notification_role: identity.role,
+    notification_target: identity.externalId,
+    role: identity.role,
+  };
+
+  if (identity.hotelId) {
+    tags.hotel_id = identity.hotelId;
+  }
+
+  if (identity.customerId) {
+    tags.customer_id = identity.customerId;
+  }
+
+  return tags;
+}
+
+async function syncOneSignalIdentity(OneSignal, identity, options = {}) {
+  if (!OneSignal || !identity?.externalId) {
+    return false;
+  }
+
+  await OneSignal.login(identity.externalId);
+  await OneSignal.User.addTags(createPushTags(identity));
+
+  if (options.ensureOptIn && OneSignal.Notifications.permission && !OneSignal.User.PushSubscription.optedIn) {
+    await OneSignal.User.PushSubscription.optIn();
+  }
+
+  return true;
+}
+
+function refreshCachedIdentity(OneSignal, options = {}) {
+  if (!activePushIdentity?.externalId) {
+    return Promise.resolve(false);
+  }
+
+  if (!identitySyncPromise) {
+    identitySyncPromise = syncOneSignalIdentity(OneSignal, activePushIdentity, options)
+      .catch((error) => {
+        console.warn("OneSignal identity refresh failed", error);
+        return false;
+      })
+      .finally(() => {
+        identitySyncPromise = null;
+      });
+  }
+
+  return identitySyncPromise;
+}
+
+function bindOneSignalIdentityListeners(OneSignal) {
+  if (identityListenersBound) {
+    return;
+  }
+
+  identityListenersBound = true;
+
+  OneSignal.Notifications.addEventListener("permissionChange", (permission) => {
+    if (!permission) {
+      return;
+    }
+
+    void refreshCachedIdentity(OneSignal, { ensureOptIn: true });
+  });
+
+  OneSignal.User.PushSubscription.addEventListener("change", (event) => {
+    const previous = event?.previous || {};
+    const current = event?.current || {};
+    const subscriptionChanged =
+      previous.id !== current.id ||
+      previous.token !== current.token ||
+      (current.optedIn && !previous.optedIn);
+
+    if (!subscriptionChanged) {
+      return;
+    }
+
+    void refreshCachedIdentity(OneSignal, { ensureOptIn: false });
+  });
+}
+
+async function getOneSignal() {
+  if (oneSignalReadyPromise) {
+    return oneSignalReadyPromise;
+  }
+
+  if (
+    window.OneSignal &&
+    typeof window.OneSignal === "object" &&
+    typeof window.OneSignal.Notifications?.isPushSupported === "function"
+  ) {
+    bindOneSignalForegroundListeners(window.OneSignal);
+    bindOneSignalIdentityListeners(window.OneSignal);
+    return window.OneSignal;
+  }
+
+  const appId = String(ONESIGNAL_APP_ID || "").trim();
+  if (!appId) {
+    return null;
+  }
+
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  ensureOneSignalPageScript();
+
+  oneSignalReadyPromise = new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      oneSignalReadyPromise = null;
+      reject(new Error("OneSignal SDK load timed out."));
+    }, 15000);
+
+    window.OneSignalDeferred.push(async (OneSignal) => {
+      try {
+        await OneSignal.init({
+          allowLocalhostAsSecureOrigin: isLocalhostOrigin(),
+          appId,
+          autoResubscribe: true,
+          notificationClickHandlerAction: "navigate",
+          notificationClickHandlerMatch: "origin",
+          notifyButton: {
+            enable: true,
+          },
+          safari_web_id: String(ONESIGNAL_SAFARI_WEB_ID || "").trim() || undefined,
+          serviceWorkerParam: {
+            scope: resolveOneSignalPath(ONESIGNAL_SERVICE_WORKER_SCOPE),
+          },
+          serviceWorkerPath: resolveOneSignalPath(ONESIGNAL_SERVICE_WORKER_PATH),
+          welcomeNotification: {
+            disable: true,
+          },
+        });
+
+        OneSignal.Notifications.setDefaultTitle("Tamu Express");
+        OneSignal.Notifications.setDefaultUrl(new URL("./index.html", window.location.href).href);
+        bindOneSignalForegroundListeners(OneSignal);
+        bindOneSignalIdentityListeners(OneSignal);
+        window.clearTimeout(timeoutId);
+        resolve(OneSignal);
+      } catch (error) {
+        window.clearTimeout(timeoutId);
+        oneSignalReadyPromise = null;
+        reject(error);
       }
-      return null;
-    }
-  }
-
-  if (Notification.permission !== "granted") {
-    localStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
-    return null;
-  }
-
-  const storedToken = localStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
-  const token = await getToken(context.messaging, {
-    vapidKey: FCM_WEB_PUSH_PUBLIC_KEY,
-    serviceWorkerRegistration: context.registration,
+    });
   }).catch((error) => {
-    console.error("Push token request failed", error);
-    if (!silent) {
-      showToast("Failed to enable push notifications.", "error");
-    }
+    console.warn("OneSignal initialization failed", error);
     return null;
   });
 
-  if (token) {
-    localStorage.setItem(PUSH_TOKEN_STORAGE_KEY, token);
-    if (!silent && token !== storedToken) {
-      showToast("Push notifications enabled on this device.", "success");
-    }
-  }
-
-  return token || storedToken;
+  return oneSignalReadyPromise;
 }
 
-async function upsertSubscriptionRecord(payload) {
-  try {
-    await upsertPushSubscriptionCallable(payload);
-    return true;
-  } catch (error) {
-    console.warn("Callable push subscription save failed, trying Firestore fallback", error);
-  }
-
-  const snapshot = await getDocs(query(collection(db, PUSH_SUBSCRIPTIONS), where("token", "==", payload.token)));
-  const match = snapshot.docs.find((item) => item.data().target === payload.target);
-
-  if (match) {
-    await updateDoc(match.ref, payload);
-    return true;
-  }
-
-  await addDoc(collection(db, PUSH_SUBSCRIPTIONS), {
-    ...payload,
-    createdAt: Date.now(),
-  });
-
-  return true;
-}
-
-async function removeSubscriptionRecord(target, token) {
-  try {
-    await removePushSubscriptionCallable({ target, token });
-    return true;
-  } catch (error) {
-    console.warn("Callable push subscription removal failed, trying Firestore fallback", error);
-  }
-
-  const snapshot = await getDocs(query(collection(db, PUSH_SUBSCRIPTIONS), where("token", "==", token)));
-  for (const item of snapshot.docs) {
-    if (item.data().target === target) {
-      await deleteDoc(item.ref);
+async function ensureOneSignalPush(options = {}) {
+  const { requestPermission = true, silent = false } = options;
+  const OneSignal = await getOneSignal();
+  if (!OneSignal) {
+    if (!silent) {
+      showToast("OneSignal is not configured correctly for browser push.", "warn");
     }
+    return null;
   }
 
-  return true;
+  if (!OneSignal.Notifications.isPushSupported()) {
+    if (!silent) {
+      showToast("This browser does not support push notifications.", "warn");
+    }
+    return null;
+  }
+
+  if (requestPermission && !OneSignal.Notifications.permission) {
+    await OneSignal.Notifications.requestPermission();
+  }
+
+  return OneSignal;
 }
 
 export async function registerPushSubscription(target, label, options = {}) {
-  if (!target) {
+  const identity = buildPushIdentity(target, label, options);
+  if (!identity) {
+    return false;
+  }
+
+  const OneSignal = await ensureOneSignalPush(options);
+  if (!OneSignal) {
     return false;
   }
 
   try {
-    const token = await resolvePushToken(options);
-    if (!token) {
+    activePushIdentity = identity;
+
+    if (!(await syncOneSignalIdentity(OneSignal, identity, { ensureOptIn: true }))) {
       return false;
     }
 
-    const payload = {
-      label,
-      target,
-      token,
-      updatedAt: Date.now(),
-    };
+    if (OneSignal.Notifications.permission) {
+      if (!options.silent) {
+        showToast("Browser notifications enabled on this device.", "success");
+      }
+      return true;
+    }
 
-    return upsertSubscriptionRecord(payload);
+    if (!options.silent) {
+      showToast("Push notifications were not enabled.", "warn");
+    }
+    return false;
   } catch (error) {
-    console.error("Push registration failed", error);
+    console.error("OneSignal push registration failed", error);
     if (!options.silent) {
       showToast("Push notifications could not be enabled.", "warn");
     }
@@ -245,22 +371,19 @@ export async function registerPushSubscription(target, label, options = {}) {
   }
 }
 
-export async function unregisterPushSubscription(target) {
-  if (!target) {
+export async function unregisterPushSubscription() {
+  const OneSignal = await getOneSignal();
+  if (!OneSignal) {
     return false;
   }
 
   try {
-    const token = localStorage.getItem(PUSH_TOKEN_STORAGE_KEY) || (await resolvePushToken({ requestPermission: false, silent: true }));
-    if (!token) {
-      return false;
-    }
-
-    await removeSubscriptionRecord(target, token);
-
+    activePushIdentity = null;
+    await OneSignal.User.PushSubscription.optOut();
+    await OneSignal.logout();
     return true;
   } catch (error) {
-    console.error("Push unregistration failed", error);
+    console.error("OneSignal push unregistration failed", error);
     return false;
   }
 }

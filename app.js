@@ -23,6 +23,8 @@ import {
   showBrowserNotification,
   unregisterPushSubscription,
 } from "./push.js";
+import { dispatchOrderNotification } from "./notification-api.js";
+import { notifyPaidOrderStatus } from "./order-status-notifications.js";
 import {
   CUSTOMER_ID,
   elements,
@@ -60,6 +62,7 @@ function bootstrap() {
   bindPushSyncEvents();
   hydrateStaticShell();
   registerAppServiceWorker();
+  syncActivePushSubscription();
   subscribeToCollections();
   updateInfoSections();
   syncUi();
@@ -123,26 +126,34 @@ function bindInstallFlow() {
 }
 
 function bindPushSyncEvents() {
-  window.addEventListener("focus", syncHotelPushSubscription);
+  window.addEventListener("focus", syncActivePushSubscription);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
-      syncHotelPushSubscription();
+      syncActivePushSubscription();
     }
   });
 }
 
-function syncHotelPushSubscription() {
-  if (!state.currentHotelId || typeof Notification === "undefined" || Notification.permission !== "granted") {
+function syncActivePushSubscription() {
+  if (state.currentHotelId) {
+    const hotel = getHotelById(state.currentHotelId);
+    if (!hotel.id) {
+      return;
+    }
+
+    void registerPushSubscription(hotel.id, hotel.name, {
+      hotelId: hotel.id,
+      requestPermission: false,
+      role: "hotel",
+      silent: true,
+    });
     return;
   }
 
-  const hotel = getHotelById(state.currentHotelId);
-  if (!hotel.id) {
-    return;
-  }
-
-  void registerPushSubscription(hotel.id, hotel.name, {
+  void registerPushSubscription(CUSTOMER_ID, state.currentCustomer?.name || "Customer", {
+    customerId: CUSTOMER_ID,
     requestPermission: false,
+    role: "customer",
     silent: true,
   });
 }
@@ -574,6 +585,7 @@ async function handleClick(event) {
     await unregisterPushSubscription(state.currentHotelId);
     state.currentHotelId = null;
     state.currentAdmin = false;
+    syncActivePushSubscription();
     syncUi();
     return;
   }
@@ -817,12 +829,25 @@ async function markOrderPaid(orderId) {
     return;
   }
 
+  if ((order.status || "Pending") === "Paid") {
+    showToast("Order is already marked as paid.", "info");
+    return;
+  }
+
   try {
     await updateDoc(doc(db, "orders", orderId), { status: "Paid" });
-    showToast("Order marked as paid.", "success");
   } catch (error) {
     console.error(error);
     showToast("Failed to mark order as paid.", "error");
+    return;
+  }
+
+  try {
+    await notifyPaidOrderStatus(order, getHotelById(order.hotelId).name);
+    showToast("Order marked as paid.", "success");
+  } catch (error) {
+    console.warn("Paid order notification failed", error);
+    showToast("Order marked as paid, but notification delivery failed.", "warn");
   }
 }
 
@@ -934,7 +959,10 @@ async function loginHotel(form) {
 
   state.currentHotelId = hotel.id;
   state.currentAdmin = false;
-  await registerPushSubscription(hotel.id, hotel.name);
+  await registerPushSubscription(hotel.id, hotel.name, {
+    hotelId: hotel.id,
+    role: "hotel",
+  });
   switchTab("hotel");
   showToast("Hotel login successful.", "success");
 }
@@ -1229,11 +1257,21 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   });
 
   try {
-    await addDoc(collection(db, "orders"), orderPayload);
+    const orderRef = await addDoc(collection(db, "orders"), orderPayload);
     sendSimulatedHotelSMS(hotelId, {
       customerName,
       customerPhone,
       total,
+    });
+    void registerPushSubscription(CUSTOMER_ID, customerName, {
+      customerId: CUSTOMER_ID,
+      requestPermission: true,
+      role: "customer",
+      silent: true,
+    });
+    void dispatchOrderNotification(orderRef.id, "order", {
+      customerId: CUSTOMER_ID,
+      hotelId,
     });
     showToast("Order placed successfully.", "success");
   } catch (error) {

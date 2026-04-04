@@ -1,10 +1,28 @@
-import { CUSTOMER_ID, elements, getCartItemsTotal, getHotelById, getHotelLocation, getVisibleOrders, state } from "./state.js";
+import {
+  CUSTOMER_ID,
+  elements,
+  getCartItemsTotal,
+  getHotelById,
+  getHotelLocation,
+  getNotificationsForTarget,
+  getVisibleOrders,
+  state,
+} from "./state.js";
 import { escapeHtml, formatCurrency, formatTime, pluralize } from "./helpers.js";
 import { SERVICE_FEE, SERVICE_FEE_TILL } from "./config.js";
-import { renderBrowseMenuTabs, renderEmptyState, renderStatusPill } from "./view-common.js";
+import {
+  renderBrowseMenuTabs,
+  renderEmptyState,
+  renderInlineBadge,
+  renderNotifications,
+  renderStatusPill,
+} from "./view-common.js";
 
 export function renderOrders() {
   const visibleOrders = getVisibleOrders().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const customerNotifications = !state.currentAdmin && !state.currentHotelId
+    ? getNotificationsForTarget(CUSTOMER_ID)
+    : [];
   const scopeLabel = state.currentAdmin
     ? "Admin order view"
     : state.currentHotelId
@@ -38,8 +56,30 @@ export function renderOrders() {
           <h2 class="view-title">Orders</h2>
           <p class="view-copy">${escapeHtml(scopeCopy)}</p>
         </div>
-        <div class="summary-chip">${visibleOrders.length} order${pluralize(visibleOrders.length)}</div>
+        <div class="toolbar">
+          ${
+            customerNotifications.length
+              ? `
+                  <button class="button button-outline" data-toggle-panel="customerNotifBox" type="button">
+                    Notifications
+                    ${renderInlineBadge(customerNotifications.filter((item) => !item.read).length, "alert")}
+                  </button>
+                `
+              : ""
+          }
+          <div class="summary-chip">${visibleOrders.length} order${pluralize(visibleOrders.length)}</div>
+        </div>
       </div>
+
+      ${
+        customerNotifications.length
+          ? `
+              <div id="customerNotifBox" class="disclosure-card is-hidden">
+                ${renderNotifications(customerNotifications)}
+              </div>
+            `
+          : ""
+      }
 
       ${
         visibleOrders.length

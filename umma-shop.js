@@ -16,6 +16,7 @@ import {
 import { SERVICE_FEE_TILL } from "./config.js";
 import { auth, db } from "./firebase.js";
 import { escapeHtml } from "./helpers.js";
+import { dispatchOrderNotification } from "./notification-api.js";
 import {
   claimNotificationTag,
   registerPushSubscription,
@@ -144,12 +145,13 @@ function bindPushSyncEvents() {
 
 function syncAdminPushSubscription() {
   const user = auth.currentUser;
-  if (!user || typeof Notification === "undefined" || Notification.permission !== "granted") {
+  if (!user) {
     return;
   }
 
   void registerPushSubscription("admin", user.email || "Admin", {
     requestPermission: false,
+    role: "admin",
     silent: true,
   });
 }
@@ -182,12 +184,11 @@ function hydrateCustomerOrders() {
 function subscribeToAdminAuth() {
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        void registerPushSubscription("admin", user.email || "Admin", {
-          requestPermission: false,
-          silent: true,
-        });
-      }
+      void registerPushSubscription("admin", user.email || "Admin", {
+        requestPermission: false,
+        role: "admin",
+        silent: true,
+      });
 
       showAdminPanel();
       listenForAdminOrders();
@@ -420,7 +421,7 @@ async function submitOrder() {
   }
 
   try {
-    await addDoc(ordersCollection, {
+    const orderRef = await addDoc(ordersCollection, {
       createdAt: Date.now(),
       customerEmail,
       customerName,
@@ -435,6 +436,7 @@ async function submitOrder() {
       source: "shop-here",
       totalAmount,
     });
+    void dispatchOrderNotification(orderRef.id, "umma-shop-order");
 
     localStorage.setItem(CUSTOMER_EMAIL_STORAGE_KEY, customerEmail);
     listenForCustomerOrders(customerEmail);
@@ -550,6 +552,7 @@ async function loginAdmin() {
     const credentials = await signInWithEmailAndPassword(auth, email, password);
     await registerPushSubscription("admin", credentials.user.email || email, {
       requestPermission: true,
+      role: "admin",
       silent: false,
     });
     elements.adminEmailInput.value = "";
