@@ -6,5 +6,18 @@
     "api/*.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "routes": [
+    {
+      "src": "/api/send-order-notification",
+      "dest": "/api/send-order-notification.js"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
