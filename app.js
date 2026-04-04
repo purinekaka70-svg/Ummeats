@@ -59,6 +59,7 @@ bootstrap();
 function bootstrap() {
   bindStaticEvents();
   bindInstallFlow();
+  bindNotificationPermissionFlow();
   bindPushSyncEvents();
   hydrateStaticShell();
   registerAppServiceWorker();
@@ -125,37 +126,107 @@ function bindInstallFlow() {
   window.matchMedia?.("(display-mode: standalone)")?.addEventListener("change", updateInstallButtonState);
 }
 
+function bindNotificationPermissionFlow() {
+  if (elements.notificationPromptButton) {
+    elements.notificationPromptButton.addEventListener("click", handleNotificationPromptClick);
+  }
+
+  updateNotificationPromptButtonState();
+}
+
 function bindPushSyncEvents() {
-  window.addEventListener("focus", syncActivePushSubscription);
+  window.addEventListener("focus", () => {
+    syncActivePushSubscription();
+    updateNotificationPromptButtonState();
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       syncActivePushSubscription();
+      updateNotificationPromptButtonState();
     }
   });
 }
 
-function syncActivePushSubscription() {
+function getActivePushSubscriptionContext() {
   if (state.currentHotelId) {
     const hotel = getHotelById(state.currentHotelId);
     if (!hotel.id) {
-      return;
+      return null;
     }
 
-    void registerPushSubscription(hotel.id, hotel.name, {
-      hotelId: hotel.id,
-      requestPermission: false,
-      role: "hotel",
-      silent: true,
-    });
+    return {
+      label: hotel.name,
+      options: {
+        hotelId: hotel.id,
+        role: "hotel",
+      },
+      target: hotel.id,
+    };
+  }
+
+  return {
+    label: state.currentCustomer?.name || "Customer",
+    options: {
+      customerId: CUSTOMER_ID,
+      role: "customer",
+    },
+    target: CUSTOMER_ID,
+  };
+}
+
+function syncActivePushSubscription() {
+  const subscriptionContext = getActivePushSubscriptionContext();
+  if (!subscriptionContext) {
     return;
   }
 
-  void registerPushSubscription(CUSTOMER_ID, state.currentCustomer?.name || "Customer", {
-    customerId: CUSTOMER_ID,
+  void registerPushSubscription(subscriptionContext.target, subscriptionContext.label, {
+    ...subscriptionContext.options,
     requestPermission: false,
-    role: "customer",
     silent: true,
   });
+}
+
+function getNotificationPermissionState() {
+  if (!window.isSecureContext || typeof Notification === "undefined") {
+    return "unsupported";
+  }
+
+  return Notification.permission;
+}
+
+function setNotificationButtonVariant(button, variant) {
+  button.classList.remove("button-primary", "button-outline", "button-danger-soft");
+  button.classList.add(variant);
+}
+
+function updateNotificationPromptButtonState() {
+  if (!elements.notificationPromptButton) {
+    return;
+  }
+
+  const permission = getNotificationPermissionState();
+  const button = elements.notificationPromptButton;
+
+  if (permission === "unsupported" || permission === "granted") {
+    button.classList.add("is-hidden");
+    button.disabled = false;
+    return;
+  }
+
+  button.classList.remove("is-hidden");
+  button.disabled = false;
+
+  if (permission === "denied") {
+    button.textContent = "Notifications Blocked";
+    button.setAttribute("aria-label", "Notifications are blocked in this browser");
+    setNotificationButtonVariant(button, "button-danger-soft");
+    return;
+  }
+
+  button.textContent = "Enable Notifications";
+  button.setAttribute("aria-label", "Enable browser notifications");
+  setNotificationButtonVariant(button, "button-primary");
 }
 
 function waitForInstallPrompt(timeout = 1800) {
@@ -422,6 +493,34 @@ async function handleInstallClick() {
   }
 
   updateInstallButtonState();
+}
+
+async function handleNotificationPromptClick() {
+  const permission = getNotificationPermissionState();
+  if (permission === "unsupported") {
+    showToast("This browser cannot enable web push notifications here.", "warn");
+    updateNotificationPromptButtonState();
+    return;
+  }
+
+  if (permission === "denied") {
+    showToast("Notifications are blocked. Allow them in your browser site settings, then refresh.", "warn");
+    updateNotificationPromptButtonState();
+    return;
+  }
+
+  const subscriptionContext = getActivePushSubscriptionContext();
+  if (!subscriptionContext) {
+    showToast("Notification setup is not ready yet.", "warn");
+    return;
+  }
+
+  await registerPushSubscription(subscriptionContext.target, subscriptionContext.label, {
+    ...subscriptionContext.options,
+    requestPermission: true,
+    silent: false,
+  });
+  updateNotificationPromptButtonState();
 }
 
 function updateInstallButtonState() {
@@ -1256,18 +1355,19 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     mpesaNumber,
   });
 
+  void registerPushSubscription(CUSTOMER_ID, customerName, {
+    customerId: CUSTOMER_ID,
+    requestPermission: getNotificationPermissionState() === "default",
+    role: "customer",
+    silent: true,
+  });
+
   try {
     const orderRef = await addDoc(collection(db, "orders"), orderPayload);
     sendSimulatedHotelSMS(hotelId, {
       customerName,
       customerPhone,
       total,
-    });
-    void registerPushSubscription(CUSTOMER_ID, customerName, {
-      customerId: CUSTOMER_ID,
-      requestPermission: true,
-      role: "customer",
-      silent: true,
     });
     void dispatchOrderNotification(orderRef.id, "order", {
       customerId: CUSTOMER_ID,

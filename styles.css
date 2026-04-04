@@ -144,7 +144,22 @@ button {
   box-shadow: 0 18px 36px rgba(17, 83, 57, 0.32);
 }
 
+.notification-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 86px;
+  z-index: 55;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  box-shadow: 0 18px 36px rgba(17, 83, 57, 0.22);
+}
+
 .install-fab:hover {
+  transform: translateY(-2px);
+}
+
+.notification-fab:hover {
   transform: translateY(-2px);
 }
 
@@ -1661,6 +1676,13 @@ button {
   .install-fab {
     right: 14px;
     bottom: 14px;
+    min-height: 48px;
+    padding: 0 16px;
+  }
+
+  .notification-fab {
+    right: 14px;
+    bottom: 74px;
     min-height: 48px;
     padding: 0 16px;
   }
