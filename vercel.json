@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/Ummeats-main/index.html"
+    },
+    {
+      "source": "^/(?!api(?:/|$))(.*)$",
+      "destination": "/Ummeats-main/$1"
+    }
+  ]
+}

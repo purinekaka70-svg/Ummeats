@@ -1,0 +1,4 @@
+[submodule "Ummeats-main"]
+	path = Ummeats-main
+	url = https://github.com/purinekaka70-svg/Ummeats.git
+	branch = main
