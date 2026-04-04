@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-labelledby="title desc">
+  <title id="title">Tamu Express icon</title>
+  <desc id="desc">Green delivery app icon for Tamu Express.</desc>
+  <rect width="192" height="192" rx="44" fill="#15803d" />
+  <circle cx="96" cy="96" r="60" fill="#dcfce7" />
+  <path d="M60 67h72v16H104v42H88V83H60z" fill="#15803d" />
+  <rect x="48" y="134" width="96" height="12" rx="6" fill="#166534" opacity="0.85" />
+</svg>
