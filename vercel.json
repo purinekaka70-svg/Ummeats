@@ -6,11 +6,7 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/Ummeats-main/index.html"
-    },
-    {
-      "source": "^/(?!api(?:/|$))(.*)$",
-      "destination": "/Ummeats-main/$1"
+      "destination": "/index.html"
     }
   ]
 }
