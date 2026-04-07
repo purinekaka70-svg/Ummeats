@@ -33,6 +33,7 @@ export const elements = {
   footer: document.getElementById("footer"),
   mainContent: document.getElementById("mainContent"),
   installAppButton: document.getElementById("installAppButton"),
+  notificationPromptButton: document.getElementById("notificationPromptButton"),
   heroHotelCount: document.getElementById("heroHotelCount"),
   heroOrderCount: document.getElementById("heroOrderCount"),
   heroRestaurantCount: document.getElementById("heroRestaurantCount"),

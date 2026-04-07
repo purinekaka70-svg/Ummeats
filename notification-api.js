@@ -5,7 +5,7 @@ export async function dispatchOrderNotification(orderId, type = "order", details
   }
 
   try {
-    const response = await fetch("./api/send-order-notification", {
+    const response = await fetch("/api/send-order-notification", {
       body: JSON.stringify({
         customerId: String(details.customerId || "").trim() || undefined,
         hotelId: String(details.hotelId || "").trim() || undefined,
@@ -14,13 +14,20 @@ export async function dispatchOrderNotification(orderId, type = "order", details
       }),
       credentials: "same-origin",
       headers: {
+        Accept: "application/json",
         "Content-Type": "application/json",
       },
       method: "POST",
     });
 
+    const result = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error(`Notification dispatch failed with ${response.status}.`);
+      const message = result?.error || `Notification dispatch failed with ${response.status}.`;
+      throw new Error(message);
+    }
+
+    if (result?.ok === false) {
+      throw new Error(result.error || "Notification dispatch failed.");
     }
 
     return true;

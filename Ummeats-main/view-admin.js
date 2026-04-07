@@ -1,6 +1,6 @@
 import { SERVICE_FEE, SERVICE_FEE_TILL } from "./config.js";
 import { elements, getCartItemsTotal, getHotelById, getHotelLocation, getNotificationsForTarget, state } from "./state.js";
-import { escapeHtml, formatCurrency, formatDateOnly, formatTime, pluralize } from "./helpers.js";
+import { escapeHtml, formatCurrency, formatDateOnly, formatDistanceKm, formatTime, normalizeCoordinates, pluralize } from "./helpers.js";
 import { renderEmptyState, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
 export function renderAdmin() {
@@ -354,6 +354,7 @@ function renderAdminHotelCard(hotel) {
             <div class="summary-item"><span>Phone</span><strong>${escapeHtml(hotel.phone || "N/A")}</strong></div>
             <div class="summary-item"><span>Till</span><strong>${escapeHtml(hotel.till || "N/A")}</strong></div>
             <div class="summary-item"><span>Location</span><strong>${escapeHtml(getHotelLocation(hotel))}</strong></div>
+            <div class="summary-item"><span>Delivery map point</span><strong>${normalizeCoordinates(hotel.coordinates) ? "Saved" : "Missing"}</strong></div>
             <div class="summary-item"><span>Approved</span><strong>${hotel.approved ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Blocked</span><strong>${hotel.blocked ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Subscription</span><strong>${formatDateOnly(hotel.subscriptionExpiry)}</strong></div>
@@ -516,6 +517,7 @@ function renderAdminOrderCard(order) {
       <div class="summary-list">
         <div class="summary-item"><span>Items total</span><strong>${formatCurrency(itemsTotal)}</strong></div>
         <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(order.serviceFee ?? SERVICE_FEE)}</strong></div>
+        <div class="summary-item"><span>Distance</span><strong>${Number.isFinite(order.distanceKm) ? formatDistanceKm(order.distanceKm) : "Unknown"}</strong></div>
         <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
         <div class="summary-item"><span>M-PESA name</span><strong>${escapeHtml(order.mpesaName || "N/A")}</strong></div>
         <div class="summary-item"><span>M-PESA number</span><strong>${escapeHtml(order.mpesaNumber || "N/A")}</strong></div>

@@ -8,14 +8,25 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { ANNOUNCEMENT_TEXT, getServiceFeeForHotel, SERVICE_FEE, SERVICE_FEE_TILL, SMS_SIMULATION_ENABLED } from "./config.js";
+import {
+  ANNOUNCEMENT_TEXT,
+  getServiceFeeForHotel,
+  resolveDistanceServiceFee,
+  SERVICE_FEE,
+  SERVICE_FEE_TILL,
+  SMS_SIMULATION_ENABLED,
+} from "./config.js";
 import { db } from "./firebase.js";
 import {
+  calculateDistanceKm,
   escapeHtml,
+  formatDistanceKm,
   formatCurrency,
   inferToastTone,
+  normalizeCoordinates,
   normalizeMenuDay,
   normalizeMenuMealPeriod,
+  toFiniteNumber,
 } from "./helpers.js";
 import {
   claimNotificationTag,
@@ -59,6 +70,7 @@ bootstrap();
 function bootstrap() {
   bindStaticEvents();
   bindInstallFlow();
+  bindNotificationPermissionFlow();
   bindPushSyncEvents();
   hydrateStaticShell();
   registerAppServiceWorker();
@@ -125,37 +137,258 @@ function bindInstallFlow() {
   window.matchMedia?.("(display-mode: standalone)")?.addEventListener("change", updateInstallButtonState);
 }
 
+function bindNotificationPermissionFlow() {
+  if (elements.notificationPromptButton) {
+    elements.notificationPromptButton.addEventListener("click", handleNotificationPromptClick);
+  }
+
+  updateNotificationPromptButtonState();
+}
+
 function bindPushSyncEvents() {
-  window.addEventListener("focus", syncActivePushSubscription);
+  window.addEventListener("focus", () => {
+    syncActivePushSubscription();
+    updateNotificationPromptButtonState();
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       syncActivePushSubscription();
+      updateNotificationPromptButtonState();
     }
   });
 }
 
-function syncActivePushSubscription() {
+function getActivePushSubscriptionContext() {
   if (state.currentHotelId) {
     const hotel = getHotelById(state.currentHotelId);
     if (!hotel.id) {
-      return;
+      return null;
     }
 
-    void registerPushSubscription(hotel.id, hotel.name, {
-      hotelId: hotel.id,
-      requestPermission: false,
-      role: "hotel",
-      silent: true,
-    });
+    return {
+      label: hotel.name,
+      options: {
+        hotelId: hotel.id,
+        role: "hotel",
+      },
+      target: hotel.id,
+    };
+  }
+
+  return {
+    label: state.currentCustomer?.name || "Customer",
+    options: {
+      customerId: CUSTOMER_ID,
+      role: "customer",
+    },
+    target: CUSTOMER_ID,
+  };
+}
+
+function syncActivePushSubscription() {
+  const subscriptionContext = getActivePushSubscriptionContext();
+  if (!subscriptionContext) {
     return;
   }
 
-  void registerPushSubscription(CUSTOMER_ID, state.currentCustomer?.name || "Customer", {
-    customerId: CUSTOMER_ID,
+  void registerPushSubscription(subscriptionContext.target, subscriptionContext.label, {
+    ...subscriptionContext.options,
     requestPermission: false,
-    role: "customer",
     silent: true,
   });
+}
+
+function getNotificationPermissionState() {
+  if (!window.isSecureContext || typeof Notification === "undefined") {
+    return "unsupported";
+  }
+
+  return Notification.permission;
+}
+
+function setNotificationButtonVariant(button, variant) {
+  button.classList.remove("button-primary", "button-outline", "button-danger-soft");
+  button.classList.add(variant);
+}
+
+function updateNotificationPromptButtonState() {
+  if (!elements.notificationPromptButton) {
+    return;
+  }
+
+  const permission = getNotificationPermissionState();
+  const button = elements.notificationPromptButton;
+
+  if (permission === "unsupported" || permission === "granted") {
+    button.classList.add("is-hidden");
+    button.disabled = false;
+    return;
+  }
+
+  button.classList.remove("is-hidden");
+  button.disabled = false;
+
+  if (permission === "denied") {
+    button.textContent = "Notifications Blocked";
+    button.setAttribute("aria-label", "Notifications are blocked in this browser");
+    setNotificationButtonVariant(button, "button-danger-soft");
+    return;
+  }
+
+  button.textContent = "Enable Notifications";
+  button.setAttribute("aria-label", "Enable browser notifications");
+  setNotificationButtonVariant(button, "button-primary");
+}
+
+function readCoordinatesFromForm(form) {
+  return normalizeCoordinates({
+    accuracy: toFiniteNumber(form?.elements.hotelAccuracy?.value),
+    latitude: toFiniteNumber(form?.elements.hotelLatitude?.value),
+    longitude: toFiniteNumber(form?.elements.hotelLongitude?.value),
+  });
+}
+
+function writeCoordinatesToForm(form, coordinates) {
+  if (!form) {
+    return;
+  }
+
+  form.elements.hotelLatitude.value = coordinates?.latitude ?? "";
+  form.elements.hotelLongitude.value = coordinates?.longitude ?? "";
+  form.elements.hotelAccuracy.value = coordinates?.accuracy ?? "";
+}
+
+function formatCoordinateSnapshot(coordinates) {
+  const normalized = normalizeCoordinates(coordinates);
+  if (!normalized) {
+    return "Precise delivery location not saved yet.";
+  }
+
+  return `Saved map point ${normalized.latitude.toFixed(5)}, ${normalized.longitude.toFixed(5)}.`;
+}
+
+function updateHotelRegistrationCoordinateStatus(form, coordinates = readCoordinatesFromForm(form)) {
+  const status = form?.querySelector("[data-hotel-geo-status]");
+  if (!status) {
+    return;
+  }
+
+  status.textContent = normalizeCoordinates(coordinates)
+    ? `${formatCoordinateSnapshot(coordinates)} Distance-based delivery fees are enabled for this hotel.`
+    : "Use current location to save a map point for automatic distance-based delivery fees.";
+}
+
+function getHotelCoordinates(hotel) {
+  return normalizeCoordinates(hotel?.coordinates);
+}
+
+function requestCurrentCoordinates() {
+  if (!window.isSecureContext || !navigator.geolocation) {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve(
+          normalizeCoordinates({
+            accuracy: position.coords.accuracy,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }),
+        );
+      },
+      () => resolve(null),
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5 * 60 * 1000,
+        timeout: 12000,
+      },
+    );
+  });
+}
+
+async function captureHotelRegistrationCoordinates(form) {
+  const coordinates = await requestCurrentCoordinates();
+  if (!coordinates) {
+    showToast("Location access was unavailable. You can still register and update the hotel location later.", "warn");
+    return null;
+  }
+
+  writeCoordinatesToForm(form, coordinates);
+  updateHotelRegistrationCoordinateStatus(form, coordinates);
+  showToast("Hotel map point saved for distance-based delivery fees.", "success");
+  return coordinates;
+}
+
+async function updateCurrentHotelCoordinates() {
+  const hotel = getHotelById(state.currentHotelId);
+  if (!hotel.id) {
+    return;
+  }
+
+  const coordinates = await requestCurrentCoordinates();
+  if (!coordinates) {
+    showToast("Could not capture the current hotel location on this device.", "warn");
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "hotels", hotel.id), {
+      coordinates: {
+        ...(Number.isFinite(coordinates.accuracy) ? { accuracy: coordinates.accuracy } : {}),
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+      },
+    });
+    showToast("Hotel delivery map point updated.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to update hotel location.", "error");
+  }
+}
+
+async function resolveOrderFeeDetails(hotel) {
+  const hotelCoordinates = getHotelCoordinates(hotel);
+  const baseFee = getServiceFeeForHotel(hotel);
+
+  if (!hotelCoordinates) {
+    return {
+      customerCoordinates: null,
+      distanceKm: null,
+      hotelCoordinates: null,
+      serviceFee: baseFee,
+      serviceFeeBand: "hotel-location-missing",
+      serviceFeeLabel: "Base service fee",
+      serviceFeeSource: "fallback",
+    };
+  }
+
+  const customerCoordinates = await requestCurrentCoordinates();
+  if (!customerCoordinates) {
+    return {
+      customerCoordinates: null,
+      distanceKm: null,
+      hotelCoordinates,
+      serviceFee: baseFee,
+      serviceFeeBand: "customer-location-missing",
+      serviceFeeLabel: "Base service fee",
+      serviceFeeSource: "fallback",
+    };
+  }
+
+  const distanceKm = calculateDistanceKm(customerCoordinates, hotelCoordinates);
+  const fee = resolveDistanceServiceFee(distanceKm, hotel);
+
+  return {
+    customerCoordinates,
+    distanceKm,
+    hotelCoordinates,
+    serviceFee: fee.fee,
+    serviceFeeBand: fee.bandId,
+    serviceFeeLabel: fee.label,
+    serviceFeeSource: "distance",
+  };
 }
 
 function waitForInstallPrompt(timeout = 1800) {
@@ -424,6 +657,34 @@ async function handleInstallClick() {
   updateInstallButtonState();
 }
 
+async function handleNotificationPromptClick() {
+  const permission = getNotificationPermissionState();
+  if (permission === "unsupported") {
+    showToast("This browser cannot enable web push notifications here.", "warn");
+    updateNotificationPromptButtonState();
+    return;
+  }
+
+  if (permission === "denied") {
+    showToast("Notifications are blocked. Allow them in your browser site settings, then refresh.", "warn");
+    updateNotificationPromptButtonState();
+    return;
+  }
+
+  const subscriptionContext = getActivePushSubscriptionContext();
+  if (!subscriptionContext) {
+    showToast("Notification setup is not ready yet.", "warn");
+    return;
+  }
+
+  await registerPushSubscription(subscriptionContext.target, subscriptionContext.label, {
+    ...subscriptionContext.options,
+    requestPermission: true,
+    silent: false,
+  });
+  updateNotificationPromptButtonState();
+}
+
 function updateInstallButtonState() {
   if (!elements.installAppButton) {
     return;
@@ -578,6 +839,16 @@ async function handleClick(event) {
 
   if (button.classList.contains("removeMenu")) {
     await removeMenuItem(button.dataset.index);
+    return;
+  }
+
+  if (button.classList.contains("captureHotelLocationBtn")) {
+    await captureHotelRegistrationCoordinates(button.closest("form"));
+    return;
+  }
+
+  if (button.id === "saveHotelCurrentLocation") {
+    await updateCurrentHotelCoordinates();
     return;
   }
 
@@ -763,8 +1034,7 @@ function addToCart(button) {
     state.cartByHotel[hotelId].push({ name, price, qty });
   }
 
-  const itemLabel = qty === 1 ? name : `${qty} x ${name}`;
-  showToast(`Added to cart: ${itemLabel}.`, "success");
+  showToast("Item added to cart. Please call before placing order for food confirmation.", "warn");
   syncUi();
 }
 
@@ -875,6 +1145,8 @@ async function registerHotel(form) {
   const pass = form.elements.hotelPass.value.trim();
   const till = form.elements.hotelTill.value.trim();
   const location = normalizeHotelLocation(form.elements.hotelLocation?.value);
+  const fallbackCoordinates = readCoordinatesFromForm(form) || (await requestCurrentCoordinates());
+  const coordinates = normalizeCoordinates(fallbackCoordinates);
   const normalizedName = normalizeHotelAccountName(name);
 
   if (!name || !phone || !pass || !till) {
@@ -894,6 +1166,7 @@ async function registerHotel(form) {
       pass,
       till,
       location,
+      ...(coordinates ? { coordinates } : {}),
       approved: false,
       blocked: false,
       subscriptionExpiry: null,
@@ -917,6 +1190,7 @@ async function registerHotel(form) {
     }
 
     form.reset();
+    updateHotelRegistrationCoordinateStatus(form, null);
     showToast("Hotel registered. Wait for admin approval and subscription activation.", "success");
   } catch (error) {
     console.error(error);
@@ -1049,6 +1323,7 @@ function openCartModal(hotelId) {
   const draft = getCheckoutDraft(hotelId);
   const cartItemCount = getCartItemCount(cart);
   const serviceFee = getServiceFeeForHotel(hotel);
+  const hasHotelCoordinates = Boolean(getHotelCoordinates(hotel));
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
 
@@ -1080,8 +1355,8 @@ function openCartModal(hotelId) {
 
       <div class="summary-list">
         <div class="summary-item"><span>Items total</span><strong>${formatCurrency(itemsTotal)}</strong></div>
-        <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(serviceFee)}</strong></div>
-        <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
+        <div class="summary-item"><span>${hasHotelCoordinates ? "Estimated service fee" : "Service fee"}</span><strong>${formatCurrency(serviceFee)}</strong></div>
+        <div class="summary-item"><span>${hasHotelCoordinates ? "Estimated total" : "Total"}</span><strong>${formatCurrency(total)}</strong></div>
       </div>
 
       <div class="cart-alert">
@@ -1091,6 +1366,11 @@ function openCartModal(hotelId) {
           <a href="tel:${escapeHtml(hotel.phone || "")}">${escapeHtml(hotel.phone || "the hotel")}</a>
           before placing order for food confirmation.
         </p>
+        <p class="tiny">${
+          hasHotelCoordinates
+            ? `Allow location access when confirming so the final delivery fee is calculated from your distance to ${escapeHtml(hotel.name)}.`
+            : `${escapeHtml(hotel.name)} has not saved a map point yet, so the base service fee will be used for this order.`
+        }</p>
         <p class="tiny">Pay the delivery fee in till ${escapeHtml(SERVICE_FEE_TILL)}.</p>
       </div>
 
@@ -1223,9 +1503,14 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   }
 
   const hotel = getHotelById(hotelId);
-  const serviceFee = getServiceFeeForHotel(hotel);
+  const feeDetails = await resolveOrderFeeDetails(hotel);
+  const serviceFee = feeDetails.serviceFee;
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
+
+  if (feeDetails.serviceFeeSource !== "distance") {
+    showToast("Live distance could not be confirmed, so the base delivery fee was used for this order.", "warn");
+  }
 
   const orderPayload = {
     createdAt: Date.now(),
@@ -1238,10 +1523,17 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
       price: Number(item.price || 0),
       qty: Number(item.qty || 1),
     })),
+    ...(feeDetails.customerCoordinates ? { customerCoordinates: feeDetails.customerCoordinates } : {}),
     itemsTotal,
+    ...(Number.isFinite(feeDetails.distanceKm) ? { distanceKm: feeDetails.distanceKm } : {}),
+    ...(feeDetails.hotelCoordinates ? { hotelCoordinates: feeDetails.hotelCoordinates } : {}),
     mpesaName,
     mpesaNumber,
+    serviceFeeBand: feeDetails.serviceFeeBand,
+    serviceFeeLabel: feeDetails.serviceFeeLabel,
+    serviceFeeSource: feeDetails.serviceFeeSource,
     serviceFee,
+    serviceFeeBase: getServiceFeeForHotel(hotel),
     serviceFeeTill: SERVICE_FEE_TILL,
     status: "Pending",
     total,
@@ -1256,31 +1548,40 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     mpesaNumber,
   });
 
+  void registerPushSubscription(CUSTOMER_ID, customerName, {
+    customerId: CUSTOMER_ID,
+    requestPermission: getNotificationPermissionState() === "default",
+    role: "customer",
+    silent: true,
+  });
+
   try {
     const orderRef = await addDoc(collection(db, "orders"), orderPayload);
     sendSimulatedHotelSMS(hotelId, {
       customerName,
       customerPhone,
+      distanceKm: feeDetails.distanceKm,
       total,
-    });
-    void registerPushSubscription(CUSTOMER_ID, customerName, {
-      customerId: CUSTOMER_ID,
-      requestPermission: true,
-      role: "customer",
-      silent: true,
     });
     void dispatchOrderNotification(orderRef.id, "order", {
       customerId: CUSTOMER_ID,
       hotelId,
     });
-    showToast("Order placed successfully.", "success");
+    showToast(
+      Number.isFinite(feeDetails.distanceKm)
+        ? `Order placed. Delivery fee ${formatCurrency(serviceFee)} for ${formatDistanceKm(feeDetails.distanceKm)}.`
+        : "Order placed successfully.",
+      "success",
+    );
   } catch (error) {
     console.error("Order write failed", error);
     showToast("Failed to place order.", "error");
     return;
   }
 
-  const message = `New order from ${customerName} (${customerPhone}) - ${formatCurrency(total)} for ${hotel.name}`;
+  const message = `New order from ${customerName} (${customerPhone}) - ${formatCurrency(total)} for ${hotel.name}${
+    Number.isFinite(feeDetails.distanceKm) ? ` (${formatDistanceKm(feeDetails.distanceKm)})` : ""
+  }`;
 
   try {
     await addDoc(collection(db, "notifications"), {
@@ -1329,6 +1630,7 @@ function sendSimulatedHotelSMS(hotelId, order) {
     `Hotel: ${hotel.name}`,
     `Customer: ${order.customerName}`,
     `Customer Phone: ${order.customerPhone}`,
+    ...(Number.isFinite(order.distanceKm) ? [`Distance: ${formatDistanceKm(order.distanceKm)}`] : []),
     `Total Amount: ${formatCurrency(order.total)}`,
     "Please check your dashboard.",
   ].join("\n");

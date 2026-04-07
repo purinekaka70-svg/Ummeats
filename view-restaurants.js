@@ -18,7 +18,7 @@ import {
   getVisibleRestaurants,
   state,
 } from "./state.js";
-import { escapeHtml, formatCurrency, getMenuScheduleDetails, pluralize, sortMenuItems } from "./helpers.js";
+import { escapeHtml, formatCurrency, getMenuScheduleDetails, normalizeCoordinates, pluralize, sortMenuItems } from "./helpers.js";
 import { renderBrowseMenuTabs, renderEmptyState } from "./view-common.js";
 
 export function renderRestaurants() {
@@ -295,6 +295,7 @@ function renderMenuForHotel(hotelId) {
   const sortedMenu = sortMenuItems(restaurant.menu || []);
   const cart = getCart(hotelId);
   const serviceFee = getServiceFeeForHotel(hotel);
+  const hasHotelCoordinates = Boolean(normalizeCoordinates(hotel.coordinates));
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
 
@@ -319,8 +320,8 @@ function renderMenuForHotel(hotelId) {
                   <p class="eyebrow">Cart ready</p>
                   <h4>${getCartItemCount(cart)} item${pluralize(getCartItemCount(cart))} in cart</h4>
                   <p class="launch-copy">
-                    Items total ${formatCurrency(itemsTotal)}. Delivery fee ${formatCurrency(serviceFee)}.
-                    Total to pay ${formatCurrency(total)}.
+                    Items total ${formatCurrency(itemsTotal)}. ${hasHotelCoordinates ? "Estimated" : "Base"} delivery fee ${formatCurrency(serviceFee)}.
+                    ${hasHotelCoordinates ? `Estimated total ${formatCurrency(total)}. Final fee is confirmed from your distance at checkout.` : `Total to pay ${formatCurrency(total)}.`}
                     Pay the delivery fee to till ${escapeHtml(SERVICE_FEE_TILL)} and open cart to continue with payment details.
                   </p>
                 </div>

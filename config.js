@@ -10,6 +10,13 @@ export const firebaseConfig = {
 export const SERVICE_FEE = 40;
 export const STAFF_LOUNGE_SERVICE_FEE = 30;
 export const SERVICE_FEE_TILL = "7312380";
+export const DISTANCE_SERVICE_FEE_BANDS = [
+  { id: "nearby", label: "within 750 m", maxKm: 0.75, surcharge: 0 },
+  { id: "walkable", label: "750 m to 1.5 km", maxKm: 1.5, surcharge: 20 },
+  { id: "mid", label: "1.5 km to 3 km", maxKm: 3, surcharge: 40 },
+  { id: "far", label: "3 km to 5 km", maxKm: 5, surcharge: 70 },
+  { id: "extended", label: "over 5 km", maxKm: Number.POSITIVE_INFINITY, surcharge: 110 },
+];
 export const SUPPORT_CONTACTS = ["0115613332", "0116860686"];
 export const ONESIGNAL_APP_ID = "8a058e59-ba58-44ae-a3fb-2f8c53778035";
 export const ONESIGNAL_SAFARI_WEB_ID = "web.onesignal.auto.27d2eba6-7621-43e8-b8d4-d2a9de3b8fea";
@@ -38,4 +45,28 @@ export function getServiceFeeForHotel(hotelOrName) {
   }
 
   return SERVICE_FEE;
+}
+
+export function resolveDistanceServiceFee(distanceKm, hotelOrName) {
+  const baseFee = getServiceFeeForHotel(hotelOrName);
+
+  if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+    return {
+      bandId: "base",
+      baseFee,
+      fee: baseFee,
+      label: "Base service fee",
+      surcharge: 0,
+    };
+  }
+
+  const band = DISTANCE_SERVICE_FEE_BANDS.find((item) => distanceKm <= item.maxKm) || DISTANCE_SERVICE_FEE_BANDS.at(-1);
+
+  return {
+    bandId: band?.id || "base",
+    baseFee,
+    fee: baseFee + Number(band?.surcharge || 0),
+    label: band?.label || "Distance-based service fee",
+    surcharge: Number(band?.surcharge || 0),
+  };
 }

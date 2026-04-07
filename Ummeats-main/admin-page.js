@@ -495,7 +495,7 @@ async function deleteFeedback(feedbackId) {
 }
 
 async function clearAllData() {
-  if (!window.confirm("Delete all hotels, restaurants, orders, feedbacks, and notifications?")) {
+  if (!window.confirm("Delete all hotels, restaurants, orders, feedbacks, notifications, and push subscriptions?")) {
     return;
   }
 
@@ -507,6 +507,7 @@ async function clearAllData() {
     "feedbacks",
     "ummaShopFeedbacks",
     "notifications",
+    "pushSubscriptions",
   ];
   for (const collectionName of collections) {
     const snapshot = await getDocs(collection(db, collectionName));

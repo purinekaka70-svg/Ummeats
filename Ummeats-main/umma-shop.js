@@ -378,6 +378,38 @@ function renderItems() {
   });
 }
 
+async function createShopOrder(orderPayload) {
+  try {
+    const response = await fetch("/api/submit-umma-shop-order", {
+      body: JSON.stringify(orderPayload),
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    });
+
+    const result = await response.json().catch(() => null);
+    if (!response.ok || result?.ok === false || !result?.id) {
+      throw new Error(result?.error || `Shop Here order submit failed with ${response.status}.`);
+    }
+
+    return {
+      id: result.id,
+      mode: "api",
+    };
+  } catch (error) {
+    console.warn("Shop Here API submit failed, trying direct Firestore write", error);
+  }
+
+  const orderRef = await addDoc(ordersCollection, orderPayload);
+  return {
+    id: orderRef.id,
+    mode: "firestore",
+  };
+}
+
 async function submitFeedback() {
   const name = elements.fbName.value.trim();
   const email = elements.fbEmail.value.trim();
@@ -412,31 +444,38 @@ async function submitOrder() {
   const customerName = elements.customerName.value.trim();
   const customerEmail = elements.customerEmail.value.trim();
   const shopName = elements.shopName.value.trim();
-  const totalAmount = elements.totalAmount.value.trim();
+  const totalAmount = Number.parseFloat(elements.totalAmount.value.trim().replaceAll(",", ""));
   const mpesaCode = elements.mpesaCode.value.trim();
 
-  if (!customerName || !customerEmail || !shopName || !totalAmount || !mpesaCode || !orderItems.length) {
+  if (!customerName || !customerEmail || !shopName || !mpesaCode || !orderItems.length) {
     window.alert("Fill all fields and add items before submitting.");
     return;
   }
 
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+    window.alert("Enter a valid amount paid or to send.");
+    return;
+  }
+
+  const orderPayload = {
+    createdAt: Date.now(),
+    customerEmail,
+    customerName,
+    delivered: false,
+    items: orderItems.map((item) => ({ name: item.name, qty: item.qty })),
+    location: LOCATION_NAME,
+    mpesaCode,
+    paymentTargets: [`Till ${SERVICE_FEE_TILL}`],
+    paid: false,
+    serviceFeeTill: SERVICE_FEE_TILL,
+    shopName,
+    source: "shop-here",
+    totalAmount,
+  };
+
   try {
-    const orderRef = await addDoc(ordersCollection, {
-      createdAt: Date.now(),
-      customerEmail,
-      customerName,
-      delivered: false,
-      items: orderItems.map((item) => ({ name: item.name, qty: item.qty })),
-      location: LOCATION_NAME,
-      mpesaCode,
-      paymentTargets: [`Till ${SERVICE_FEE_TILL}`],
-      paid: false,
-      serviceFeeTill: SERVICE_FEE_TILL,
-      shopName,
-      source: "shop-here",
-      totalAmount,
-    });
-    void dispatchOrderNotification(orderRef.id, "umma-shop-order");
+    const createdOrder = await createShopOrder(orderPayload);
+    void dispatchOrderNotification(createdOrder.id, "umma-shop-order");
 
     localStorage.setItem(CUSTOMER_EMAIL_STORAGE_KEY, customerEmail);
     listenForCustomerOrders(customerEmail);

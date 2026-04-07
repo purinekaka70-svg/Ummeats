@@ -10,6 +10,10 @@
   },
   "routes": [
     {
+      "src": "/api/submit-umma-shop-order",
+      "dest": "/api/submit-umma-shop-order.js"
+    },
+    {
       "src": "/api/send-order-notification",
       "dest": "/api/send-order-notification.js"
     },

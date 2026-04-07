@@ -2,11 +2,13 @@ import { HOTEL_LOCATION_SUGGESTIONS } from "./config.js";
 import { elements, getHotelById, getHotelLocation, getNotificationsForTarget, getRestaurantByHotelId, state } from "./state.js";
 import {
   escapeHtml,
+  formatDistanceKm,
   formatCurrency,
   formatDateOnly,
   getMenuScheduleDetails,
   MENU_DAY_OPTIONS,
   MENU_MEAL_PERIOD_OPTIONS,
+  normalizeCoordinates,
   pluralize,
   sortMenuItems,
 } from "./helpers.js";
@@ -84,9 +86,23 @@ export function renderHotelPortal() {
               <input class="input" list="hotelLocationOptions" name="hotelLocation" placeholder="Around Umma University" />
             </label>
 
+            <input name="hotelLatitude" type="hidden" value="" />
+            <input name="hotelLongitude" type="hidden" value="" />
+            <input name="hotelAccuracy" type="hidden" value="" />
+
             <datalist id="hotelLocationOptions">
               ${HOTEL_LOCATION_SUGGESTIONS.map((location) => `<option value="${escapeHtml(location)}"></option>`).join("")}
             </datalist>
+
+            <div class="button-row">
+              <button class="button button-outline button-small captureHotelLocationBtn" type="button">
+                Use Current Location
+              </button>
+            </div>
+
+            <p class="tiny" data-hotel-geo-status>
+              Use current location to save a map point for automatic distance-based delivery fees.
+            </p>
 
             <button class="button button-secondary button-small" type="submit">Register</button>
           </form>
@@ -124,6 +140,7 @@ export function renderHotelPortal() {
   }
 
   const hotelNotifications = getNotificationsForTarget(state.currentHotelId);
+  const hotelCoordinates = normalizeCoordinates(hotel.coordinates);
   const restaurant = getRestaurantByHotelId(state.currentHotelId) || { id: state.currentHotelId, menu: [] };
   const sortedMenu = sortMenuItems(restaurant.menu || []);
   const hotelOrders = state.orders
@@ -176,9 +193,24 @@ export function renderHotelPortal() {
             <div class="summary-item"><span>Phone</span><strong>${escapeHtml(hotel.phone || "N/A")}</strong></div>
             <div class="summary-item"><span>Till</span><strong>${escapeHtml(hotel.till || "N/A")}</strong></div>
             <div class="summary-item"><span>Location</span><strong>${escapeHtml(getHotelLocation(hotel))}</strong></div>
+            <div class="summary-item"><span>Delivery map point</span><strong>${hotelCoordinates ? "Saved" : "Missing"}</strong></div>
             <div class="summary-item"><span>Approved</span><strong>${hotel.approved ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Subscription ends</span><strong>${formatDateOnly(hotel.subscriptionExpiry)}</strong></div>
           </div>
+
+          <div class="button-row">
+            <button class="button button-outline button-small" id="saveHotelCurrentLocation" type="button">
+              ${hotelCoordinates ? "Refresh Delivery Location" : "Save Delivery Location"}
+            </button>
+          </div>
+
+          <p class="tiny">
+            ${
+              hotelCoordinates
+                ? "Your hotel location is saved. Customer delivery fees can now be calculated from distance."
+                : "Save the current hotel location on this device to enable automatic distance-based delivery fees."
+            }
+          </p>
         </article>
 
         <article class="card action-card">
@@ -304,6 +336,11 @@ function renderHotelOrderCard(order) {
                 .join("")
             : `<div class="order-item"><p class="is-muted">No order items were saved for this record.</p></div>`
         }
+      </div>
+
+      <div class="summary-list">
+        <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(order.serviceFee || 0)}</strong></div>
+        <div class="summary-item"><span>Distance</span><strong>${Number.isFinite(order.distanceKm) ? formatDistanceKm(order.distanceKm) : "Unknown"}</strong></div>
       </div>
 
       <div class="button-row">

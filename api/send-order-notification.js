@@ -48,11 +48,9 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   let sent = 0;
   if (!order.onesignalAdminDispatchedAt) {
     await sendPushMessage({
+      aliases: ["admin"],
       appId,
       body: `${customerName} placed an order for ${hotelName}.`,
-      filters: [
-        { field: "tag", key: "role", relation: "=", value: "admin" },
-      ],
       title: "New order received",
       url: `${siteUrl}/admin.html`,
     });
@@ -62,13 +60,9 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
 
   if (targetHotelId && !order.onesignalHotelDispatchedAt) {
     await sendPushMessage({
+      aliases: [targetHotelId],
       appId,
       body: `${customerName} placed an order for ${hotelName}.`,
-      filters: [
-        { field: "tag", key: "role", relation: "=", value: "hotel" },
-        { operator: "AND" },
-        { field: "tag", key: "hotel_id", relation: "=", value: targetHotelId },
-      ],
       title: "New order received",
       url: `${siteUrl}/index.html`,
     });
@@ -100,11 +94,9 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
   const shopName = String(order.shopName || "Around Umma University");
 
   await sendPushMessage({
+    aliases: ["admin"],
     appId,
     body: `${customerName} submitted a Shop Here order for ${shopName}.`,
-    filters: [
-      { field: "tag", key: "role", relation: "=", value: "admin" },
-    ],
     title: "New Shop Here order",
     url: `${siteUrl}/umma-shop.html`,
   });
@@ -155,11 +147,9 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
 
   if (!order.onesignalAdminPaidDispatchedAt) {
     await sendPushMessage({
+      aliases: ["admin"],
       appId,
       body: `Order for ${customerName} at ${hotelName} has been marked as paid.`,
-      filters: [
-        { field: "tag", key: "role", relation: "=", value: "admin" },
-      ],
       title: "Order marked as paid",
       url: `${siteUrl}/admin.html`,
     });
@@ -169,13 +159,9 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
 
   if (targetHotelId && !order.onesignalHotelPaidDispatchedAt) {
     await sendPushMessage({
+      aliases: [targetHotelId],
       appId,
       body: `Order for ${customerName} at ${hotelName} has been marked as paid.`,
-      filters: [
-        { field: "tag", key: "role", relation: "=", value: "hotel" },
-        { operator: "AND" },
-        { field: "tag", key: "hotel_id", relation: "=", value: targetHotelId },
-      ],
       title: "Order marked as paid",
       url: `${siteUrl}/index.html`,
     });
