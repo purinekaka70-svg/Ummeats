@@ -711,7 +711,13 @@ function renderCustomerOrders(orders) {
           </div>
 
           <div class="button-row shop-action-row">
-            <button class="button button-danger button-small customer-delete-order" data-id="${escapeHtml(order.id)}" type="button">Delete</button>
+            <button
+              class="button button-danger customer-delete-order"
+              data-order-id="${escapeHtml(order.id)}"
+              type="button"
+            >
+              Delete Order
+            </button>
           </div>
         </article>
       `;
@@ -720,12 +726,18 @@ function renderCustomerOrders(orders) {
 
   elements.customerOrders.querySelectorAll(".customer-delete-order").forEach((button) => {
     button.addEventListener("click", async () => {
+      const orderId = String(button.dataset.orderId || button.dataset.id || "").trim();
+      if (!orderId) {
+        setStatusLine(elements.orderStatus, "Order ID missing. Refresh and try again.", "error");
+        return;
+      }
+
       if (!window.confirm("Delete this Shop Here order?")) {
         return;
       }
 
       try {
-        await deleteDoc(doc(db, "ummaShopOrders", button.dataset.id));
+        await deleteDoc(doc(db, "ummaShopOrders", orderId));
         setStatusLine(elements.orderStatus, "Shop Here order deleted successfully.", "success");
       } catch (error) {
         console.error(error);
