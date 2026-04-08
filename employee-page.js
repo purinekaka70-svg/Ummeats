@@ -20,6 +20,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 import { auth, db, rtdb } from "./firebase.js";
 import { inferToastTone } from "./helpers.js";
+import { claimNotificationTag, showBrowserNotification } from "./push.js";
 import { showToast } from "./ui.js";
 import { renderEmployeePortal } from "./view-employee.js";
 
@@ -125,6 +126,16 @@ const portalState = {
 
 let unsubscribeEmployeeProfile = null;
 let employeeProfileLoadTimer = null;
+const employeeOrderAlertTracker = {
+  ids: new Set(),
+  ready: false,
+};
+const employeeShopOrderAlertTracker = {
+  ids: new Set(),
+  ready: false,
+};
+const employeeOrderStatusTracker = new Map();
+const employeeShopOrderStatusTracker = new Map();
 
 function clearEmployeeProfileLoadTimer() {
   if (employeeProfileLoadTimer) {
@@ -191,6 +202,174 @@ function hydrateShell() {
   };
 }
 
+function collectNewSnapshotDocs(snapshot, tracker) {
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  if (!tracker.ready) {
+    tracker.ready = true;
+    tracker.ids = currentIds;
+    return [];
+  }
+
+  const additions = snapshot.docs
+    .filter((item) => !tracker.ids.has(item.id) && !item.metadata.hasPendingWrites)
+    .map((item) => ({ id: item.id, ...item.data() }));
+
+  tracker.ids = currentIds;
+  return additions;
+}
+
+function handleEmployeeOrderAlerts(snapshot) {
+  if (!portalState.currentUser || !portalState.employeeProfile) {
+    collectNewSnapshotDocs(snapshot, employeeOrderAlertTracker);
+    return;
+  }
+
+  const newOrders = collectNewSnapshotDocs(snapshot, employeeOrderAlertTracker);
+  newOrders.forEach((order) => {
+    const tag = `employee-order-${order.id}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    const title = "New hotel order";
+    const body = `${order.customerName || "A customer"} placed a new hotel order.`;
+    showToast(`${title}: ${body}`, "info");
+    void showBrowserNotification(title, body, {
+      link: "./employee.html",
+      tag,
+    });
+  });
+}
+
+function handleEmployeeOrderStatusAlerts(snapshot) {
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  snapshot.docs.forEach((item) => {
+    if (item.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const order = item.data() || {};
+    const orderId = item.id;
+    const previousStatus = employeeOrderStatusTracker.get(orderId);
+    const currentStatus = String(order.status || "Pending");
+    employeeOrderStatusTracker.set(orderId, currentStatus);
+
+    if (!portalState.currentUser || !portalState.employeeProfile) {
+      return;
+    }
+
+    if (!previousStatus || previousStatus === currentStatus || currentStatus !== "Paid") {
+      return;
+    }
+
+    const tag = `employee-order-paid-${orderId}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    const title = "Order marked as paid";
+    const body = `${order.customerName || "A customer"}'s hotel order is now paid.`;
+    showToast(`${title}: ${body}`, "success");
+    void showBrowserNotification(title, body, {
+      link: "./employee.html",
+      tag,
+    });
+  });
+
+  [...employeeOrderStatusTracker.keys()].forEach((orderId) => {
+    if (!currentIds.has(orderId)) {
+      employeeOrderStatusTracker.delete(orderId);
+    }
+  });
+}
+
+function handleEmployeeShopOrderAlerts(snapshot) {
+  if (!portalState.currentUser || !portalState.employeeProfile) {
+    collectNewSnapshotDocs(snapshot, employeeShopOrderAlertTracker);
+    return;
+  }
+
+  const newOrders = collectNewSnapshotDocs(snapshot, employeeShopOrderAlertTracker);
+  newOrders.forEach((order) => {
+    const tag = `employee-shop-order-${order.id}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    const title = "New Shop Here order";
+    const body = `${order.customerName || "A customer"} submitted a Shop Here order.`;
+    showToast(`${title}: ${body}`, "info");
+    void showBrowserNotification(title, body, {
+      link: "./employee.html",
+      tag,
+    });
+  });
+}
+
+function handleEmployeeShopOrderStatusAlerts(snapshot) {
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  snapshot.docs.forEach((item) => {
+    if (item.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const order = item.data() || {};
+    const orderId = item.id;
+    const previous = employeeShopOrderStatusTracker.get(orderId) || {
+      delivered: Boolean(order.delivered),
+      paid: Boolean(order.paid),
+    };
+    const current = {
+      delivered: Boolean(order.delivered),
+      paid: Boolean(order.paid),
+    };
+    employeeShopOrderStatusTracker.set(orderId, current);
+
+    if (!portalState.currentUser || !portalState.employeeProfile) {
+      return;
+    }
+
+    if (!previous.paid && current.paid) {
+      const tag = `employee-shop-order-paid-${orderId}`;
+      if (!claimNotificationTag(tag)) {
+        return;
+      }
+
+      const title = "Shop Here order marked as paid";
+      const body = `${order.customerName || "A customer"}'s Shop Here order is now paid.`;
+      showToast(`${title}: ${body}`, "success");
+      void showBrowserNotification(title, body, {
+        link: "./employee.html",
+        tag,
+      });
+    }
+
+    if (!previous.delivered && current.delivered) {
+      const tag = `employee-shop-order-delivered-${orderId}`;
+      if (!claimNotificationTag(tag)) {
+        return;
+      }
+
+      const title = "Shop Here order marked as delivered";
+      const body = `${order.customerName || "A customer"}'s Shop Here order is now delivered.`;
+      showToast(`${title}: ${body}`, "success");
+      void showBrowserNotification(title, body, {
+        link: "./employee.html",
+        tag,
+      });
+    }
+  });
+
+  [...employeeShopOrderStatusTracker.keys()].forEach((orderId) => {
+    if (!currentIds.has(orderId)) {
+      employeeShopOrderStatusTracker.delete(orderId);
+    }
+  });
+}
+
 function subscribeToCollections() {
   onSnapshot(collection(db, "hotels"), (snapshot) => {
     portalState.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -200,6 +379,8 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
+    handleEmployeeOrderAlerts(snapshot);
+    handleEmployeeOrderStatusAlerts(snapshot);
     portalState.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderEmployeeView();
   }, (error) => {
@@ -207,6 +388,8 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
+    handleEmployeeShopOrderAlerts(snapshot);
+    handleEmployeeShopOrderStatusAlerts(snapshot);
     portalState.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderEmployeeView();
   }, (error) => {

@@ -262,6 +262,122 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
   return { ok: true, sentInApp, sentPush, statusCode: 200 };
 }
 
+function resolveShopStatusConfig(statusType) {
+  const normalized = String(statusType || "").trim().toLowerCase();
+  if (normalized === "delivered") {
+    return {
+      adminInAppField: "notificationAdminDeliveredDispatchedAt",
+      adminPushField: "onesignalAdminDeliveredDispatchedAt",
+      customerInAppField: "notificationCustomerDeliveredDispatchedAt",
+      customerPushField: "onesignalCustomerDeliveredDispatchedAt",
+      customerType: "umma-shop-order-delivered",
+      label: "delivered",
+      title: "Shop Here order marked as delivered",
+    };
+  }
+
+  return {
+    adminInAppField: "notificationAdminPaidDispatchedAt",
+    adminPushField: "onesignalAdminPaidDispatchedAt",
+    customerInAppField: "notificationCustomerPaidDispatchedAt",
+    customerPushField: "onesignalCustomerPaidDispatchedAt",
+    customerType: "umma-shop-order-paid",
+    label: "paid",
+    title: "Shop Here order marked as paid",
+  };
+}
+
+async function dispatchShopOrderStatus({
+  appId,
+  customerId,
+  firestore,
+  orderId,
+  siteUrl,
+  statusType,
+}) {
+  const orderRef = firestore.collection("ummaShopOrders").doc(orderId);
+  const orderSnapshot = await orderRef.get();
+
+  if (!orderSnapshot.exists) {
+    return { error: "Shop order not found.", statusCode: 404 };
+  }
+
+  const config = resolveShopStatusConfig(statusType);
+  const order = orderSnapshot.data() || {};
+  const updates = {};
+  const customerName = String(order.customerName || "A customer");
+  const shopName = String(order.shopName || "Around Umma University");
+  const targetCustomerId = String(order.customerEmail || customerId || "").trim();
+  const customerMessage = `Your Shop Here order for ${shopName} has been marked as ${config.label}.`;
+  const adminMessage = `Shop Here order for ${customerName} at ${shopName} has been marked as ${config.label}.`;
+  const timestamp = nowTimestamp();
+  let sentInApp = 0;
+  let sentPush = 0;
+
+  if (targetCustomerId && !order[config.customerInAppField]) {
+    await writeNotification(firestore, {
+      message: customerMessage,
+      timestamp,
+      to: targetCustomerId,
+      type: config.customerType,
+    });
+    updates[config.customerInAppField] = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
+  if (!order[config.adminInAppField]) {
+    await writeNotification(firestore, {
+      message: adminMessage,
+      timestamp,
+      to: "admin",
+      type: config.customerType,
+    });
+    updates[config.adminInAppField] = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
+  if (targetCustomerId && !order[config.customerPushField]) {
+    if (
+      await sendPushWithFallbackTargets({
+        aliasTargets: [targetCustomerId],
+        appId,
+        body: customerMessage,
+        filterSets: [
+          buildTagEqualsFilter("customer_id", targetCustomerId),
+          buildTagEqualsFilter("notification_target", targetCustomerId),
+        ],
+        title: config.title,
+        url: `${siteUrl}/umma-shop.html`,
+      })
+    ) {
+      updates[config.customerPushField] = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
+  }
+
+  if (!order[config.adminPushField]) {
+    if (
+      await sendPushWithFallbackTargets({
+        aliasTargets: ["admin"],
+        appId,
+        body: adminMessage,
+        filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
+        title: config.title,
+        url: `${siteUrl}/umma-shop.html`,
+      })
+    ) {
+      updates[config.adminPushField] = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
+  }
+
+  if (Object.keys(updates).length) {
+    await orderRef.update(updates);
+  }
+
+  return { ok: true, sentInApp, sentPush, statusCode: 200 };
+}
+
 async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderId, siteUrl }) {
   const orderRef = firestore.collection("orders").doc(orderId);
   const orderSnapshot = await orderRef.get();
@@ -420,6 +536,24 @@ module.exports = async (req, res) => {
     let result;
     if (type === "umma-shop-order") {
       result = await dispatchShopOrder({ appId, firestore, orderId, siteUrl });
+    } else if (type === "umma-shop-paid" || type === "umma_shop_paid") {
+      result = await dispatchShopOrderStatus({
+        appId,
+        customerId,
+        firestore,
+        orderId,
+        siteUrl,
+        statusType: "paid",
+      });
+    } else if (type === "umma-shop-delivered" || type === "umma_shop_delivered") {
+      result = await dispatchShopOrderStatus({
+        appId,
+        customerId,
+        firestore,
+        orderId,
+        siteUrl,
+        statusType: "delivered",
+      });
     } else if (type === "order-paid" || type === "order_paid") {
       result = await dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderId, siteUrl });
     } else {

@@ -18,6 +18,7 @@ import { SERVICE_FEE_TILL } from "./config.js";
 import { auth, db } from "./firebase.js";
 import { escapeHtml } from "./helpers.js";
 import { dispatchOrderNotification } from "./notification-api.js";
+import { notifyShopOrderStatus } from "./order-status-notifications.js";
 import {
   claimNotificationTag,
   registerPushSubscription,
@@ -84,6 +85,8 @@ const adminShopOrderAlertTracker = {
   ids: new Set(),
   ready: false,
 };
+const customerShopOrderStatusTracker = new Map();
+const adminShopOrderStatusTracker = new Map();
 
 function readShopStorage(key) {
   try {
@@ -101,6 +104,32 @@ function writeShopStorage(key, value) {
     console.warn("Shop storage write failed", error);
     return false;
   }
+}
+
+function getNotificationPermissionState() {
+  if (!window.isSecureContext || typeof Notification === "undefined") {
+    return "unsupported";
+  }
+
+  return Notification.permission;
+}
+
+function syncCustomerPushSubscription(options = {}) {
+  const email = String(elements.customerEmail?.value || "").trim();
+  if (!email) {
+    return;
+  }
+
+  const customerLabel = String(elements.customerName?.value || email).trim() || email;
+  const permissionState = getNotificationPermissionState();
+  const requestPermission = options.forcePermissionRequest && permissionState === "default";
+
+  void registerPushSubscription(email, customerLabel, {
+    customerId: email,
+    requestPermission,
+    role: "customer",
+    silent: true,
+  });
 }
 
 function getOrderSubmitErrorMessage(error) {
@@ -188,6 +217,7 @@ function bindEvents() {
     }
 
     writeShopStorage(CUSTOMER_EMAIL_STORAGE_KEY, email);
+    syncCustomerPushSubscription();
     listenForCustomerOrders(email);
   });
 
@@ -246,6 +276,7 @@ function hydrateCustomerOrders() {
   }
 
   elements.customerEmail.value = savedEmail;
+  syncCustomerPushSubscription();
   listenForCustomerOrders(savedEmail);
 }
 
@@ -273,6 +304,10 @@ function subscribeToAdminAuth() {
       unsubscribeAdminFeedbacks();
       unsubscribeAdminFeedbacks = null;
     }
+
+    adminShopOrderAlertTracker.ready = false;
+    adminShopOrderAlertTracker.ids = new Set();
+    adminShopOrderStatusTracker.clear();
 
     hideElement(elements.adminPanel);
   });
@@ -620,6 +655,7 @@ async function submitOrder() {
     }
 
     writeShopStorage(CUSTOMER_EMAIL_STORAGE_KEY, customerEmail);
+    syncCustomerPushSubscription({ forcePermissionRequest: true });
     listenForCustomerOrders(customerEmail);
 
     setStatusLine(elements.orderStatus, "Order submitted successfully.", "success");
@@ -648,7 +684,69 @@ function listenForCustomerOrders(customerEmail) {
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
 
+    handleCustomerOrderStatusAlerts(orders);
     renderCustomerOrders(orders);
+  });
+}
+
+function handleCustomerOrderStatusAlerts(orders) {
+  const list = Array.isArray(orders) ? orders : [];
+  const currentIds = new Set(list.map((item) => item.id));
+
+  if (!customerShopOrderStatusTracker.size) {
+    list.forEach((order) => {
+      customerShopOrderStatusTracker.set(order.id, {
+        delivered: Boolean(order.delivered),
+        paid: Boolean(order.paid),
+      });
+    });
+    return;
+  }
+
+  list.forEach((order) => {
+    const previous = customerShopOrderStatusTracker.get(order.id) || {
+      delivered: Boolean(order.delivered),
+      paid: Boolean(order.paid),
+    };
+    const current = {
+      delivered: Boolean(order.delivered),
+      paid: Boolean(order.paid),
+    };
+    customerShopOrderStatusTracker.set(order.id, current);
+
+    const shopName = String(order.shopName || LOCATION_NAME).trim() || LOCATION_NAME;
+
+    if (!previous.paid && current.paid) {
+      const tag = `customer-shop-order-paid-${order.id}`;
+      if (claimNotificationTag(tag)) {
+        const title = "Shop Here order marked as paid";
+        const body = `Your order for ${shopName} is now marked as paid.`;
+        setStatusLine(elements.orderStatus, body, "success");
+        void showBrowserNotification(title, body, {
+          link: "./umma-shop.html",
+          tag,
+        });
+      }
+    }
+
+    if (!previous.delivered && current.delivered) {
+      const tag = `customer-shop-order-delivered-${order.id}`;
+      if (claimNotificationTag(tag)) {
+        const title = "Shop Here order delivered";
+        const body = `Your order for ${shopName} is marked as delivered.`;
+        setStatusLine(elements.orderStatus, body, "success");
+        void showBrowserNotification(title, body, {
+          link: "./umma-shop.html",
+          tag,
+        });
+      }
+    }
+  });
+
+  [...customerShopOrderStatusTracker.keys()].forEach((orderId) => {
+    if (!currentIds.has(orderId)) {
+      customerShopOrderStatusTracker.delete(orderId);
+    }
   });
 }
 
@@ -792,6 +890,7 @@ function listenForAdminOrders() {
 
   unsubscribeAdminOrders = onSnapshot(ordersCollection, (snapshot) => {
     handleAdminOrderAlerts(snapshot);
+    handleAdminOrderStatusAlerts(snapshot);
     const orders = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
       .sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
@@ -934,13 +1033,13 @@ function renderAdminOrders(orders) {
 
   elements.adminOrdersList.querySelectorAll(".mark-paid").forEach((button) => {
     button.addEventListener("click", async () => {
-      await updateDoc(doc(db, "ummaShopOrders", button.dataset.id), { paid: true });
+      await updateShopOrderStatusFromAdmin(button.dataset.id, "paid");
     });
   });
 
   elements.adminOrdersList.querySelectorAll(".mark-delivered").forEach((button) => {
     button.addEventListener("click", async () => {
-      await updateDoc(doc(db, "ummaShopOrders", button.dataset.id), { delivered: true });
+      await updateShopOrderStatusFromAdmin(button.dataset.id, "delivered");
     });
   });
 
@@ -953,6 +1052,121 @@ function renderAdminOrders(orders) {
       await deleteDoc(doc(db, "ummaShopOrders", button.dataset.id));
     });
   });
+}
+
+function handleAdminOrderStatusAlerts(snapshot) {
+  if (!auth.currentUser) {
+    return;
+  }
+
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  snapshot.docs.forEach((item) => {
+    if (item.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const order = item.data() || {};
+    const previous = adminShopOrderStatusTracker.get(item.id) || {
+      delivered: Boolean(order.delivered),
+      paid: Boolean(order.paid),
+    };
+    const current = {
+      delivered: Boolean(order.delivered),
+      paid: Boolean(order.paid),
+    };
+    adminShopOrderStatusTracker.set(item.id, current);
+
+    const customerName = String(order.customerName || "A customer").trim() || "A customer";
+    const shopName = String(order.shopName || LOCATION_NAME).trim() || LOCATION_NAME;
+
+    if (!previous.paid && current.paid) {
+      const tag = `umma-shop-order-paid-${item.id}`;
+      if (claimNotificationTag(tag)) {
+        const title = "Shop Here order marked as paid";
+        const body = `${customerName}'s order for ${shopName} is now marked as paid.`;
+        void showBrowserNotification(title, body, {
+          link: "./umma-shop.html",
+          tag,
+        });
+      }
+    }
+
+    if (!previous.delivered && current.delivered) {
+      const tag = `umma-shop-order-delivered-${item.id}`;
+      if (claimNotificationTag(tag)) {
+        const title = "Shop Here order marked as delivered";
+        const body = `${customerName}'s order for ${shopName} is now marked as delivered.`;
+        void showBrowserNotification(title, body, {
+          link: "./umma-shop.html",
+          tag,
+        });
+      }
+    }
+  });
+
+  [...adminShopOrderStatusTracker.keys()].forEach((orderId) => {
+    if (!currentIds.has(orderId)) {
+      adminShopOrderStatusTracker.delete(orderId);
+    }
+  });
+}
+
+async function updateShopOrderStatusFromAdmin(orderIdValue, statusType) {
+  const orderId = String(orderIdValue || "").trim();
+  if (!orderId) {
+    window.alert("Order not found.");
+    return;
+  }
+
+  const orderRef = doc(db, "ummaShopOrders", orderId);
+  const orderSnapshot = await getDoc(orderRef);
+  if (!orderSnapshot.exists()) {
+    window.alert("Order not found.");
+    return;
+  }
+
+  const order = {
+    id: orderSnapshot.id,
+    ...orderSnapshot.data(),
+  };
+
+  if (statusType === "paid") {
+    if (order.paid) {
+      window.alert("Order is already marked as paid.");
+      return;
+    }
+
+    try {
+      await updateDoc(orderRef, { paid: true });
+      await notifyShopOrderStatus({ ...order, paid: true }, "paid");
+    } catch (error) {
+      console.error(error);
+      window.alert("Failed to mark order as paid.");
+      return;
+    }
+
+    window.alert("Order marked as paid and notifications sent.");
+    return;
+  }
+
+  if (statusType === "delivered") {
+    if (order.delivered) {
+      window.alert("Order is already marked as delivered.");
+      return;
+    }
+
+    try {
+      await updateDoc(orderRef, { delivered: true });
+      await notifyShopOrderStatus({ ...order, delivered: true }, "delivered");
+    } catch (error) {
+      console.error(error);
+      window.alert("Failed to mark order as delivered.");
+      return;
+    }
+
+    window.alert("Order marked as delivered and notifications sent.");
+  }
 }
 
 function renderAdminFeedbacks(feedbacks) {

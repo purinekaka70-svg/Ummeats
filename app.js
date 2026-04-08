@@ -995,6 +995,18 @@ function resolveNotificationTitle(item) {
     return "New order received";
   }
 
+  if (normalizedType === "umma-shop-order") {
+    return "New Shop Here order";
+  }
+
+  if (normalizedType === "umma-shop-order-paid" || normalizedType === "umma_shop_order_paid") {
+    return "Shop Here payment update";
+  }
+
+  if (normalizedType === "umma-shop-order-delivered" || normalizedType === "umma_shop_order_delivered") {
+    return "Shop Here delivery update";
+  }
+
   return "New notification";
 }
 
