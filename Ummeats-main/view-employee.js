@@ -63,7 +63,7 @@ function renderEmployeeAuth(portalState) {
         <div>
           <p class="eyebrow">Employee workspace</p>
           <h2 class="view-title">Employee Portal</h2>
-          <p class="view-copy">Create an employee account with Firebase login, upload one scanned ID PDF (front and back in the same file), and view live orders in read-only mode.</p>
+          <p class="view-copy">Create an employee account with Firebase login, upload your ID as a PDF (front and back in one file), and view live orders in read-only mode.</p>
         </div>
       </div>
 
@@ -254,7 +254,7 @@ function renderEmployeeDashboard(portalState) {
           <div>
             <p class="eyebrow">Employee workspace</p>
             <h2 class="view-title">Employee Orders Panel</h2>
-            <p class="view-copy">Read-only access to live hotel and Shop Here orders.</p>
+            <p class="view-copy">Live access to hotel and Shop Here orders. Employees can delete Shop Here orders when needed.</p>
           </div>
 
           <div class="toolbar">
@@ -394,7 +394,7 @@ function renderEmployeeDashboardSection(context) {
             <div class="summary-item"><span>Step 4</span><strong>Review Shop Here requests</strong></div>
           </div>
 
-          <p class="tiny">Employees can only view live data. Any payment, deletion, or hotel setup must be handled in admin/hotel pages.</p>
+          <p class="tiny">Employees can view all live orders and delete Shop Here orders only. Payment and hotel setup stay on admin/hotel pages.</p>
         </article>
       </div>
     </section>
@@ -604,6 +604,16 @@ function renderEmployeeShopOrderCard(order) {
 
       <div class="notification-item feedback-message-card">
         <p><strong>Items requested:</strong> ${escapeHtml(itemsText)}</p>
+      </div>
+
+      <div class="button-row">
+        <button
+          class="button button-danger button-small employeeDeleteShopOrderBtn"
+          data-order-id="${escapeHtml(order.id)}"
+          type="button"
+        >
+          Delete
+        </button>
       </div>
     </article>
   `;

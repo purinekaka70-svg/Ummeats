@@ -1,6 +1,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   setDoc,
@@ -316,6 +317,11 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("employeeDeleteShopOrderBtn")) {
+    await deleteEmployeeShopOrder(button.dataset.orderId || "");
+    return;
+  }
+
   if (button.id === "closeEmployeeMap" || button.id === "employeeMapBackdrop") {
     closeCustomerMap();
     return;
@@ -324,6 +330,26 @@ async function handleClick(event) {
   if (button.id === "logoutEmployee") {
     await signOut(auth);
     showToast("Employee logged out.", "info");
+  }
+}
+
+async function deleteEmployeeShopOrder(orderIdValue) {
+  const orderId = String(orderIdValue || "").trim();
+  if (!orderId) {
+    showToast("Order ID is missing.", "warn");
+    return;
+  }
+
+  if (!window.confirm("Delete this Shop Here order?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "ummaShopOrders", orderId));
+    showToast("Shop Here order deleted.", "success");
+  } catch (error) {
+    console.error("Employee delete Shop Here order failed", error);
+    showToast("Failed to delete Shop Here order.", "error");
   }
 }
 

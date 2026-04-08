@@ -44,6 +44,9 @@ export function renderAdmin() {
   const totalShopOrders = state.ummaShopOrders.length;
   const pendingShopOrders = state.ummaShopOrders.filter((order) => !order.paid).length;
   const totalFeedbacks = state.feedbacks.length;
+  const totalEmployees = state.employees.length;
+  const totalNotifications = state.notifications.length;
+  const unreadStoredNotifications = state.notifications.filter((item) => !item.read).length;
   const unreadFeedbacks = state.feedbacks.filter((item) => (item.status || "New") !== "Reviewed").length;
   const totalOrders = state.orders.length;
   const currentSection = state.adminPanelSection || "dashboard";
@@ -68,10 +71,12 @@ export function renderAdmin() {
           ${renderAdminNavButton("orders", "Orders", `${totalOrders} total order${pluralize(totalOrders)}`, currentSection)}
           ${renderAdminNavButton("shopOrders", "Shop Here Orders", `${totalShopOrders} shop order${pluralize(totalShopOrders)}`, currentSection)}
           ${renderAdminNavButton("feedbacks", "Feedbacks", `${unreadFeedbacks} open complaint${pluralize(unreadFeedbacks)}`, currentSection)}
+          ${renderAdminNavButton("employees", "Employees", `${totalEmployees} account${pluralize(totalEmployees)}`, currentSection)}
+          ${renderAdminNavButton("notifications", "Notifications", `${totalNotifications} alert${pluralize(totalNotifications)}`, currentSection)}
         </div>
 
         <div class="info-box admin-sidebar-note">
-          <p>Open a section from this menu to review hotels, track orders, handle customer feedback, and manage platform activity.</p>
+          <p>Open a section from this menu to review hotels, track orders, handle feedback, and manage employee and notification records.</p>
         </div>
       </aside>
 
@@ -115,10 +120,13 @@ export function renderAdmin() {
           pendingOrders,
           pendingShopOrders,
           totalFeedbacks,
+          totalEmployees,
           totalOrders,
+          totalNotifications,
           totalShopOrders,
           unreadFeedbacks,
           unreadNotifications,
+          unreadStoredNotifications,
         })}
       </div>
     </section>
@@ -158,6 +166,14 @@ function renderAdminSection(section, summary) {
 
   if (section === "feedbacks") {
     return renderFeedbacksSection();
+  }
+
+  if (section === "employees") {
+    return renderEmployeesSection();
+  }
+
+  if (section === "notifications") {
+    return renderNotificationsSection();
   }
 
   return renderDashboardSection(summary);
@@ -217,6 +233,14 @@ function renderDashboardSection(summary) {
           <strong>${summary.totalFeedbacks}</strong>
         </article>
         <article class="stat-card">
+          <span class="stat-label">Employees</span>
+          <strong>${summary.totalEmployees}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Saved Alerts</span>
+          <strong>${summary.totalNotifications}</strong>
+        </article>
+        <article class="stat-card">
           <span class="stat-label">Open Complaints</span>
           <strong>${summary.unreadFeedbacks}</strong>
         </article>
@@ -247,6 +271,8 @@ function renderDashboardSection(summary) {
             <div class="summary-item"><span>Use Shop Here Orders</span><strong>Manage separate shopping requests</strong></div>
             <div class="summary-item"><span>Use Registered Hotels</span><strong>Approve and manage</strong></div>
             <div class="summary-item"><span>Use Feedbacks</span><strong>Review support complaints</strong></div>
+            <div class="summary-item"><span>Use Employees</span><strong>Remove employee profiles</strong></div>
+            <div class="summary-item"><span>Use Notifications</span><strong>Mark read or delete</strong></div>
             <div class="summary-item"><span>Notifications</span><strong>${summary.unreadNotifications} unread</strong></div>
           </div>
         </article>
@@ -334,6 +360,44 @@ function renderShopOrdersSection() {
         orders.length
           ? `<div class="order-list">${orders.map(renderShopOrderCard).join("")}</div>`
           : renderEmptyState("No Shop Here orders yet", "Orders placed through the shopping page will appear here separately from hotel orders.")
+      }
+    </section>
+  `;
+}
+
+function renderEmployeesSection() {
+  const employees = [...state.employees].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Employees</h4>
+        <span class="summary-chip">${employees.length} account${pluralize(employees.length)}</span>
+      </div>
+
+      ${
+        employees.length
+          ? `<div class="order-list">${employees.map(renderEmployeeCard).join("")}</div>`
+          : renderEmptyState("No employees yet", "Employee accounts will appear here after registration.")
+      }
+    </section>
+  `;
+}
+
+function renderNotificationsSection() {
+  const notifications = [...state.notifications].sort((left, right) => (right.timestamp || 0) - (left.timestamp || 0));
+
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Notifications</h4>
+        <span class="summary-chip">${notifications.length} alert${pluralize(notifications.length)}</span>
+      </div>
+
+      ${
+        notifications.length
+          ? `<div class="order-list">${notifications.map(renderAdminNotificationCard).join("")}</div>`
+          : renderEmptyState("No notifications yet", "Saved alert records will appear here.")
       }
     </section>
   `;
@@ -574,6 +638,86 @@ function renderFeedbackCard(feedback) {
             : ""
         }
         <button class="button button-danger deleteFeedback" data-id="${escapeHtml(feedback.id)}" type="button">Delete Feedback</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderEmployeeCard(employee) {
+  const status = String(employee.status || "active").trim().toLowerCase() === "blocked" ? "Blocked" : "Active";
+  const hasScannedId = Boolean(employee.idCardUploaded || employee.idCardDatabasePath || employee.idCardUrl);
+
+  return `
+    <article class="card order-card">
+      <div class="order-header">
+        <div>
+          <p class="eyebrow">Employee account</p>
+          <h3>${escapeHtml(employee.fullName || "Unknown employee")}</h3>
+          <p class="tiny">${formatTime(employee.createdAt)}</p>
+        </div>
+        ${renderStatusPill(status, status === "Active" ? "active" : "blocked")}
+      </div>
+
+      <div class="order-meta-grid">
+        <div class="meta-block">
+          <span>Email</span>
+          <strong>${escapeHtml(employee.email || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>ID number</span>
+          <strong>${escapeHtml(employee.idNumber || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Scanned ID</span>
+          <strong>${hasScannedId ? "Uploaded" : "Missing"}</strong>
+        </div>
+        <div class="meta-block">
+          <span>UID</span>
+          <strong>${escapeHtml(employee.uid || employee.id || "N/A")}</strong>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button class="button button-danger deleteEmployee" data-id="${escapeHtml(employee.id)}" type="button">Delete Employee</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderAdminNotificationCard(notification) {
+  const notificationType = String(notification.type || "notification").trim() || "notification";
+  const notificationTarget = String(notification.to || "N/A").trim() || "N/A";
+  const isRead = Boolean(notification.read);
+
+  return `
+    <article class="card order-card">
+      <div class="order-header">
+        <div>
+          <p class="eyebrow">Notification</p>
+          <h3>${escapeHtml(notificationType)}</h3>
+          <p class="tiny">${formatTime(notification.timestamp)}</p>
+        </div>
+        ${renderStatusPill(isRead ? "Read" : "New", isRead ? "active" : "pending")}
+      </div>
+
+      <div class="order-meta-grid">
+        <div class="meta-block">
+          <span>Target</span>
+          <strong>${escapeHtml(notificationTarget)}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Message</span>
+          <strong>${escapeHtml(notification.message || "Notification")}</strong>
+        </div>
+      </div>
+
+      <div class="button-row">
+        ${
+          isRead
+            ? ""
+            : `<button class="button button-outline markNotifRead" data-id="${escapeHtml(notification.id)}" type="button">Mark Read</button>`
+        }
+        <button class="button button-danger deleteNotification" data-id="${escapeHtml(notification.id)}" type="button">Delete Notification</button>
       </div>
     </article>
   `;

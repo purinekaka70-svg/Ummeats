@@ -137,6 +137,18 @@ function getOrderSubmitErrorMessage(error) {
   return message.length > 220 ? `${message.slice(0, 217)}...` : message;
 }
 
+function isPermissionDeniedError(error) {
+  const code = String(error?.code || "").trim().toLowerCase();
+  const message = String(error?.message || "").trim().toLowerCase();
+  return (
+    code.includes("permission-denied") ||
+    code.includes("permission_denied") ||
+    message.includes("missing or insufficient permissions") ||
+    message.includes("permission denied") ||
+    message.includes("permission_denied")
+  );
+}
+
 bootstrap();
 
 function bootstrap() {
@@ -453,6 +465,10 @@ async function waitForOrderVisibility(orderId) {
         return true;
       }
     } catch (error) {
+      if (isPermissionDeniedError(error)) {
+        // API already returned an order ID. If read is blocked by rules, treat it as created.
+        return true;
+      }
       console.warn("Shop Here visibility check failed", error);
       return false;
     }
@@ -693,10 +709,30 @@ function renderCustomerOrders(orders) {
               <strong>${escapeHtml(formatPaymentTargets(order.paymentTargets))}</strong>
             </div>
           </div>
+
+          <div class="button-row shop-action-row">
+            <button class="button button-danger button-small customer-delete-order" data-id="${escapeHtml(order.id)}" type="button">Delete</button>
+          </div>
         </article>
       `;
     })
     .join("");
+
+  elements.customerOrders.querySelectorAll(".customer-delete-order").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!window.confirm("Delete this Shop Here order?")) {
+        return;
+      }
+
+      try {
+        await deleteDoc(doc(db, "ummaShopOrders", button.dataset.id));
+        setStatusLine(elements.orderStatus, "Shop Here order deleted successfully.", "success");
+      } catch (error) {
+        console.error(error);
+        setStatusLine(elements.orderStatus, "Failed to delete Shop Here order.", "error");
+      }
+    });
+  });
 }
 
 async function handleAdminLoginSubmit(event) {

@@ -10,6 +10,7 @@ export const state = {
   ummaShopOrders: [],
   feedbacks: [],
   notifications: [],
+  employees: [],
   cartByHotel: {},
   checkoutDrafts: {},
   activeHotelMenuId: null,

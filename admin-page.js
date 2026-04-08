@@ -9,11 +9,15 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
+  ref as rtdbRef,
+  remove as removeRtdb,
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { auth, db } from "./firebase.js";
+import { auth, db, rtdb } from "./firebase.js";
 import { inferToastTone } from "./helpers.js";
 import {
   claimNotificationTag,
@@ -202,6 +206,11 @@ function subscribeToCollections() {
   onSnapshot(collection(db, "notifications"), (snapshot) => {
     handleAdminNotificationAlerts(snapshot);
     state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    renderAdmin();
+  });
+
+  onSnapshot(collection(db, "employees"), (snapshot) => {
+    state.employees = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderAdmin();
   });
 }
@@ -497,6 +506,16 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("deleteEmployee")) {
+    await deleteEmployee(button.dataset.id);
+    return;
+  }
+
+  if (button.classList.contains("deleteNotification")) {
+    await deleteNotification(button.dataset.id);
+    return;
+  }
+
   if (button.id === "logoutAdmin") {
     await unregisterPushSubscription("admin");
     await signOut(auth);
@@ -753,6 +772,48 @@ async function deleteFeedback(feedbackId) {
   } catch (error) {
     console.error(error);
     showToast("Failed to delete feedback.", "error");
+  }
+}
+
+async function deleteEmployee(employeeId) {
+  const employee = state.employees.find((item) => item.id === employeeId);
+  if (!employee) {
+    alert("Employee not found.");
+    return;
+  }
+
+  if (!window.confirm("Delete this employee profile permanently?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "employees", employeeId));
+    await removeRtdb(rtdbRef(rtdb, `employeeIdCards/${employeeId}`)).catch(() => undefined);
+    showToast("Employee profile deleted.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to delete employee.", "error");
+  }
+}
+
+async function deleteNotification(notificationId) {
+  const notification = state.notifications.find((item) => item.id === notificationId);
+  if (!notification) {
+    alert("Notification not found.");
+    return;
+  }
+
+  if (!window.confirm("Delete this notification permanently?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "notifications", notificationId));
+    adminNotificationAlertTracker.delete(notificationId);
+    showToast("Notification deleted.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to delete notification.", "error");
   }
 }
 
