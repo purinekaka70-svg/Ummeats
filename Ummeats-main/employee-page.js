@@ -13,12 +13,11 @@ import {
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import {
-  deleteObject,
-  getDownloadURL,
-  ref,
-  uploadBytes,
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-storage.js";
-import { auth, db, storage } from "./firebase.js";
+  ref as rtdbRef,
+  remove as removeRtdb,
+  set as setRtdb,
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+import { auth, db, rtdb } from "./firebase.js";
 import { inferToastTone } from "./helpers.js";
 import { showToast } from "./ui.js";
 import { renderEmployeePortal } from "./view-employee.js";
@@ -443,8 +442,8 @@ async function registerEmployee(form) {
       email: credentials.user.email || email,
       fullName,
       idCardFileName: idCardFile.name,
-      idCardPath: uploadResult.path,
-      idCardUrl: uploadResult.url,
+      idCardDatabasePath: uploadResult.path,
+      idCardUploaded: true,
       idNumber,
       role: "employee",
       status: "active",
@@ -473,8 +472,8 @@ async function registerEmployee(form) {
     portalState.pendingRegistration = false;
     portalState.profileStatus = auth.currentUser ? "loading" : "idle";
 
-    if (uploadResult?.storageRef) {
-      await deleteObject(uploadResult.storageRef).catch(() => undefined);
+    if (uploadResult?.path) {
+      await removeRtdb(rtdbRef(rtdb, uploadResult.path)).catch(() => undefined);
     }
 
     if (credentials?.user) {
@@ -491,7 +490,14 @@ async function registerEmployee(form) {
 
 function validateIdCardFile(file) {
   if (!file) {
-    throw createEmployeeError("employee/id-card-required", "Upload an ID card file.");
+    throw createEmployeeError("employee/id-card-required", "Upload one PDF that contains both front and back of the ID.");
+  }
+
+  const fileName = String(file.name || "").trim().toLowerCase();
+  const fileType = String(file.type || "").trim().toLowerCase();
+  const isPdf = fileType === "application/pdf" || fileName.endsWith(".pdf");
+  if (!isPdf) {
+    throw createEmployeeError("employee/id-card-pdf-required", "Only PDF is allowed. Upload one scanned PDF with both front and back.");
   }
 
   if (file.size > EMPLOYEE_ID_CARD_MAX_BYTES) {
@@ -501,16 +507,19 @@ function validateIdCardFile(file) {
 
 async function uploadEmployeeIdCard(uid, file) {
   const fileName = sanitizeStorageFileName(file.name || "id-card");
-  const storageRef = ref(storage, `employee-id-cards/${uid}/${Date.now()}-${fileName}`);
-  await uploadBytes(storageRef, file, {
-    contentType: file.type || "application/octet-stream",
+  const dataUrl = await readFileAsDataUrl(file);
+  const base64Content = extractBase64Payload(dataUrl);
+  const path = `employeeIdCards/${uid}`;
+  await setRtdb(rtdbRef(rtdb, path), {
+    base64: base64Content,
+    fileName,
+    mimeType: "application/pdf",
+    sizeBytes: Number(file.size || 0),
+    uploadedAt: Date.now(),
   });
-  const url = await getDownloadURL(storageRef);
 
   return {
-    path: storageRef.fullPath,
-    storageRef,
-    url,
+    path,
   };
 }
 
@@ -521,6 +530,31 @@ function sanitizeStorageFileName(value) {
     .replace(/-+/g, "-");
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(createEmployeeError("employee/id-card-upload-failed", "Failed to read ID card file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function extractBase64Payload(dataUrl) {
+  const normalized = String(dataUrl || "").trim();
+  const marker = ";base64,";
+  const markerIndex = normalized.indexOf(marker);
+  if (markerIndex < 0) {
+    throw createEmployeeError("employee/id-card-upload-failed", "Failed to process ID card PDF.");
+  }
+
+  const payload = normalized.slice(markerIndex + marker.length).trim();
+  if (!payload) {
+    throw createEmployeeError("employee/id-card-upload-failed", "Failed to process ID card PDF.");
+  }
+
+  return payload;
+}
+
 function createEmployeeError(code, message) {
   const error = new Error(message);
   error.code = code;
@@ -528,9 +562,14 @@ function createEmployeeError(code, message) {
 }
 
 function getAuthErrorMessage(error, mode) {
-  const code = String(error?.code || "");
+  const code = String(error?.code || "").toLowerCase();
 
-  if (code === "employee/id-card-required" || code === "employee/id-card-too-large") {
+  if (
+    code === "employee/id-card-required" ||
+    code === "employee/id-card-pdf-required" ||
+    code === "employee/id-card-too-large" ||
+    code === "employee/id-card-upload-failed"
+  ) {
     return String(error.message || "ID card upload failed.");
   }
 
@@ -558,12 +597,21 @@ function getAuthErrorMessage(error, mode) {
     return "Too many attempts. Try again later.";
   }
 
-  if (code.includes("storage/unauthorized")) {
-    return "ID card upload was blocked by Firebase Storage rules.";
+  if (code.includes("database/permission-denied") || code.includes("permission_denied")) {
+    return "ID card upload was blocked by Realtime Database rules.";
   }
 
-  if (code.includes("storage/canceled")) {
-    return "ID card upload was canceled.";
+  if (code.includes("database/network-error")) {
+    return "Network error while uploading ID card. Try again.";
+  }
+
+  const message = String(error?.message || "").toLowerCase();
+  if (message.includes("permission_denied")) {
+    return "ID card upload was blocked by Realtime Database rules.";
+  }
+
+  if (message.includes("network error")) {
+    return "ID card upload failed due to network error. Try again.";
   }
 
   if (mode === "register") {

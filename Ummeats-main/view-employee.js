@@ -63,7 +63,7 @@ function renderEmployeeAuth(portalState) {
         <div>
           <p class="eyebrow">Employee workspace</p>
           <h2 class="view-title">Employee Portal</h2>
-          <p class="view-copy">Create an employee account with Firebase login, upload an ID card, and view live orders in read-only mode.</p>
+          <p class="view-copy">Create an employee account with Firebase login, upload one scanned ID PDF (front and back in the same file), and view live orders in read-only mode.</p>
         </div>
       </div>
 
@@ -110,8 +110,8 @@ function renderEmployeeAuth(portalState) {
           </label>
 
           <label class="field">
-            <span class="field-label">ID card upload</span>
-            <input class="input input-file" accept="image/*,.pdf,application/pdf" name="employeeIdCard" type="file" />
+            <span class="field-label">Scanned ID PDF (front + back)</span>
+            <input class="input input-file" accept=".pdf,application/pdf" name="employeeIdCard" type="file" />
           </label>
 
           <div class="field-grid">
@@ -126,7 +126,7 @@ function renderEmployeeAuth(portalState) {
             </label>
           </div>
 
-          <p class="tiny">Upload a clear ID card image or PDF. Employee access is read-only and shows live platform orders only.</p>
+          <p class="tiny">Upload one clear PDF that includes both front and back of the ID. Employee access is read-only and shows live platform orders only.</p>
           <button class="button button-secondary" type="submit">Create Employee Account</button>
           <p class="tiny auth-switch">
             Already have an account?
@@ -318,6 +318,12 @@ function renderEmployeeSection(section, context) {
 }
 
 function renderEmployeeDashboardSection(context) {
+  const hasIdCardUpload = Boolean(
+    context?.profile?.idCardUploaded ||
+    context?.profile?.idCardDatabasePath ||
+    context?.profile?.idCardUrl,
+  );
+
   return `
     <section class="view-shell">
       <div class="stats-grid">
@@ -354,7 +360,7 @@ function renderEmployeeDashboardSection(context) {
             <div class="summary-item"><span>Full name</span><strong>${escapeHtml(context.profile.fullName || "N/A")}</strong></div>
             <div class="summary-item"><span>Email</span><strong>${escapeHtml(context.profile.email || "N/A")}</strong></div>
             <div class="summary-item"><span>ID number</span><strong>${escapeHtml(context.profile.idNumber || "N/A")}</strong></div>
-            <div class="summary-item"><span>ID card</span><strong>${context.profile.idCardUrl ? "Uploaded" : "Missing"}</strong></div>
+            <div class="summary-item"><span>Scanned ID PDF</span><strong>${hasIdCardUpload ? "Uploaded" : "Missing"}</strong></div>
             <div class="summary-item"><span>Joined</span><strong>${formatDateOnly(context.profile.createdAt)}</strong></div>
           </div>
 
@@ -367,6 +373,10 @@ function renderEmployeeDashboardSection(context) {
                     </a>
                   </div>
                 `
+              : context.profile.idCardDatabasePath
+                ? `
+                    <p class="tiny">Stored in Realtime Database as a secure Base64 PDF.</p>
+                  `
               : ""
           }
         </article>

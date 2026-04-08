@@ -1,6 +1,7 @@
 export const firebaseConfig = {
   apiKey: "AIzaSyApi2RjwEXEW2mTwCMiYERKUNAYL8Toddk",
   authDomain: "tamuexpress-26e4a.firebaseapp.com",
+  databaseURL: "https://tamuexpress-26e4a-default-rtdb.firebaseio.com",
   projectId: "tamuexpress-26e4a",
   storageBucket: "tamuexpress-26e4a.appspot.com",
   messagingSenderId: "202068792631",
