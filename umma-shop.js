@@ -81,6 +81,50 @@ const adminShopOrderAlertTracker = {
   ready: false,
 };
 
+function readShopStorage(key) {
+  try {
+    return String(localStorage.getItem(key) || "");
+  } catch {
+    return "";
+  }
+}
+
+function writeShopStorage(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.warn("Shop storage write failed", error);
+    return false;
+  }
+}
+
+function getOrderSubmitErrorMessage(error) {
+  const message = String(error?.message || "").trim();
+  if (!message) {
+    return "Failed to submit order.";
+  }
+
+  const normalized = message.toLowerCase();
+  if (normalized.includes("missing required shop here order fields")) {
+    return "Some required order details are missing. Fill all fields and try again.";
+  }
+
+  if (normalized.includes("missing required environment variable: firebase_service_account_json")) {
+    return "Server order API is not configured. Contact support.";
+  }
+
+  if (normalized.includes("insufficient permissions") || normalized.includes("permission")) {
+    return "Order save is blocked by Firestore permissions. Contact admin.";
+  }
+
+  if (normalized.includes("networkerror") || normalized.includes("failed to fetch")) {
+    return "Network problem while submitting order. Check connection and retry.";
+  }
+
+  return message.length > 220 ? `${message.slice(0, 217)}...` : message;
+}
+
 bootstrap();
 
 function bootstrap() {
@@ -119,7 +163,7 @@ function bindEvents() {
       return;
     }
 
-    localStorage.setItem(CUSTOMER_EMAIL_STORAGE_KEY, email);
+    writeShopStorage(CUSTOMER_EMAIL_STORAGE_KEY, email);
     listenForCustomerOrders(email);
   });
 
@@ -171,7 +215,7 @@ function handleTopViewClick(event) {
 }
 
 function hydrateCustomerOrders() {
-  const savedEmail = localStorage.getItem(CUSTOMER_EMAIL_STORAGE_KEY) || "";
+  const savedEmail = readShopStorage(CUSTOMER_EMAIL_STORAGE_KEY);
   if (!savedEmail) {
     renderCustomerOrders([]);
     return;
@@ -379,6 +423,8 @@ function renderItems() {
 }
 
 async function createShopOrder(orderPayload) {
+  let apiError = null;
+
   try {
     const response = await fetch("/api/submit-umma-shop-order", {
       body: JSON.stringify(orderPayload),
@@ -400,14 +446,26 @@ async function createShopOrder(orderPayload) {
       mode: "api",
     };
   } catch (error) {
+    apiError = error;
     console.warn("Shop Here API submit failed, trying direct Firestore write", error);
   }
 
-  const orderRef = await addDoc(ordersCollection, orderPayload);
-  return {
-    id: orderRef.id,
-    mode: "firestore",
-  };
+  try {
+    const orderRef = await addDoc(ordersCollection, orderPayload);
+    return {
+      id: orderRef.id,
+      mode: "firestore",
+    };
+  } catch (firestoreError) {
+    const apiMessage = String(apiError?.message || "").trim();
+    const firestoreMessage = String(firestoreError?.message || "").trim();
+    const details = [
+      apiMessage ? `API: ${apiMessage}` : "",
+      firestoreMessage ? `Firestore: ${firestoreMessage}` : "",
+    ].filter(Boolean).join(" | ");
+
+    throw new Error(details ? `Order submission failed. ${details}` : "Order submission failed.");
+  }
 }
 
 async function submitFeedback() {
@@ -490,7 +548,7 @@ async function submitOrder() {
       }
     }
 
-    localStorage.setItem(CUSTOMER_EMAIL_STORAGE_KEY, customerEmail);
+    writeShopStorage(CUSTOMER_EMAIL_STORAGE_KEY, customerEmail);
     listenForCustomerOrders(customerEmail);
 
     setStatusLine(elements.orderStatus, "Order submitted successfully.", "success");
@@ -504,7 +562,7 @@ async function submitOrder() {
     setViewMode("orders");
   } catch (error) {
     console.error(error);
-    setStatusLine(elements.orderStatus, "Failed to submit order.", "error");
+    setStatusLine(elements.orderStatus, getOrderSubmitErrorMessage(error), "error");
   }
 }
 
