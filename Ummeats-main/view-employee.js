@@ -33,6 +33,11 @@ export function renderEmployeePortal(portalState) {
     return;
   }
 
+  if (portalState.profileStatus === "stalled") {
+    appElement.innerHTML = renderEmployeeStalled();
+    return;
+  }
+
   if (!portalState.employeeProfile) {
     appElement.innerHTML = renderMissingEmployeeProfile();
     return;
@@ -50,6 +55,7 @@ function renderEmployeeAuth(portalState) {
   const authView = portalState?.authView === "register" ? "register" : "login";
   const loginHiddenClass = authView === "register" ? " is-hidden" : "";
   const registerHiddenClass = authView === "register" ? "" : " is-hidden";
+  const authEmailValue = escapeHtml(String(portalState?.authEmailDraft || "").trim());
 
   return `
     <section class="view-shell">
@@ -68,7 +74,7 @@ function renderEmployeeAuth(portalState) {
 
           <label class="field">
             <span class="field-label">Email</span>
-            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" />
+            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" value="${authEmailValue}" />
           </label>
 
           <label class="field">
@@ -95,7 +101,7 @@ function renderEmployeeAuth(portalState) {
 
           <label class="field">
             <span class="field-label">Email</span>
-            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" />
+            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" value="${authEmailValue}" />
           </label>
 
           <label class="field">
@@ -141,6 +147,27 @@ function renderEmployeeLoading() {
             <p class="eyebrow">Employee access</p>
             <h2 class="view-title">Preparing workspace</h2>
             <p class="view-copy">Checking your employee account and loading live orders.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+  `;
+}
+
+function renderEmployeeStalled() {
+  return `
+    <section class="view-shell">
+      <article class="card">
+        <div class="stack">
+          <div>
+            <p class="eyebrow">Employee access</p>
+            <h2 class="view-title">Session Check Delayed</h2>
+            <p class="view-copy">Employee account verification is taking too long. Refresh the portal or logout to return to login immediately.</p>
+          </div>
+
+          <div class="button-row">
+            <button class="button button-primary" id="retryEmployeeSession" type="button">Refresh Portal</button>
+            <button class="button button-secondary" id="logoutEmployee" type="button">Logout</button>
           </div>
         </div>
       </article>

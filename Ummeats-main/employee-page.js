@@ -24,8 +24,92 @@ import { showToast } from "./ui.js";
 import { renderEmployeePortal } from "./view-employee.js";
 
 const EMPLOYEE_ID_CARD_MAX_BYTES = 5 * 1024 * 1024;
+const EMPLOYEE_AUTH_VIEW_STORAGE_KEY = "EMPLOYEE_AUTH_VIEW";
+const EMPLOYEE_AUTH_EMAIL_STORAGE_KEY = "EMPLOYEE_AUTH_EMAIL";
+const EMPLOYEE_PORTAL_FALLBACK_MESSAGE = "Employee portal could not load fully. You can still login or refresh this page.";
+const EMPLOYEE_PROFILE_LOAD_STALL_MS = 5000;
+
+function safeGetStorageItem(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetStorageItem(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function loadEmployeeAuthView() {
+  const value = String(safeGetStorageItem(EMPLOYEE_AUTH_VIEW_STORAGE_KEY) || "").trim().toLowerCase();
+  return value === "register" ? "register" : "login";
+}
+
+function saveEmployeeAuthView(view) {
+  const normalizedView = view === "register" ? "register" : "login";
+  safeSetStorageItem(EMPLOYEE_AUTH_VIEW_STORAGE_KEY, normalizedView);
+}
+
+function loadEmployeeAuthEmail() {
+  return String(safeGetStorageItem(EMPLOYEE_AUTH_EMAIL_STORAGE_KEY) || "").trim();
+}
+
+function saveEmployeeAuthEmail(email) {
+  const normalizedEmail = String(email || "").trim().slice(0, 160);
+  safeSetStorageItem(EMPLOYEE_AUTH_EMAIL_STORAGE_KEY, normalizedEmail);
+}
+
+function getEmployeeAppElement() {
+  return document.getElementById("app");
+}
+
+function renderEmployeeStartupFallback(message = EMPLOYEE_PORTAL_FALLBACK_MESSAGE) {
+  const appElement = getEmployeeAppElement();
+  if (!appElement) {
+    return;
+  }
+
+  appElement.innerHTML = `
+    <section class="view-shell">
+      <div class="view-header">
+        <div>
+          <p class="eyebrow">Employee workspace</p>
+          <h2 class="view-title">Employee Portal</h2>
+          <p class="view-copy">${String(message || EMPLOYEE_PORTAL_FALLBACK_MESSAGE)}</p>
+        </div>
+      </div>
+      <div class="auth-flow-grid employee-portal-grid">
+        <article class="card auth-card">
+          <p class="eyebrow">Quick actions</p>
+          <h3 class="card-title">Reload Portal</h3>
+          <p class="tiny">Refresh to retry loading login and registration forms.</p>
+          <div class="button-row">
+            <button class="button button-primary" id="employeePortalReload" type="button">Refresh</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderEmployeeView() {
+  try {
+    renderEmployeePortal(portalState);
+  } catch (error) {
+    console.error("Employee portal render failed", error);
+    renderEmployeeStartupFallback("Employee portal failed to render. Refresh page to retry.");
+  }
+}
+
 const portalState = {
-  authView: "login",
+  authEmailDraft: loadEmployeeAuthEmail(),
+  authView: loadEmployeeAuthView(),
   currentUser: null,
   employeeProfile: null,
   employeeSection: "dashboard",
@@ -40,19 +124,59 @@ const portalState = {
 };
 
 let unsubscribeEmployeeProfile = null;
+let employeeProfileLoadTimer = null;
 
-bootstrap();
+function clearEmployeeProfileLoadTimer() {
+  if (employeeProfileLoadTimer) {
+    window.clearTimeout(employeeProfileLoadTimer);
+    employeeProfileLoadTimer = null;
+  }
+}
+
+function scheduleEmployeeProfileLoadTimeout(uid) {
+  clearEmployeeProfileLoadTimer();
+  if (!uid) {
+    return;
+  }
+
+  employeeProfileLoadTimer = window.setTimeout(() => {
+    employeeProfileLoadTimer = null;
+    if (!portalState.currentUser || portalState.currentUser.uid !== uid) {
+      return;
+    }
+
+    if (portalState.profileStatus !== "loading") {
+      return;
+    }
+
+    portalState.profileStatus = "stalled";
+    showToast("Employee profile check is taking too long. Use refresh or logout to continue.", "warn");
+    renderEmployeeView();
+  }, EMPLOYEE_PROFILE_LOAD_STALL_MS);
+}
+
+safeBootstrap();
+
+function safeBootstrap() {
+  try {
+    bootstrap();
+  } catch (error) {
+    console.error("Employee portal bootstrap failed", error);
+    renderEmployeeStartupFallback();
+  }
+}
 
 function bootstrap() {
   bindEvents();
   hydrateShell();
   subscribeToAuth();
   subscribeToCollections();
-  renderEmployeePortal(portalState);
+  renderEmployeeView();
 }
 
 function bindEvents() {
   document.addEventListener("click", handleClick);
+  document.addEventListener("input", handleInput);
   document.addEventListener("submit", handleSubmit);
 }
 
@@ -70,23 +194,30 @@ function hydrateShell() {
 function subscribeToCollections() {
   onSnapshot(collection(db, "hotels"), (snapshot) => {
     portalState.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
+  }, (error) => {
+    console.warn("Employee hotels subscription failed", error);
   });
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
     portalState.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
+  }, (error) => {
+    console.warn("Employee orders subscription failed", error);
   });
 
   onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
     portalState.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
+  }, (error) => {
+    console.warn("Employee shop orders subscription failed", error);
   });
 }
 
 function subscribeToAuth() {
   onAuthStateChanged(auth, (user) => {
     portalState.currentUser = user;
+    clearEmployeeProfileLoadTimer();
 
     if (unsubscribeEmployeeProfile) {
       unsubscribeEmployeeProfile();
@@ -101,19 +232,35 @@ function subscribeToAuth() {
       portalState.mapModal = null;
       portalState.profileStatus = "idle";
       portalState.pendingRegistration = false;
-      portalState.authView = "login";
-      renderEmployeePortal(portalState);
+      portalState.authView = loadEmployeeAuthView();
+      renderEmployeeView();
       return;
     }
 
     portalState.profileStatus = "loading";
-    renderEmployeePortal(portalState);
+    if (!portalState.pendingRegistration) {
+      scheduleEmployeeProfileLoadTimeout(user.uid);
+    }
+    renderEmployeeView();
 
     unsubscribeEmployeeProfile = onSnapshot(doc(db, "employees", user.uid), (snapshot) => {
+      clearEmployeeProfileLoadTimer();
       portalState.employeeProfile = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
       portalState.profileStatus = snapshot.exists() ? "ready" : portalState.pendingRegistration ? "loading" : "missing";
-      renderEmployeePortal(portalState);
+      if (portalState.profileStatus === "loading" && !portalState.pendingRegistration) {
+        scheduleEmployeeProfileLoadTimeout(user.uid);
+      }
+      renderEmployeeView();
+    }, (error) => {
+      console.warn("Employee profile subscription failed", error);
+      clearEmployeeProfileLoadTimer();
+      portalState.profileStatus = "missing";
+      renderEmployeeView();
     });
+  }, (error) => {
+    console.error("Employee auth subscription failed", error);
+    clearEmployeeProfileLoadTimer();
+    renderEmployeeStartupFallback("Employee auth could not initialize. Refresh and try again.");
   });
 }
 
@@ -123,28 +270,39 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.id === "employeePortalReload") {
+    window.location.reload();
+    return;
+  }
+
+  if (button.id === "retryEmployeeSession") {
+    window.location.reload();
+    return;
+  }
+
   if (button.classList.contains("employeeAuthSwitchBtn")) {
     portalState.authView = button.dataset.authView === "register" ? "register" : "login";
-    renderEmployeePortal(portalState);
+    saveEmployeeAuthView(portalState.authView);
+    renderEmployeeView();
     return;
   }
 
   if (button.id === "employeeMenuToggle") {
     portalState.employeeSidebarOpen = !portalState.employeeSidebarOpen;
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
     return;
   }
 
   if (button.id === "employeeSidebarClose" || button.id === "employeeSidebarBackdrop") {
     portalState.employeeSidebarOpen = false;
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
     return;
   }
 
   if (button.classList.contains("employeeNavBtn")) {
     portalState.employeeSection = button.dataset.section || "dashboard";
     portalState.employeeSidebarOpen = false;
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
     return;
   }
 
@@ -155,7 +313,7 @@ async function handleClick(event) {
 
   if (button.classList.contains("employeeMapModeBtn")) {
     portalState.mapMode = button.dataset.mode === "satellite" ? "satellite" : "road";
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
     return;
   }
 
@@ -186,7 +344,7 @@ function openCustomerMap(button) {
     longitude,
   };
   portalState.mapMode = "road";
-  renderEmployeePortal(portalState);
+  renderEmployeeView();
 }
 
 function closeCustomerMap() {
@@ -195,7 +353,19 @@ function closeCustomerMap() {
   }
 
   portalState.mapModal = null;
-  renderEmployeePortal(portalState);
+  renderEmployeeView();
+}
+
+function handleInput(event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  if (!portalState.currentUser && input.name === "employeeEmail") {
+    portalState.authEmailDraft = String(input.value || "").trim();
+    saveEmployeeAuthEmail(portalState.authEmailDraft);
+  }
 }
 
 async function handleSubmit(event) {
@@ -222,6 +392,10 @@ async function loginEmployee(form) {
   }
 
   try {
+    saveEmployeeAuthEmail(email);
+    portalState.authEmailDraft = email;
+    portalState.authView = "login";
+    saveEmployeeAuthView(portalState.authView);
     await signInWithEmailAndPassword(auth, email, password);
     form.reset();
     showToast("Employee login successful.", "success");
@@ -253,7 +427,9 @@ async function registerEmployee(form) {
 
   portalState.pendingRegistration = true;
   portalState.profileStatus = "loading";
-  renderEmployeePortal(portalState);
+  saveEmployeeAuthEmail(email);
+  portalState.authEmailDraft = email;
+  renderEmployeeView();
 
   let credentials = null;
   let uploadResult = null;
@@ -288,6 +464,8 @@ async function registerEmployee(form) {
     }
 
     portalState.pendingRegistration = false;
+    portalState.authView = "login";
+    saveEmployeeAuthView(portalState.authView);
     form.reset();
     showToast("Employee account created successfully.", "success");
   } catch (error) {
@@ -307,7 +485,7 @@ async function registerEmployee(form) {
     }
 
     showToast(getAuthErrorMessage(error, "register"), "error");
-    renderEmployeePortal(portalState);
+    renderEmployeeView();
   }
 }
 

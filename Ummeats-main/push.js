@@ -10,6 +10,7 @@ const ONESIGNAL_SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.p
 const DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH = "push/onesignal/OneSignalSDKWorker.js";
 const DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE = "push/onesignal/";
 const FALLBACK_ONESIGNAL_SERVICE_WORKER_PATH = "OneSignalSDKWorker.js";
+const ROOT_ONESIGNAL_SERVICE_WORKER_SCOPE = "/";
 const ONESIGNAL_SDK_LOAD_TIMEOUT_MS = 15000;
 const PUSH_NOTIFICATION_ICON = "./icons/icon-192.png";
 const NOTIFICATION_TAG_TTL_MS = 8000;
@@ -101,6 +102,12 @@ function isNotificationPermissionGranted(OneSignal) {
   return OneSignal?.Notifications?.permission === true;
 }
 
+function shouldIncludeSafariWebId() {
+  const userAgent = String(window.navigator?.userAgent || "");
+  const isSafariEngine = /safari/i.test(userAgent) && !/chrome|chromium|crios|edg|opr|android/i.test(userAgent);
+  return isSafariEngine;
+}
+
 function buildOneSignalWorkerCandidates() {
   const configuredPath = normalizePath(ONESIGNAL_SERVICE_WORKER_PATH);
   const configuredScope = normalizePath(ONESIGNAL_SERVICE_WORKER_SCOPE, { trailingSlash: true });
@@ -110,8 +117,20 @@ function buildOneSignalWorkerCandidates() {
       scope: configuredScope || DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE,
     },
     {
+      path: configuredPath || DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH,
+      scope: ROOT_ONESIGNAL_SERVICE_WORKER_SCOPE,
+    },
+    {
       path: DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH,
       scope: DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE,
+    },
+    {
+      path: DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH,
+      scope: ROOT_ONESIGNAL_SERVICE_WORKER_SCOPE,
+    },
+    {
+      path: FALLBACK_ONESIGNAL_SERVICE_WORKER_PATH,
+      scope: ROOT_ONESIGNAL_SERVICE_WORKER_SCOPE,
     },
     {
       path: FALLBACK_ONESIGNAL_SERVICE_WORKER_PATH,
@@ -168,6 +187,7 @@ async function isOneSignalWorkerScriptAccessible(pathname) {
 
 async function resolveOneSignalWorkerSettings() {
   const candidates = buildOneSignalWorkerCandidates();
+  const resolvedSettings = [];
 
   for (const candidate of candidates) {
     const resolvedPath = resolveOneSignalWorkerPath(candidate.path);
@@ -179,15 +199,15 @@ async function resolveOneSignalWorkerSettings() {
       continue;
     }
 
-    return {
+    resolvedSettings.push({
       serviceWorkerParam: {
         scope: resolveOneSignalWorkerScope(candidate.scope),
       },
       serviceWorkerPath: resolvedPath,
-    };
+    });
   }
 
-  return null;
+  return resolvedSettings;
 }
 
 function ensureOneSignalPageScript() {
@@ -424,26 +444,47 @@ async function getOneSignal() {
 
     window.OneSignalDeferred.push(async (OneSignal) => {
       try {
-        const workerSettings = await resolveOneSignalWorkerSettings();
-        if (!workerSettings) {
+        const workerSettingsList = await resolveOneSignalWorkerSettings();
+        if (!workerSettingsList.length) {
           throw new Error("OneSignal worker file is unreachable. Verify the worker URL returns JavaScript.");
         }
 
-        await OneSignal.init({
-          allowLocalhostAsSecureOrigin: isLocalhostOrigin(),
-          appId,
-          autoResubscribe: true,
-          notificationClickHandlerAction: "navigate",
-          notificationClickHandlerMatch: "origin",
-          notifyButton: {
-            enable: true,
-          },
-          safari_web_id: String(ONESIGNAL_SAFARI_WEB_ID || "").trim() || undefined,
-          ...workerSettings,
-          welcomeNotification: {
-            disable: true,
-          },
-        });
+        const safariWebId = String(ONESIGNAL_SAFARI_WEB_ID || "").trim();
+        let initSuccessful = false;
+        let lastInitError = null;
+
+        for (const workerSettings of workerSettingsList) {
+          try {
+            const initOptions = {
+              allowLocalhostAsSecureOrigin: isLocalhostOrigin(),
+              appId,
+              autoResubscribe: true,
+              notificationClickHandlerAction: "navigate",
+              notificationClickHandlerMatch: "origin",
+              notifyButton: {
+                enable: true,
+              },
+              ...workerSettings,
+              welcomeNotification: {
+                disable: true,
+              },
+            };
+
+            if (safariWebId && shouldIncludeSafariWebId()) {
+              initOptions.safari_web_id = safariWebId;
+            }
+
+            await OneSignal.init(initOptions);
+            initSuccessful = true;
+            break;
+          } catch (error) {
+            lastInitError = error;
+          }
+        }
+
+        if (!initSuccessful) {
+          throw lastInitError || new Error("OneSignal initialization failed for all worker routes.");
+        }
 
         OneSignal.Notifications.setDefaultTitle("Tamu Express");
         OneSignal.Notifications.setDefaultUrl(new URL("./index.html", window.location.href).href);
@@ -476,7 +517,7 @@ async function ensureOneSignalPush(options = {}) {
       showToast(
         initErrorMessage
           ? `Push setup failed: ${initErrorMessage}`
-          : "Push setup failed. Check HTTPS and OneSignal worker routing.",
+          : "Push setup failed. Check HTTPS and OneSignal app/domain settings.",
         "warn",
       );
     }
