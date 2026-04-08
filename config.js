@@ -65,8 +65,8 @@ export function resolveDistanceServiceFee(distanceKm, hotelOrName) {
   return {
     bandId: band?.id || "base",
     baseFee,
-    fee: baseFee + Number(band?.surcharge || 0),
+    fee: baseFee,
     label: band?.label || "Distance-based service fee",
-    surcharge: Number(band?.surcharge || 0),
+    surcharge: 0,
   };
 }

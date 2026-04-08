@@ -1778,13 +1778,14 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   }
 
   const feeDetails = await resolveOrderFeeDetails(hotel, customerCoordinates);
+  if (feeDetails.serviceFeeSource !== "distance") {
+    alert("Enable location so delivery distance and fee can be calculated automatically before placing order.");
+    return;
+  }
+
   const serviceFee = feeDetails.serviceFee;
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
-
-  if (feeDetails.serviceFeeSource !== "distance") {
-    showToast("Exact distance was not confirmed from shared coordinates, so the base delivery fee was used for this order.", "warn");
-  }
 
   const orderPayload = {
     createdAt: Date.now(),
