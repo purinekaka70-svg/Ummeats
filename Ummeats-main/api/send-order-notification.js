@@ -15,12 +15,36 @@ function parseBody(req) {
   if (typeof req.body === "string") {
     try {
       return JSON.parse(req.body);
-    } catch (error) {
+    } catch {
       return {};
     }
   }
 
   return req.body;
+}
+
+function nowTimestamp() {
+  return Date.now();
+}
+
+async function writeNotification(firestore, payload) {
+  await firestore.collection("notifications").add({
+    message: String(payload.message || "Notification"),
+    read: false,
+    timestamp: payload.timestamp || nowTimestamp(),
+    to: String(payload.to || "").trim(),
+    type: String(payload.type || "order").trim(),
+  });
+}
+
+async function trySendPush(payload) {
+  try {
+    await sendPushMessage(payload);
+    return true;
+  } catch (error) {
+    console.warn("Push notification send failed", error);
+    return false;
+  }
 }
 
 async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteUrl }) {
@@ -34,9 +58,8 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   const order = orderSnapshot.data() || {};
   const updates = {};
   const customerName = String(order.customerName || "A customer");
-  let hotelName = "selected hotel";
-
   const targetHotelId = String(order.hotelId || hotelId || "").trim();
+  let hotelName = "selected hotel";
 
   if (targetHotelId) {
     const hotelSnapshot = await firestore.collection("hotels").doc(targetHotelId).get();
@@ -45,36 +68,68 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
     }
   }
 
-  let sent = 0;
-  if (!order.onesignalAdminDispatchedAt) {
-    await sendPushMessage({
-      aliases: ["admin"],
-      appId,
-      body: `${customerName} placed an order for ${hotelName}.`,
-      title: "New order received",
-      url: `${siteUrl}/admin.html`,
+  const orderMessage = `${customerName} placed an order for ${hotelName}.`;
+  const timestamp = nowTimestamp();
+  let sentInApp = 0;
+  let sentPush = 0;
+
+  if (!order.notificationAdminDispatchedAt) {
+    await writeNotification(firestore, {
+      message: orderMessage,
+      timestamp,
+      to: "admin",
+      type: "order",
     });
-    updates.onesignalAdminDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
-    sent += 1;
+    updates.notificationAdminDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
+  if (targetHotelId && !order.notificationHotelDispatchedAt) {
+    await writeNotification(firestore, {
+      message: orderMessage,
+      timestamp,
+      to: targetHotelId,
+      type: "order",
+    });
+    updates.notificationHotelDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
+  if (!order.onesignalAdminDispatchedAt) {
+    if (
+      await trySendPush({
+        aliases: ["admin"],
+        appId,
+        body: orderMessage,
+        title: "New order received",
+        url: `${siteUrl}/admin.html`,
+      })
+    ) {
+      updates.onesignalAdminDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
   }
 
   if (targetHotelId && !order.onesignalHotelDispatchedAt) {
-    await sendPushMessage({
-      aliases: [targetHotelId],
-      appId,
-      body: `${customerName} placed an order for ${hotelName}.`,
-      title: "New order received",
-      url: `${siteUrl}/index.html`,
-    });
-    updates.onesignalHotelDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
-    sent += 1;
+    if (
+      await trySendPush({
+        aliases: [targetHotelId],
+        appId,
+        body: orderMessage,
+        title: "New order received",
+        url: `${siteUrl}/index.html`,
+      })
+    ) {
+      updates.onesignalHotelDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
   }
 
   if (Object.keys(updates).length) {
     await orderRef.update(updates);
   }
 
-  return { ok: true, sent, statusCode: 200 };
+  return { ok: true, sentInApp, sentPush, statusCode: 200 };
 }
 
 async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
@@ -86,26 +141,45 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
   }
 
   const order = orderSnapshot.data() || {};
-  if (order.onesignalAdminDispatchedAt) {
-    return { ok: true, sent: 0, statusCode: 200 };
-  }
-
+  const updates = {};
   const customerName = String(order.customerName || "A customer");
   const shopName = String(order.shopName || "Around Umma University");
+  const message = `${customerName} submitted a Shop Here order for ${shopName}.`;
+  const timestamp = nowTimestamp();
+  let sentInApp = 0;
+  let sentPush = 0;
 
-  await sendPushMessage({
-    aliases: ["admin"],
-    appId,
-    body: `${customerName} submitted a Shop Here order for ${shopName}.`,
-    title: "New Shop Here order",
-    url: `${siteUrl}/umma-shop.html`,
-  });
+  if (!order.notificationAdminDispatchedAt) {
+    await writeNotification(firestore, {
+      message,
+      timestamp,
+      to: "admin",
+      type: "umma-shop-order",
+    });
+    updates.notificationAdminDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
 
-  await orderRef.update({
-    onesignalAdminDispatchedAt: admin.firestore.FieldValue.serverTimestamp(),
-  });
+  if (!order.onesignalAdminDispatchedAt) {
+    if (
+      await trySendPush({
+        aliases: ["admin"],
+        appId,
+        body: message,
+        title: "New Shop Here order",
+        url: `${siteUrl}/umma-shop.html`,
+      })
+    ) {
+      updates.onesignalAdminDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
+  }
 
-  return { ok: true, sent: 1, statusCode: 200 };
+  if (Object.keys(updates).length) {
+    await orderRef.update(updates);
+  }
+
+  return { ok: true, sentInApp, sentPush, statusCode: 200 };
 }
 
 async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderId, siteUrl }) {
@@ -119,10 +193,9 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   const order = orderSnapshot.data() || {};
   const updates = {};
   const customerName = String(order.customerName || "A customer");
-  let hotelName = "selected hotel";
-
   const targetHotelId = String(order.hotelId || hotelId || "").trim();
   const targetCustomerId = String(order.customerId || customerId || "").trim();
+  let hotelName = "selected hotel";
 
   if (targetHotelId) {
     const hotelSnapshot = await firestore.collection("hotels").doc(targetHotelId).get();
@@ -131,49 +204,95 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
     }
   }
 
-  let sent = 0;
+  const customerMessage = `Your order for ${hotelName} has been marked as paid.`;
+  const adminHotelMessage = `Order for ${customerName} at ${hotelName} has been marked as paid.`;
+  const timestamp = nowTimestamp();
+  let sentInApp = 0;
+  let sentPush = 0;
+
+  if (targetCustomerId && !order.notificationCustomerPaidDispatchedAt) {
+    await writeNotification(firestore, {
+      message: customerMessage,
+      timestamp,
+      to: targetCustomerId,
+      type: "order-paid",
+    });
+    updates.notificationCustomerPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
+  if (!order.notificationAdminPaidDispatchedAt) {
+    await writeNotification(firestore, {
+      message: adminHotelMessage,
+      timestamp,
+      to: "admin",
+      type: "order-paid",
+    });
+    updates.notificationAdminPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
+  if (targetHotelId && !order.notificationHotelPaidDispatchedAt) {
+    await writeNotification(firestore, {
+      message: adminHotelMessage,
+      timestamp,
+      to: targetHotelId,
+      type: "order-paid",
+    });
+    updates.notificationHotelPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
 
   if (targetCustomerId && !order.onesignalCustomerPaidDispatchedAt) {
-    await sendPushMessage({
-      aliases: [targetCustomerId],
-      appId,
-      body: `Your order for ${hotelName} has been marked as paid.`,
-      title: "Order marked as paid",
-      url: `${siteUrl}/index.html`,
-    });
-    updates.onesignalCustomerPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
-    sent += 1;
+    if (
+      await trySendPush({
+        aliases: [targetCustomerId],
+        appId,
+        body: customerMessage,
+        title: "Order marked as paid",
+        url: `${siteUrl}/index.html`,
+      })
+    ) {
+      updates.onesignalCustomerPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
   }
 
   if (!order.onesignalAdminPaidDispatchedAt) {
-    await sendPushMessage({
-      aliases: ["admin"],
-      appId,
-      body: `Order for ${customerName} at ${hotelName} has been marked as paid.`,
-      title: "Order marked as paid",
-      url: `${siteUrl}/admin.html`,
-    });
-    updates.onesignalAdminPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
-    sent += 1;
+    if (
+      await trySendPush({
+        aliases: ["admin"],
+        appId,
+        body: adminHotelMessage,
+        title: "Order marked as paid",
+        url: `${siteUrl}/admin.html`,
+      })
+    ) {
+      updates.onesignalAdminPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
   }
 
   if (targetHotelId && !order.onesignalHotelPaidDispatchedAt) {
-    await sendPushMessage({
-      aliases: [targetHotelId],
-      appId,
-      body: `Order for ${customerName} at ${hotelName} has been marked as paid.`,
-      title: "Order marked as paid",
-      url: `${siteUrl}/index.html`,
-    });
-    updates.onesignalHotelPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
-    sent += 1;
+    if (
+      await trySendPush({
+        aliases: [targetHotelId],
+        appId,
+        body: adminHotelMessage,
+        title: "Order marked as paid",
+        url: `${siteUrl}/index.html`,
+      })
+    ) {
+      updates.onesignalHotelPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
   }
 
   if (Object.keys(updates).length) {
     await orderRef.update(updates);
   }
 
-  return { ok: true, sent, statusCode: 200 };
+  return { ok: true, sentInApp, sentPush, statusCode: 200 };
 }
 
 module.exports = async (req, res) => {
@@ -199,6 +318,7 @@ module.exports = async (req, res) => {
     const hotelId = String(body.hotelId || "").trim();
     const orderId = String(body.orderId || "").trim();
     const type = String(body.type || "order").trim().toLowerCase();
+
     if (!orderId) {
       sendJson(res, 400, { error: "orderId is required." });
       return;

@@ -475,7 +475,20 @@ async function submitOrder() {
 
   try {
     const createdOrder = await createShopOrder(orderPayload);
-    void dispatchOrderNotification(createdOrder.id, "umma-shop-order");
+    const notificationSent = await dispatchOrderNotification(createdOrder.id, "umma-shop-order");
+    if (!notificationSent) {
+      try {
+        await addDoc(collection(db, "notifications"), {
+          message: `${customerName} submitted a Shop Here order for ${shopName}.`,
+          read: false,
+          timestamp: Date.now(),
+          to: "admin",
+          type: "umma-shop-order",
+        });
+      } catch (error) {
+        console.warn("Shop Here fallback notification write failed", error);
+      }
+    }
 
     localStorage.setItem(CUSTOMER_EMAIL_STORAGE_KEY, customerEmail);
     listenForCustomerOrders(customerEmail);

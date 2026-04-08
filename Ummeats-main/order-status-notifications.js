@@ -5,6 +5,18 @@ import { dispatchOrderNotification } from "./notification-api.js";
 export async function notifyPaidOrderStatus(order, hotelName) {
   const normalizedHotelName = String(hotelName || "selected hotel").trim() || "selected hotel";
   const customerName = String(order.customerName || "A customer").trim() || "A customer";
+  let dispatchSucceeded = false;
+  if (order.id) {
+    dispatchSucceeded = await dispatchOrderNotification(order.id, "order_paid", {
+      customerId: order.customerId,
+      hotelId: order.hotelId,
+    });
+  }
+
+  if (dispatchSucceeded) {
+    return;
+  }
+
   const timestamp = Date.now();
   const writes = [];
 
@@ -42,23 +54,10 @@ export async function notifyPaidOrderStatus(order, hotelName) {
     }),
   );
 
-  let firestoreWriteSucceeded = false;
   try {
     await Promise.all(writes);
-    firestoreWriteSucceeded = true;
   } catch (error) {
-    console.warn("Paid order notification write failed", error);
-  }
-
-  let dispatchSucceeded = false;
-  if (order.id) {
-    dispatchSucceeded = await dispatchOrderNotification(order.id, "order_paid", {
-      customerId: order.customerId,
-      hotelId: order.hotelId,
-    });
-  }
-
-  if (!firestoreWriteSucceeded && !dispatchSucceeded) {
+    console.warn("Paid order fallback notification write failed", error);
     throw new Error("Failed to send paid order notifications.");
   }
 }

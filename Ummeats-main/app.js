@@ -1832,6 +1832,8 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     silent: true,
   });
 
+  let notificationSent = false;
+
   try {
     const orderRef = await addDoc(collection(db, "orders"), orderPayload);
     sendSimulatedHotelSMS(hotelId, {
@@ -1840,7 +1842,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
       distanceKm: feeDetails.distanceKm,
       total,
     });
-    const notificationSent = await dispatchOrderNotification(orderRef.id, "order", {
+    notificationSent = await dispatchOrderNotification(orderRef.id, "order", {
       customerId: CUSTOMER_ID,
       hotelId,
     });
@@ -1864,24 +1866,26 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     Number.isFinite(feeDetails.distanceKm) ? ` (${formatDistanceKm(feeDetails.distanceKm)})` : ""
   }${areaSummary ? ` - ${areaSummary}` : ""}`;
 
-  try {
-    await addDoc(collection(db, "notifications"), {
-      message,
-      read: false,
-      timestamp: Date.now(),
-      to: "admin",
-      type: "order",
-    });
+  if (!notificationSent) {
+    try {
+      await addDoc(collection(db, "notifications"), {
+        message,
+        read: false,
+        timestamp: Date.now(),
+        to: "admin",
+        type: "order",
+      });
 
-    await addDoc(collection(db, "notifications"), {
-      message,
-      read: false,
-      timestamp: Date.now(),
-      to: hotelId,
-      type: "order",
-    });
-  } catch (error) {
-    console.warn("Notification write failed", error);
+      await addDoc(collection(db, "notifications"), {
+        message,
+        read: false,
+        timestamp: Date.now(),
+        to: hotelId,
+        type: "order",
+      });
+    } catch (error) {
+      console.warn("Notification write failed", error);
+    }
   }
 
   if (options.clearCartAfter) {
