@@ -28,6 +28,7 @@ const ACTIVE_CLASS = "is-active";
 const HIDDEN_CLASS = "is-hidden";
 const LOCATION_NAME = "Around Umma University";
 const CUSTOMER_EMAIL_STORAGE_KEY = "UMMA_SHOP_CUSTOMER_EMAIL";
+const SHOP_ORDER_SUBMIT_FALLBACK_URL = "https://ummeats.vercel.app/api/submit-umma-shop-order";
 
 const ordersCollection = collection(db, "ummaShopOrders");
 const feedbackCollection = collection(db, "ummaShopFeedbacks");
@@ -116,6 +117,10 @@ function getOrderSubmitErrorMessage(error) {
 
   if (normalized.includes("insufficient permissions") || normalized.includes("permission")) {
     return "Order save is blocked by Firestore permissions. Contact admin.";
+  }
+
+  if (normalized.includes("shop here order submit failed with 404")) {
+    return "Order API route is not available on this host. Open the app from the main Ummeats domain and retry.";
   }
 
   if (normalized.includes("networkerror") || normalized.includes("failed to fetch")) {
@@ -423,32 +428,41 @@ function renderItems() {
 }
 
 async function createShopOrder(orderPayload) {
-  let apiError = null;
-
-  try {
-    const response = await fetch("/api/submit-umma-shop-order", {
-      body: JSON.stringify(orderPayload),
-      credentials: "same-origin",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      method: "POST",
-    });
-
-    const result = await response.json().catch(() => null);
-    if (!response.ok || result?.ok === false || !result?.id) {
-      throw new Error(result?.error || `Shop Here order submit failed with ${response.status}.`);
-    }
-
-    return {
-      id: result.id,
-      mode: "api",
-    };
-  } catch (error) {
-    apiError = error;
-    console.warn("Shop Here API submit failed, trying direct Firestore write", error);
+  const submitUrls = [new URL("/api/submit-umma-shop-order", window.location.origin).href];
+  if (!submitUrls.includes(SHOP_ORDER_SUBMIT_FALLBACK_URL)) {
+    submitUrls.push(SHOP_ORDER_SUBMIT_FALLBACK_URL);
   }
+
+  const apiErrors = [];
+
+  for (const submitUrl of submitUrls) {
+    try {
+      const response = await fetch(submitUrl, {
+        body: JSON.stringify(orderPayload),
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.ok === false || !result?.id) {
+        throw new Error(result?.error || `Shop Here order submit failed with ${response.status}.`);
+      }
+
+      return {
+        id: result.id,
+        mode: "api",
+      };
+    } catch (error) {
+      const errorMessage = String(error?.message || "Unknown API error").trim();
+      apiErrors.push(`${submitUrl} -> ${errorMessage}`);
+    }
+  }
+
+  console.warn("Shop Here API submit failed for all endpoints, trying direct Firestore write", apiErrors);
 
   try {
     const orderRef = await addDoc(ordersCollection, orderPayload);
@@ -457,12 +471,10 @@ async function createShopOrder(orderPayload) {
       mode: "firestore",
     };
   } catch (firestoreError) {
-    const apiMessage = String(apiError?.message || "").trim();
     const firestoreMessage = String(firestoreError?.message || "").trim();
-    const details = [
-      apiMessage ? `API: ${apiMessage}` : "",
-      firestoreMessage ? `Firestore: ${firestoreMessage}` : "",
-    ].filter(Boolean).join(" | ");
+    const apiMessage = apiErrors.length ? `API: ${apiErrors.join(" || ")}` : "";
+    const firestoreDetails = firestoreMessage ? `Firestore: ${firestoreMessage}` : "";
+    const details = [apiMessage, firestoreDetails].filter(Boolean).join(" | ");
 
     throw new Error(details ? `Order submission failed. ${details}` : "Order submission failed.");
   }

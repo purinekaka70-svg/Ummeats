@@ -269,15 +269,27 @@ button {
 }
 
 .button-danger {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--danger);
+  border-color: var(--danger);
   color: #fff;
 }
 
 .button-danger-soft {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.button-danger:hover {
+  background: #b91c1c;
+  border-color: #b91c1c;
   color: #fff;
+}
+
+.button-danger-soft:hover {
+  background: #fecaca;
+  border-color: #b91c1c;
+  color: #7f1d1d;
 }
 
 .button-success {
