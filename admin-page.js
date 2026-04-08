@@ -30,7 +30,12 @@ const adminOrderAlertTracker = {
   ids: new Set(),
   ready: false,
 };
+const adminShopOrderAlertTracker = {
+  ids: new Set(),
+  ready: false,
+};
 const adminNotificationAlertTracker = new Set();
+const adminOrderStatusTracker = new Map();
 
 bootstrap();
 
@@ -97,11 +102,13 @@ function subscribeToCollections() {
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
     handleAdminOrderAlerts(snapshot);
+    handleAdminOrderStatusAlerts(snapshot);
     state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderAdmin();
   });
 
   onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
+    handleAdminShopOrderAlerts(snapshot);
     state.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderAdmin();
   });
@@ -191,6 +198,75 @@ function subscribeToAuth() {
   });
 }
 
+function handleAdminOrderStatusAlerts(snapshot) {
+  if (!auth.currentUser || !state.currentAdmin) {
+    return;
+  }
+
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  snapshot.docs.forEach((item) => {
+    if (item.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const order = item.data() || {};
+    const orderId = item.id;
+    const currentStatus = String(order.status || "Pending");
+    const previousStatus = adminOrderStatusTracker.get(orderId);
+    adminOrderStatusTracker.set(orderId, currentStatus);
+
+    if (!previousStatus || previousStatus === currentStatus || currentStatus !== "Paid") {
+      return;
+    }
+
+    const hotelName = state.hotels.find((hotel) => hotel.id === order.hotelId)?.name || "selected hotel";
+    const title = "Order marked as paid";
+    const body = `Order for ${order.customerName || "A customer"} at ${hotelName} has been marked as paid.`;
+    const tag = `admin-order-paid-${orderId}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    showToast(`${title}: ${body}`, "success");
+    void showBrowserNotification(title, body, {
+      link: "./admin.html",
+      tag,
+    });
+  });
+
+  [...adminOrderStatusTracker.keys()].forEach((orderId) => {
+    if (!currentIds.has(orderId)) {
+      adminOrderStatusTracker.delete(orderId);
+    }
+  });
+}
+
+function handleAdminShopOrderAlerts(snapshot) {
+  const user = auth.currentUser;
+  const newOrders = collectNewSnapshotDocs(snapshot, adminShopOrderAlertTracker);
+  if (!user || !newOrders.length) {
+    return;
+  }
+
+  newOrders.forEach((order) => {
+    const tag = `admin-shop-order-${order.id}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    const customerName = String(order.customerName || "A customer").trim() || "A customer";
+    const shopName = String(order.shopName || "Around Umma University").trim() || "Around Umma University";
+    const title = "New Shop Here order";
+    const body = `${customerName} submitted a Shop Here order for ${shopName}.`;
+    showToast(`${title}: ${body}`, "info");
+    void showBrowserNotification(title, body, {
+      link: "./umma-shop.html",
+      tag,
+    });
+  });
+}
+
 function resolveAdminNotificationTitle(item) {
   const normalizedType = String(item?.type || "").trim().toLowerCase();
   if (normalizedType === "order-paid" || normalizedType === "order_paid") {
@@ -207,6 +283,14 @@ function resolveAdminNotificationTitle(item) {
 
   if (normalizedType === "employee") {
     return "New employee registration";
+  }
+
+  if (normalizedType === "umma-shop-order") {
+    return "New Shop Here order";
+  }
+
+  if (normalizedType === "feedback") {
+    return "New feedback";
   }
 
   return "New notification";

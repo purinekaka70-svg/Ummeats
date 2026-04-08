@@ -67,6 +67,7 @@ const hotelOrderAlertTracker = {
   ready: false,
 };
 const liveNotificationAlertTracker = new Set();
+const orderStatusTracker = new Map();
 const UMMA_UNIVERSITY_REFERENCE_COORDINATES = Object.freeze({
   latitude: -1.77726,
   longitude: 36.82064,
@@ -749,6 +750,7 @@ function subscribeToCollections() {
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
     handleHotelOrderAlerts(snapshot);
+    handleCustomerAndHotelOrderStatusAlerts(snapshot);
     state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncUi();
   });
@@ -924,6 +926,55 @@ async function handleInstallClick() {
   }
 
   updateInstallButtonState();
+}
+
+function handleCustomerAndHotelOrderStatusAlerts(snapshot) {
+  const currentIds = new Set(snapshot.docs.map((item) => item.id));
+
+  snapshot.docs.forEach((item) => {
+    if (item.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const order = item.data() || {};
+    const orderId = item.id;
+    const currentStatus = String(order.status || "Pending");
+    const previousStatus = orderStatusTracker.get(orderId);
+    orderStatusTracker.set(orderId, currentStatus);
+
+    if (!previousStatus || previousStatus === currentStatus || currentStatus !== "Paid") {
+      return;
+    }
+
+    const isCustomerTarget = String(order.customerId || "").trim() === String(CUSTOMER_ID);
+    const isHotelTarget =
+      Boolean(state.currentHotelId) && String(order.hotelId || "").trim() === String(state.currentHotelId);
+    if (!isCustomerTarget && !isHotelTarget) {
+      return;
+    }
+
+    const hotelName = getHotelById(order.hotelId).name;
+    const title = "Order marked as paid";
+    const body = isHotelTarget
+      ? `${order.customerName || "A customer"} has a paid order for ${hotelName}.`
+      : `Your order for ${hotelName} has been marked as paid.`;
+    const tag = `order-paid-${orderId}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    showToast(`${title}: ${body}`, "success");
+    void showBrowserNotification(title, body, {
+      link: "./index.html",
+      tag,
+    });
+  });
+
+  [...orderStatusTracker.keys()].forEach((orderId) => {
+    if (!currentIds.has(orderId)) {
+      orderStatusTracker.delete(orderId);
+    }
+  });
 }
 
 function getActiveNotificationTarget() {
