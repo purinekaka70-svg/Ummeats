@@ -406,6 +406,68 @@ async function resolveCustomerAreaLabel(coordinates) {
   }
 }
 
+function buildCustomerAreaSearchQueries(customerArea, customerSpecificArea, hotelLocation) {
+  const area = String(customerArea || "").trim();
+  const specificArea = String(customerSpecificArea || "").trim();
+  const hotelArea = String(hotelLocation || DEFAULT_HOTEL_LOCATION).trim();
+
+  const queries = [
+    [specificArea, area, hotelArea, "Kenya"].filter(Boolean).join(", "),
+    [area, hotelArea, "Kenya"].filter(Boolean).join(", "),
+    [specificArea, hotelArea, "Kenya"].filter(Boolean).join(", "),
+    [area, "Kenya"].filter(Boolean).join(", "),
+    [specificArea, "Kenya"].filter(Boolean).join(", "),
+  ]
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return [...new Set(queries)];
+}
+
+async function resolveCoordinatesFromAreaText(customerArea, customerSpecificArea, hotelLocation) {
+  if (typeof fetch !== "function") {
+    return null;
+  }
+
+  const queries = buildCustomerAreaSearchQueries(customerArea, customerSpecificArea, hotelLocation);
+  if (!queries.length) {
+    return null;
+  }
+
+  for (const query of queries) {
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("limit", "1");
+      url.searchParams.set("q", query);
+      url.searchParams.set("countrycodes", "ke");
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Accept: "application/json",
+        },
+      });
+      if (!response.ok) {
+        continue;
+      }
+
+      const results = await response.json();
+      const bestMatch = Array.isArray(results) ? results[0] : null;
+      const coordinates = normalizeCoordinates({
+        latitude: toFiniteNumber(bestMatch?.lat),
+        longitude: toFiniteNumber(bestMatch?.lon),
+      });
+      if (coordinates) {
+        return coordinates;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 function requestCurrentCoordinates() {
   if (!window.isSecureContext || !navigator.geolocation) {
     return Promise.resolve(null);
@@ -1777,15 +1839,26 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     }
   }
 
-  const feeDetails = await resolveOrderFeeDetails(hotel, customerCoordinates);
-  if (feeDetails.serviceFeeSource !== "distance") {
-    alert("Enable location so delivery distance and fee can be calculated automatically before placing order.");
-    return;
+  if (!customerCoordinates) {
+    const areaCoordinates = await resolveCoordinatesFromAreaText(
+      customerArea,
+      customerSpecificArea,
+      getHotelLocation(hotel),
+    );
+    if (areaCoordinates) {
+      setCheckoutCustomerLocationDraft(hotelId, areaCoordinates, customerArea);
+      customerCoordinates = areaCoordinates;
+    }
   }
 
+  const feeDetails = await resolveOrderFeeDetails(hotel, customerCoordinates);
   const serviceFee = feeDetails.serviceFee;
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
+
+  if (feeDetails.serviceFeeSource !== "distance") {
+    showToast("Distance could not be confirmed from location or typed area. Delivery fee used base amount.", "warn");
+  }
 
   const orderPayload = {
     createdAt: Date.now(),
