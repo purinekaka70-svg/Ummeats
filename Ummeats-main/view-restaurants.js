@@ -143,7 +143,7 @@ function renderLocationDirectory(locationCards) {
   if (!locationCards.length) {
     return renderEmptyState(
       "No hotel locations yet",
-      "When hotels register and add a location, cards like Around Umma University or Nairobi CBD will appear here automatically.",
+      "Approved hotel areas appear here automatically. New hotel registrations currently stay under Around Umma University.",
     );
   }
 

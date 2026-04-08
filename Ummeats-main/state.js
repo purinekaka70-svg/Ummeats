@@ -180,6 +180,11 @@ export function getCheckoutDraft(hotelId) {
   return {
     custName: draft.custName ?? saved.custName ?? state.currentCustomer?.name ?? "",
     custPhone: draft.custPhone ?? saved.custPhone ?? state.currentCustomer?.phone ?? "",
+    customerAccuracy: draft.customerAccuracy ?? "",
+    customerArea: draft.customerArea ?? "",
+    customerLatitude: draft.customerLatitude ?? "",
+    customerLocationLabel: draft.customerLocationLabel ?? "",
+    customerLongitude: draft.customerLongitude ?? "",
     mpesaName: draft.mpesaName ?? saved.mpesaName ?? "",
     mpesaNumber: draft.mpesaNumber ?? saved.mpesaNumber ?? "",
   };

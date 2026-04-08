@@ -10,6 +10,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
   ANNOUNCEMENT_TEXT,
+  DEFAULT_HOTEL_LOCATION,
   getServiceFeeForHotel,
   resolveDistanceServiceFee,
   SERVICE_FEE,
@@ -20,6 +21,7 @@ import { db } from "./firebase.js";
 import {
   calculateDistanceKm,
   escapeHtml,
+  formatCoordinatePair,
   formatDistanceKm,
   formatCurrency,
   inferToastTone,
@@ -275,11 +277,124 @@ function updateHotelRegistrationCoordinateStatus(form, coordinates = readCoordin
 
   status.textContent = normalizeCoordinates(coordinates)
     ? `${formatCoordinateSnapshot(coordinates)} Distance-based delivery fees are enabled for this hotel.`
-    : "Use current location to save a map point for automatic distance-based delivery fees.";
+    : `New hotel accounts stay under ${DEFAULT_HOTEL_LOCATION}. Use current location to save the hotel map point for delivery fees.`;
 }
 
 function getHotelCoordinates(hotel) {
   return normalizeCoordinates(hotel?.coordinates);
+}
+
+function readCheckoutCustomerCoordinates(hotelId) {
+  const draft = state.checkoutDrafts[hotelId] || {};
+  return normalizeCoordinates({
+    accuracy: toFiniteNumber(draft.customerAccuracy),
+    latitude: toFiniteNumber(draft.customerLatitude),
+    longitude: toFiniteNumber(draft.customerLongitude),
+  });
+}
+
+function getCheckoutCustomerArea(hotelId) {
+  const draft = state.checkoutDrafts[hotelId] || {};
+  return String(draft.customerArea || draft.customerLocationLabel || "").trim();
+}
+
+function getCheckoutLocationStatusCopy(hotelId) {
+  const coordinates = readCheckoutCustomerCoordinates(hotelId);
+  const area = getCheckoutCustomerArea(hotelId);
+
+  if (coordinates && area) {
+    return `Shared delivery point: ${area} (${formatCoordinatePair(coordinates)}). Admin and hotel will receive it with your order.`;
+  }
+
+  if (coordinates) {
+    return `Shared delivery point: ${formatCoordinatePair(coordinates)}. Admin and hotel will receive it with your order.`;
+  }
+
+  if (area) {
+    return `Area noted: ${area}. Click Use My Current Location to attach exact coordinates for delivery.`;
+  }
+
+  return "Click Use My Current Location so admin and hotel can receive your delivery point and the exact fee can be calculated.";
+}
+
+function updateCheckoutLocationStatus(hotelId) {
+  const status = document.querySelector(`[data-customer-geo-status][data-hotel="${hotelId}"]`);
+  if (!status) {
+    return;
+  }
+
+  status.textContent = getCheckoutLocationStatusCopy(hotelId);
+}
+
+function setCheckoutCustomerLocationDraft(hotelId, coordinates, area = "") {
+  const draft = state.checkoutDrafts[hotelId] = state.checkoutDrafts[hotelId] || {};
+
+  draft.customerAccuracy = coordinates?.accuracy ?? "";
+  draft.customerLatitude = coordinates?.latitude ?? "";
+  draft.customerLongitude = coordinates?.longitude ?? "";
+  draft.customerLocationLabel = area || "";
+  if (area) {
+    draft.customerArea = area;
+  } else if (!draft.customerArea) {
+    draft.customerArea = "";
+  }
+
+  const areaInput = document.querySelector(`.checkout-input[data-field="customerArea"][data-hotel="${hotelId}"]`);
+  if (areaInput && area) {
+    areaInput.value = area;
+  }
+
+  updateCheckoutLocationStatus(hotelId);
+}
+
+function buildCustomerAreaLabel(payload) {
+  const address = payload?.address || {};
+  const primary = [
+    address.amenity,
+    address.building,
+    address.neighbourhood,
+    address.suburb,
+    address.quarter,
+    address.residential,
+    address.village,
+    address.hamlet,
+    address.town,
+    address.city_district,
+    address.city,
+  ].find(Boolean);
+  const secondary = [address.road, address.county, address.state].find(Boolean);
+  const label = [primary, secondary].filter(Boolean).join(", ").trim();
+
+  return label || String(payload?.display_name || "").split(",").slice(0, 2).join(", ").trim();
+}
+
+async function resolveCustomerAreaLabel(coordinates) {
+  if (!coordinates || typeof fetch !== "function") {
+    return "";
+  }
+
+  try {
+    const url = new URL("https://nominatim.openstreetmap.org/reverse");
+    url.searchParams.set("format", "jsonv2");
+    url.searchParams.set("lat", String(coordinates.latitude));
+    url.searchParams.set("lon", String(coordinates.longitude));
+    url.searchParams.set("zoom", "18");
+    url.searchParams.set("addressdetails", "1");
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      return "";
+    }
+
+    const payload = await response.json();
+    return buildCustomerAreaLabel(payload);
+  } catch {
+    return "";
+  }
 }
 
 function requestCurrentCoordinates() {
@@ -348,7 +463,19 @@ async function updateCurrentHotelCoordinates() {
   }
 }
 
-async function resolveOrderFeeDetails(hotel) {
+async function captureCustomerCheckoutLocation(hotelId) {
+  const coordinates = await requestCurrentCoordinates();
+  if (!coordinates) {
+    showToast("Could not read your browser location on this device.", "warn");
+    return;
+  }
+
+  const area = await resolveCustomerAreaLabel(coordinates);
+  setCheckoutCustomerLocationDraft(hotelId, coordinates, area);
+  showToast(area ? `Delivery location shared: ${area}.` : "Delivery coordinates shared for this order.", "success");
+}
+
+async function resolveOrderFeeDetails(hotel, customerCoordinates = null) {
   const hotelCoordinates = getHotelCoordinates(hotel);
   const baseFee = getServiceFeeForHotel(hotel);
 
@@ -364,8 +491,8 @@ async function resolveOrderFeeDetails(hotel) {
     };
   }
 
-  const customerCoordinates = await requestCurrentCoordinates();
-  if (!customerCoordinates) {
+  const normalizedCustomerCoordinates = normalizeCoordinates(customerCoordinates);
+  if (!normalizedCustomerCoordinates) {
     return {
       customerCoordinates: null,
       distanceKm: null,
@@ -377,11 +504,11 @@ async function resolveOrderFeeDetails(hotel) {
     };
   }
 
-  const distanceKm = calculateDistanceKm(customerCoordinates, hotelCoordinates);
+  const distanceKm = calculateDistanceKm(normalizedCustomerCoordinates, hotelCoordinates);
   const fee = resolveDistanceServiceFee(distanceKm, hotel);
 
   return {
-    customerCoordinates,
+    customerCoordinates: normalizedCustomerCoordinates,
     distanceKm,
     hotelCoordinates,
     serviceFee: fee.fee,
@@ -809,6 +936,11 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("captureCustomerLocationBtn")) {
+    await captureCustomerCheckoutLocation(button.dataset.hotel);
+    return;
+  }
+
   if (button.id === "closeCartModal") {
     closeCartModal();
     return;
@@ -873,6 +1005,10 @@ function handleInput(event) {
 
   state.checkoutDrafts[hotelId] = state.checkoutDrafts[hotelId] || {};
   state.checkoutDrafts[hotelId][field] = input.value;
+
+  if (field === "customerArea") {
+    updateCheckoutLocationStatus(hotelId);
+  }
 }
 
 function handleChange(event) {
@@ -1144,9 +1280,8 @@ async function registerHotel(form) {
   const phone = form.elements.hotelPhone.value.trim();
   const pass = form.elements.hotelPass.value.trim();
   const till = form.elements.hotelTill.value.trim();
-  const location = normalizeHotelLocation(form.elements.hotelLocation?.value);
-  const fallbackCoordinates = readCoordinatesFromForm(form) || (await requestCurrentCoordinates());
-  const coordinates = normalizeCoordinates(fallbackCoordinates);
+  const location = DEFAULT_HOTEL_LOCATION;
+  const coordinates = readCoordinatesFromForm(form);
   const normalizedName = normalizeHotelAccountName(name);
 
   if (!name || !phone || !pass || !till) {
@@ -1427,6 +1562,33 @@ function openCartModal(hotelId) {
         </label>
       </div>
 
+      <div class="info-box">
+        <div class="split-row">
+          <div class="stack">
+            <p class="eyebrow">Delivery point</p>
+            <p class="tiny" data-customer-geo-status data-hotel="${escapeHtml(hotelId)}">${escapeHtml(getCheckoutLocationStatusCopy(hotelId))}</p>
+          </div>
+          <button
+            class="button button-outline button-small captureCustomerLocationBtn"
+            data-hotel="${escapeHtml(hotelId)}"
+            type="button"
+          >
+            Use My Current Location
+          </button>
+        </div>
+
+        <label class="field">
+          <span class="field-label">Area / building</span>
+          <input
+            class="input checkout-input"
+            data-field="customerArea"
+            data-hotel="${escapeHtml(hotelId)}"
+            placeholder="Hostel, building, or nearby place"
+            value="${escapeHtml(draft.customerArea)}"
+          />
+        </label>
+      </div>
+
       <div class="button-row">
         <button class="button button-primary" data-hotel="${escapeHtml(hotelId)}" id="confirmOrderBtn" type="button">
           Confirm Order
@@ -1503,13 +1665,15 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   }
 
   const hotel = getHotelById(hotelId);
-  const feeDetails = await resolveOrderFeeDetails(hotel);
+  const customerCoordinates = readCheckoutCustomerCoordinates(hotelId);
+  const customerArea = getCheckoutCustomerArea(hotelId);
+  const feeDetails = await resolveOrderFeeDetails(hotel, customerCoordinates);
   const serviceFee = feeDetails.serviceFee;
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
 
   if (feeDetails.serviceFeeSource !== "distance") {
-    showToast("Live distance could not be confirmed, so the base delivery fee was used for this order.", "warn");
+    showToast("Exact distance was not confirmed from shared coordinates, so the base delivery fee was used for this order.", "warn");
   }
 
   const orderPayload = {
@@ -1517,6 +1681,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     customerId: CUSTOMER_ID,
     customerName,
     customerPhone,
+    ...(customerArea ? { customerArea } : {}),
     hotelId,
     items: cart.map((item) => ({
       name: item.name,
@@ -1581,7 +1746,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
 
   const message = `New order from ${customerName} (${customerPhone}) - ${formatCurrency(total)} for ${hotel.name}${
     Number.isFinite(feeDetails.distanceKm) ? ` (${formatDistanceKm(feeDetails.distanceKm)})` : ""
-  }`;
+  }${customerArea ? ` - ${customerArea}` : ""}`;
 
   try {
     await addDoc(collection(db, "notifications"), {

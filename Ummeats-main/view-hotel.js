@@ -1,7 +1,8 @@
-import { HOTEL_LOCATION_SUGGESTIONS } from "./config.js";
+import { DEFAULT_HOTEL_LOCATION } from "./config.js";
 import { elements, getHotelById, getHotelLocation, getNotificationsForTarget, getRestaurantByHotelId, state } from "./state.js";
 import {
   escapeHtml,
+  formatCoordinatePair,
   formatDistanceKm,
   formatCurrency,
   formatDateOnly,
@@ -82,17 +83,13 @@ export function renderHotelPortal() {
             </label>
 
             <label class="field">
-              <span class="field-label">Location / building</span>
-              <input class="input" list="hotelLocationOptions" name="hotelLocation" placeholder="Around Umma University" />
+              <span class="field-label">Location / area</span>
+              <input class="input" name="hotelLocation" readonly value="${escapeHtml(DEFAULT_HOTEL_LOCATION)}" />
             </label>
 
             <input name="hotelLatitude" type="hidden" value="" />
             <input name="hotelLongitude" type="hidden" value="" />
             <input name="hotelAccuracy" type="hidden" value="" />
-
-            <datalist id="hotelLocationOptions">
-              ${HOTEL_LOCATION_SUGGESTIONS.map((location) => `<option value="${escapeHtml(location)}"></option>`).join("")}
-            </datalist>
 
             <div class="button-row">
               <button class="button button-outline button-small captureHotelLocationBtn" type="button">
@@ -101,7 +98,7 @@ export function renderHotelPortal() {
             </div>
 
             <p class="tiny" data-hotel-geo-status>
-              Use current location to save a map point for automatic distance-based delivery fees.
+              New hotel accounts stay under ${escapeHtml(DEFAULT_HOTEL_LOCATION)}. Use current location only to save the hotel map point for delivery fees.
             </p>
 
             <button class="button button-secondary button-small" type="submit">Register</button>
@@ -194,6 +191,7 @@ export function renderHotelPortal() {
             <div class="summary-item"><span>Till</span><strong>${escapeHtml(hotel.till || "N/A")}</strong></div>
             <div class="summary-item"><span>Location</span><strong>${escapeHtml(getHotelLocation(hotel))}</strong></div>
             <div class="summary-item"><span>Delivery map point</span><strong>${hotelCoordinates ? "Saved" : "Missing"}</strong></div>
+            <div class="summary-item"><span>Coordinates</span><strong>${escapeHtml(formatCoordinatePair(hotelCoordinates))}</strong></div>
             <div class="summary-item"><span>Approved</span><strong>${hotel.approved ? "Yes" : "No"}</strong></div>
             <div class="summary-item"><span>Subscription ends</span><strong>${formatDateOnly(hotel.subscriptionExpiry)}</strong></div>
           </div>
@@ -341,6 +339,8 @@ function renderHotelOrderCard(order) {
       <div class="summary-list">
         <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(order.serviceFee || 0)}</strong></div>
         <div class="summary-item"><span>Distance</span><strong>${Number.isFinite(order.distanceKm) ? formatDistanceKm(order.distanceKm) : "Unknown"}</strong></div>
+        <div class="summary-item"><span>Customer area</span><strong>${escapeHtml(order.customerArea || "Not shared")}</strong></div>
+        <div class="summary-item"><span>Customer map point</span><strong>${escapeHtml(formatCoordinatePair(order.customerCoordinates))}</strong></div>
       </div>
 
       <div class="button-row">

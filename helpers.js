@@ -97,6 +97,15 @@ export function formatDistanceKm(distanceKm) {
   return `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`;
 }
 
+export function formatCoordinatePair(value) {
+  const coordinates = normalizeCoordinates(value);
+  if (!coordinates) {
+    return "Unknown";
+  }
+
+  return `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`;
+}
+
 export function pluralize(count) {
   return Number(count) === 1 ? "" : "s";
 }
