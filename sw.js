@@ -1,12 +1,14 @@
-const APP_CACHE = "tamu-app-v32";
+const APP_CACHE = "tamu-app-v34";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
+  "./employee.html",
   "./umma-shop.html",
   "./styles.css",
   "./app.js",
   "./admin-page.js",
+  "./employee-page.js",
   "./config.js",
   "./firebase.js",
   "./helpers.js",
@@ -17,6 +19,7 @@ const APP_SHELL = [
   "./umma-shop.js",
   "./view-admin.js",
   "./view-common.js",
+  "./view-employee.js",
   "./view-hotel.js",
   "./view-orders.js",
   "./view-restaurants.js",

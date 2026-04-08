@@ -177,6 +177,16 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
 }
 
 module.exports = async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     sendJson(res, 405, { error: "Method not allowed." });

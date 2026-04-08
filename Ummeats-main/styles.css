@@ -270,6 +270,13 @@ button {
   font-size: 0.9rem;
 }
 
+.button-compact {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .badge-slot {
   display: inline-flex;
   min-width: 0;
@@ -1221,6 +1228,21 @@ button {
   color: var(--ink);
 }
 
+.input-file {
+  padding: 10px 12px;
+}
+
+.input-file::file-selector-button {
+  margin-right: 12px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgba(21, 128, 61, 0.1);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
 .textarea {
   min-height: 148px;
   padding: 14px;
@@ -1420,6 +1442,10 @@ button {
 .action-card {
   display: grid;
   gap: 14px;
+}
+
+.employee-portal-grid {
+  align-items: start;
 }
 
 .auth-card form,

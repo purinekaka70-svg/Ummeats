@@ -295,7 +295,7 @@ function readCheckoutCustomerCoordinates(hotelId) {
 
 function getCheckoutCustomerArea(hotelId) {
   const draft = state.checkoutDrafts[hotelId] || {};
-  return String(draft.customerArea || draft.customerLocationLabel || "").trim();
+  return String(draft.customerArea || "").trim();
 }
 
 function getCheckoutLocationStatusCopy(hotelId) {
@@ -303,18 +303,18 @@ function getCheckoutLocationStatusCopy(hotelId) {
   const area = getCheckoutCustomerArea(hotelId);
 
   if (coordinates && area) {
-    return `Shared delivery point: ${area} (${formatCoordinatePair(coordinates)}). Admin and hotel will receive it with your order.`;
+    return `Shared delivery point: ${area} (${formatCoordinatePair(coordinates)}). The delivery person and hotel will receive it with your order.`;
   }
 
   if (coordinates) {
-    return `Shared delivery point: ${formatCoordinatePair(coordinates)}. Admin and hotel will receive it with your order.`;
+    return `Shared delivery point: ${formatCoordinatePair(coordinates)}. The delivery person and hotel will receive it with your order.`;
   }
 
   if (area) {
     return `Area noted: ${area}. Click Use My Current Location to attach exact coordinates for delivery.`;
   }
 
-  return "Click Use My Current Location so admin and hotel can receive your delivery point and the exact fee can be calculated.";
+  return "Type your area and use current location so the delivery person and hotel can receive your delivery point.";
 }
 
 function updateCheckoutLocationStatus(hotelId) {
@@ -333,16 +333,7 @@ function setCheckoutCustomerLocationDraft(hotelId, coordinates, area = "") {
   draft.customerLatitude = coordinates?.latitude ?? "";
   draft.customerLongitude = coordinates?.longitude ?? "";
   draft.customerLocationLabel = area || "";
-  if (area) {
-    draft.customerArea = area;
-  } else if (!draft.customerArea) {
-    draft.customerArea = "";
-  }
-
-  const areaInput = document.querySelector(`.checkout-input[data-field="customerArea"][data-hotel="${hotelId}"]`);
-  if (areaInput && area) {
-    areaInput.value = area;
-  }
+  draft.customerArea = draft.customerArea || "";
 
   updateCheckoutLocationStatus(hotelId);
 }
@@ -470,9 +461,8 @@ async function captureCustomerCheckoutLocation(hotelId) {
     return;
   }
 
-  const area = await resolveCustomerAreaLabel(coordinates);
-  setCheckoutCustomerLocationDraft(hotelId, coordinates, area);
-  showToast(area ? `Delivery location shared: ${area}.` : "Delivery coordinates shared for this order.", "success");
+  setCheckoutCustomerLocationDraft(hotelId, coordinates);
+  showToast("Delivery coordinates shared for this order.", "success");
 }
 
 async function resolveOrderFeeDetails(hotel, customerCoordinates = null) {
@@ -1569,7 +1559,7 @@ function openCartModal(hotelId) {
             <p class="tiny" data-customer-geo-status data-hotel="${escapeHtml(hotelId)}">${escapeHtml(getCheckoutLocationStatusCopy(hotelId))}</p>
           </div>
           <button
-            class="button button-outline button-small captureCustomerLocationBtn"
+            class="button button-secondary button-small button-compact captureCustomerLocationBtn"
             data-hotel="${escapeHtml(hotelId)}"
             type="button"
           >
@@ -1728,10 +1718,13 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
       distanceKm: feeDetails.distanceKm,
       total,
     });
-    void dispatchOrderNotification(orderRef.id, "order", {
+    const notificationSent = await dispatchOrderNotification(orderRef.id, "order", {
       customerId: CUSTOMER_ID,
       hotelId,
     });
+    if (!notificationSent) {
+      console.warn("Order notification dispatch did not confirm delivery.");
+    }
     showToast(
       Number.isFinite(feeDetails.distanceKm)
         ? `Order placed. Delivery fee ${formatCurrency(serviceFee)} for ${formatDistanceKm(feeDetails.distanceKm)}.`

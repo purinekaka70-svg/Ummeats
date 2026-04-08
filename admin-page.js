@@ -2,6 +2,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   setDoc,
@@ -60,7 +61,7 @@ function bindPushSyncEvents() {
 
 function syncAdminPushSubscription() {
   const user = auth.currentUser;
-  if (!user) {
+  if (!user || !state.currentAdmin) {
     return;
   }
 
@@ -157,22 +158,33 @@ function handleAdminOrderAlerts(snapshot) {
 }
 
 function subscribeToAuth() {
-  onAuthStateChanged(auth, (user) => {
-    state.currentAdmin = Boolean(user);
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) {
+      state.currentAdmin = false;
+      state.adminPanelSection = "dashboard";
+      state.adminSidebarOpen = false;
+      renderAdmin();
+      return;
+    }
 
-    if (user) {
+    const allowed = await isAllowedAdmin(user.uid);
+    state.currentAdmin = allowed;
+
+    if (allowed) {
       void registerPushSubscription("admin", user.email || "Admin", {
         requestPermission: false,
         role: "admin",
         silent: true,
       });
+      renderAdmin();
+      return;
     }
 
-    if (!user) {
-      state.adminPanelSection = "dashboard";
-      state.adminSidebarOpen = false;
-    }
-
+    await signOut(auth).catch(() => undefined);
+    state.currentAdmin = false;
+    state.adminPanelSection = "dashboard";
+    state.adminSidebarOpen = false;
+    showToast("This account is registered as employee access, not admin.", "warn");
     renderAdmin();
   });
 }
@@ -300,6 +312,12 @@ async function handleSubmit(event) {
 
   try {
     const credentials = await signInWithEmailAndPassword(auth, user, pass);
+    if (!(await isAllowedAdmin(credentials.user.uid))) {
+      await signOut(auth).catch(() => undefined);
+      alert("This account is registered as employee access, not admin.");
+      return;
+    }
+
     await registerPushSubscription("admin", credentials.user.email || user, {
       requestPermission: true,
       role: "admin",
@@ -310,6 +328,20 @@ async function handleSubmit(event) {
   } catch (error) {
     console.error(error);
     alert("Wrong admin email or password.");
+  }
+}
+
+async function isAllowedAdmin(uid) {
+  if (!uid) {
+    return false;
+  }
+
+  try {
+    const employeeProfile = await getDoc(doc(db, "employees", uid));
+    return !employeeProfile.exists();
+  } catch (error) {
+    console.warn("Admin access check failed", error);
+    return true;
   }
 }
 

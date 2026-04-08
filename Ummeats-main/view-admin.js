@@ -519,8 +519,7 @@ function renderAdminOrderCard(order) {
         <div class="summary-item"><span>Items total</span><strong>${formatCurrency(itemsTotal)}</strong></div>
         <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(order.serviceFee ?? SERVICE_FEE)}</strong></div>
         <div class="summary-item"><span>Distance</span><strong>${Number.isFinite(order.distanceKm) ? formatDistanceKm(order.distanceKm) : "Unknown"}</strong></div>
-        <div class="summary-item"><span>Customer area</span><strong>${escapeHtml(order.customerArea || "Not shared")}</strong></div>
-        <div class="summary-item"><span>Customer map point</span><strong>${escapeHtml(formatCoordinatePair(order.customerCoordinates))}</strong></div>
+        <div class="summary-item"><span>Area</span><strong>${escapeHtml(order.customerArea || "Not shared")}</strong></div>
         <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
         <div class="summary-item"><span>M-PESA name</span><strong>${escapeHtml(order.mpesaName || "N/A")}</strong></div>
         <div class="summary-item"><span>M-PESA number</span><strong>${escapeHtml(order.mpesaNumber || "N/A")}</strong></div>

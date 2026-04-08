@@ -45,7 +45,7 @@ export async function notifyPaidOrderStatus(order, hotelName) {
   await Promise.all(writes);
 
   if (order.id) {
-    void dispatchOrderNotification(order.id, "order_paid", {
+    await dispatchOrderNotification(order.id, "order_paid", {
       customerId: order.customerId,
       hotelId: order.hotelId,
     });
