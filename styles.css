@@ -312,6 +312,12 @@ button {
   color: var(--danger);
 }
 
+.count-badge--cart {
+  border: 1px solid rgba(161, 98, 7, 0.18);
+  background: #facc15;
+  color: #1f2937;
+}
+
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.95fr);
@@ -977,6 +983,28 @@ button {
   width: 20px;
   height: 20px;
   fill: currentColor;
+}
+
+.button-cart-icon-glyph {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.button-cart-icon-glyph .count-badge {
+  position: absolute;
+  top: -9px;
+  right: -12px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+  font-size: 0.72rem;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .button-cart-icon-label {

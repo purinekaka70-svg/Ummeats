@@ -19,7 +19,7 @@ import {
   state,
 } from "./state.js";
 import { escapeHtml, formatCurrency, getMenuScheduleDetails, normalizeCoordinates, pluralize, sortMenuItems } from "./helpers.js";
-import { renderBrowseMenuTabs, renderEmptyState } from "./view-common.js";
+import { renderBrowseMenuTabs, renderEmptyState, renderInlineBadge } from "./view-common.js";
 
 export function renderRestaurants() {
   const selectedLocation = state.selectedLocation;
@@ -267,9 +267,12 @@ function renderRestaurantCard(restaurant) {
             }"
             title="${cartCount ? "Open Cart" : "Open Menu"}"
           >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M8 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm9 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm-9.75-3h10.86a2 2 0 0 0 1.95-1.58l1.23-5.54A1 1 0 0 0 20.31 6H6.21l-.32-1.52A2 2 0 0 0 3.93 3H2a1 1 0 1 0 0 2h1.93l2.03 9.44A2 2 0 0 0 7.92 16H19a1 1 0 1 0 0-2H7.92l-.17-.8Z"></path>
-            </svg>
+            <span class="button-cart-icon-glyph">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M8 18a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm9 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm-9.75-3h10.86a2 2 0 0 0 1.95-1.58l1.23-5.54A1 1 0 0 0 20.31 6H6.21l-.32-1.52A2 2 0 0 0 3.93 3H2a1 1 0 1 0 0 2h1.93l2.03 9.44A2 2 0 0 0 7.92 16H19a1 1 0 1 0 0-2H7.92l-.17-.8Z"></path>
+              </svg>
+              ${renderInlineBadge(cartCount, "cart")}
+            </span>
             <span class="button-cart-icon-label">${cartCount ? `Cart (${escapeHtml(String(cartCount))})` : "Cart"}</span>
           </button>
           <button
