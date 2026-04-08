@@ -98,7 +98,7 @@ export function renderHotelPortal() {
             </div>
 
             <p class="tiny" data-hotel-geo-status>
-              New hotel accounts stay under ${escapeHtml(DEFAULT_HOTEL_LOCATION)}. Use current location only to save the hotel map point for delivery fees.
+              New hotel accounts stay under ${escapeHtml(DEFAULT_HOTEL_LOCATION)}. Location capture is required so distance-based service fees can be calculated automatically.
             </p>
 
             <button class="button button-secondary button-small" type="submit">Register</button>

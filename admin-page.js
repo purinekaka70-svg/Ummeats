@@ -30,6 +30,7 @@ const adminOrderAlertTracker = {
   ids: new Set(),
   ready: false,
 };
+const adminNotificationAlertTracker = new Set();
 
 bootstrap();
 
@@ -111,6 +112,7 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "notifications"), (snapshot) => {
+    handleAdminNotificationAlerts(snapshot);
     state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     renderAdmin();
   });
@@ -186,6 +188,59 @@ function subscribeToAuth() {
     state.adminSidebarOpen = false;
     showToast("This account is registered as employee access, not admin.", "warn");
     renderAdmin();
+  });
+}
+
+function resolveAdminNotificationTitle(item) {
+  const normalizedType = String(item?.type || "").trim().toLowerCase();
+  if (normalizedType === "order-paid" || normalizedType === "order_paid") {
+    return "Order update";
+  }
+
+  if (normalizedType === "order") {
+    return "New order received";
+  }
+
+  if (normalizedType === "hotel") {
+    return "New hotel registration";
+  }
+
+  if (normalizedType === "employee") {
+    return "New employee registration";
+  }
+
+  return "New notification";
+}
+
+function handleAdminNotificationAlerts(snapshot) {
+  if (!auth.currentUser || !state.currentAdmin) {
+    return;
+  }
+
+  snapshot.docs.forEach((docSnapshot) => {
+    const item = docSnapshot.data() || {};
+    if (String(item.to || "").trim() !== "admin" || item.read) {
+      return;
+    }
+
+    if (adminNotificationAlertTracker.has(docSnapshot.id)) {
+      return;
+    }
+
+    adminNotificationAlertTracker.add(docSnapshot.id);
+
+    const title = resolveAdminNotificationTitle(item);
+    const body = String(item.message || "You have a new update.");
+    const tag = `admin-notif-${docSnapshot.id}`;
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    showToast(`${title}: ${body}`, "info");
+    void showBrowserNotification(title, body, {
+      link: "./admin.html",
+      tag,
+    });
   });
 }
 

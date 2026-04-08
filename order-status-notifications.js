@@ -42,12 +42,23 @@ export async function notifyPaidOrderStatus(order, hotelName) {
     }),
   );
 
-  await Promise.all(writes);
+  let firestoreWriteSucceeded = false;
+  try {
+    await Promise.all(writes);
+    firestoreWriteSucceeded = true;
+  } catch (error) {
+    console.warn("Paid order notification write failed", error);
+  }
 
+  let dispatchSucceeded = false;
   if (order.id) {
-    await dispatchOrderNotification(order.id, "order_paid", {
+    dispatchSucceeded = await dispatchOrderNotification(order.id, "order_paid", {
       customerId: order.customerId,
       hotelId: order.hotelId,
     });
+  }
+
+  if (!firestoreWriteSucceeded && !dispatchSucceeded) {
+    throw new Error("Failed to send paid order notifications.");
   }
 }

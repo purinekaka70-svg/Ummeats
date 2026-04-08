@@ -144,7 +144,22 @@ button {
   box-shadow: 0 18px 36px rgba(17, 83, 57, 0.32);
 }
 
+.notification-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 86px;
+  z-index: 55;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  box-shadow: 0 18px 36px rgba(17, 83, 57, 0.22);
+}
+
 .install-fab:hover {
+  transform: translateY(-2px);
+}
+
+.notification-fab:hover {
   transform: translateY(-2px);
 }
 
@@ -1530,6 +1545,35 @@ button {
   padding: 24px;
 }
 
+.employee-map-modal {
+  z-index: 58;
+}
+
+.employee-map-card {
+  width: min(100%, 920px);
+  display: grid;
+  gap: 14px;
+}
+
+.employee-map-frame-shell {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.employee-map-frame {
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  border: 0;
+  background: #e5e7eb;
+}
+
+.employee-map-links {
+  justify-content: flex-start;
+}
+
 .toast-stack {
   position: fixed;
   top: 18px;
@@ -1717,5 +1761,16 @@ button {
     bottom: 14px;
     min-height: 48px;
     padding: 0 16px;
+  }
+
+  .notification-fab {
+    right: 14px;
+    bottom: 74px;
+    min-height: 48px;
+    padding: 0 16px;
+  }
+
+  .employee-map-frame {
+    min-height: 280px;
   }
 }

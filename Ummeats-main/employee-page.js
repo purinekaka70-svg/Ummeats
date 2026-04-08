@@ -27,7 +27,11 @@ const EMPLOYEE_ID_CARD_MAX_BYTES = 5 * 1024 * 1024;
 const portalState = {
   currentUser: null,
   employeeProfile: null,
+  employeeSection: "dashboard",
+  employeeSidebarOpen: false,
   hotels: [],
+  mapMode: "road",
+  mapModal: null,
   orders: [],
   profileStatus: "idle",
   pendingRegistration: false,
@@ -90,6 +94,10 @@ function subscribeToAuth() {
 
     if (!user) {
       portalState.employeeProfile = null;
+      portalState.employeeSection = "dashboard";
+      portalState.employeeSidebarOpen = false;
+      portalState.mapMode = "road";
+      portalState.mapModal = null;
       portalState.profileStatus = "idle";
       portalState.pendingRegistration = false;
       renderEmployeePortal(portalState);
@@ -113,10 +121,73 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.id === "employeeMenuToggle") {
+    portalState.employeeSidebarOpen = !portalState.employeeSidebarOpen;
+    renderEmployeePortal(portalState);
+    return;
+  }
+
+  if (button.id === "employeeSidebarClose" || button.id === "employeeSidebarBackdrop") {
+    portalState.employeeSidebarOpen = false;
+    renderEmployeePortal(portalState);
+    return;
+  }
+
+  if (button.classList.contains("employeeNavBtn")) {
+    portalState.employeeSection = button.dataset.section || "dashboard";
+    portalState.employeeSidebarOpen = false;
+    renderEmployeePortal(portalState);
+    return;
+  }
+
+  if (button.classList.contains("viewCustomerMapBtn")) {
+    openCustomerMap(button);
+    return;
+  }
+
+  if (button.classList.contains("employeeMapModeBtn")) {
+    portalState.mapMode = button.dataset.mode === "satellite" ? "satellite" : "road";
+    renderEmployeePortal(portalState);
+    return;
+  }
+
+  if (button.id === "closeEmployeeMap" || button.id === "employeeMapBackdrop") {
+    closeCustomerMap();
+    return;
+  }
+
   if (button.id === "logoutEmployee") {
     await signOut(auth);
     showToast("Employee logged out.", "info");
   }
+}
+
+function openCustomerMap(button) {
+  const latitude = Number.parseFloat(button.dataset.latitude || "");
+  const longitude = Number.parseFloat(button.dataset.longitude || "");
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    showToast("Customer map point is not available for this order.", "warn");
+    return;
+  }
+
+  portalState.mapModal = {
+    customerArea: String(button.dataset.customerArea || "").trim(),
+    customerName: String(button.dataset.customerName || "").trim(),
+    latitude,
+    longitude,
+  };
+  portalState.mapMode = "road";
+  renderEmployeePortal(portalState);
+}
+
+function closeCustomerMap() {
+  if (!portalState.mapModal) {
+    return;
+  }
+
+  portalState.mapModal = null;
+  renderEmployeePortal(portalState);
 }
 
 async function handleSubmit(event) {

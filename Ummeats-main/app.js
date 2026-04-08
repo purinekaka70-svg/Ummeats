@@ -66,6 +66,7 @@ const hotelOrderAlertTracker = {
   ids: new Set(),
   ready: false,
 };
+const liveNotificationAlertTracker = new Set();
 
 bootstrap();
 
@@ -328,12 +329,22 @@ function updateCheckoutLocationStatus(hotelId) {
 
 function setCheckoutCustomerLocationDraft(hotelId, coordinates, area = "") {
   const draft = state.checkoutDrafts[hotelId] = state.checkoutDrafts[hotelId] || {};
+  const normalizedArea = String(area || "").trim();
 
   draft.customerAccuracy = coordinates?.accuracy ?? "";
   draft.customerLatitude = coordinates?.latitude ?? "";
   draft.customerLongitude = coordinates?.longitude ?? "";
-  draft.customerLocationLabel = area || "";
-  draft.customerArea = draft.customerArea || "";
+  draft.customerLocationLabel = normalizedArea;
+  if (normalizedArea) {
+    draft.customerArea = normalizedArea;
+  } else {
+    draft.customerArea = draft.customerArea || "";
+  }
+
+  const areaInput = document.querySelector(`.checkout-input[data-field="customerArea"][data-hotel="${hotelId}"]`);
+  if (areaInput && normalizedArea) {
+    areaInput.value = normalizedArea;
+  }
 
   updateCheckoutLocationStatus(hotelId);
 }
@@ -461,8 +472,15 @@ async function captureCustomerCheckoutLocation(hotelId) {
     return;
   }
 
-  setCheckoutCustomerLocationDraft(hotelId, coordinates);
-  showToast("Delivery coordinates shared for this order.", "success");
+  const detectedArea = await resolveCustomerAreaLabel(coordinates);
+  setCheckoutCustomerLocationDraft(hotelId, coordinates, detectedArea);
+
+  if (detectedArea) {
+    showToast("Delivery coordinates and area detected. You can still edit the area text.", "success");
+    return;
+  }
+
+  showToast("Delivery coordinates shared. Type your area manually if needed.", "info");
 }
 
 async function resolveOrderFeeDetails(hotel, customerCoordinates = null) {
@@ -603,6 +621,7 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "notifications"), (snapshot) => {
+    handleLiveNotificationAlerts(snapshot);
     state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncUi();
   });
@@ -772,6 +791,63 @@ async function handleInstallClick() {
   }
 
   updateInstallButtonState();
+}
+
+function getActiveNotificationTarget() {
+  if (state.currentHotelId) {
+    return state.currentHotelId;
+  }
+
+  return CUSTOMER_ID;
+}
+
+function resolveNotificationTitle(item) {
+  const normalizedType = String(item?.type || "").trim().toLowerCase();
+  if (normalizedType === "order-paid" || normalizedType === "order_paid") {
+    return "Order update";
+  }
+
+  if (normalizedType === "order") {
+    return "New order received";
+  }
+
+  return "New notification";
+}
+
+function handleLiveNotificationAlerts(snapshot) {
+  const target = getActiveNotificationTarget();
+  if (!target) {
+    return;
+  }
+
+  snapshot.docs.forEach((docSnapshot) => {
+    const item = docSnapshot.data() || {};
+    const itemTarget = String(item.to || "").trim();
+    if (itemTarget !== target || item.read) {
+      return;
+    }
+
+    const trackerKey = `${target}:${docSnapshot.id}`;
+    if (liveNotificationAlertTracker.has(trackerKey)) {
+      return;
+    }
+
+    liveNotificationAlertTracker.add(trackerKey);
+
+    const title = resolveNotificationTitle(item);
+    const body = String(item.message || "You have a new update.");
+    const tag = `notif-${docSnapshot.id}`;
+
+    if (!claimNotificationTag(tag)) {
+      return;
+    }
+
+    showToast(`${title}: ${body}`, "info");
+    void showBrowserNotification(title, body, {
+      link: "./index.html",
+      tag,
+    });
+  });
 }
 
 async function handleNotificationPromptClick() {
@@ -1160,7 +1236,8 @@ function addToCart(button) {
     state.cartByHotel[hotelId].push({ name, price, qty });
   }
 
-  showToast("Item added to cart. Please call before placing order for food confirmation.", "warn");
+  const itemLabel = qty === 1 ? name : `${qty} x ${name}`;
+  showToast(`Added to cart: ${itemLabel}.`, "success");
   syncUi();
 }
 
@@ -1271,7 +1348,7 @@ async function registerHotel(form) {
   const pass = form.elements.hotelPass.value.trim();
   const till = form.elements.hotelTill.value.trim();
   const location = DEFAULT_HOTEL_LOCATION;
-  const coordinates = readCoordinatesFromForm(form);
+  let coordinates = readCoordinatesFromForm(form);
   const normalizedName = normalizeHotelAccountName(name);
 
   if (!name || !phone || !pass || !till) {
@@ -1284,6 +1361,19 @@ async function registerHotel(form) {
     return;
   }
 
+  if (!coordinates) {
+    coordinates = await requestCurrentCoordinates();
+    if (coordinates) {
+      writeCoordinatesToForm(form, coordinates);
+      updateHotelRegistrationCoordinateStatus(form, coordinates);
+    }
+  }
+
+  if (!coordinates) {
+    alert("Allow location access while registering the hotel so delivery distance and service fee can be calculated automatically.");
+    return;
+  }
+
   try {
     const docRef = await addDoc(collection(db, "hotels"), {
       name,
@@ -1291,7 +1381,7 @@ async function registerHotel(form) {
       pass,
       till,
       location,
-      ...(coordinates ? { coordinates } : {}),
+      coordinates,
       approved: false,
       blocked: false,
       subscriptionExpiry: null,
@@ -1655,8 +1745,19 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   }
 
   const hotel = getHotelById(hotelId);
-  const customerCoordinates = readCheckoutCustomerCoordinates(hotelId);
-  const customerArea = getCheckoutCustomerArea(hotelId);
+  let customerCoordinates = readCheckoutCustomerCoordinates(hotelId);
+  let customerArea = getCheckoutCustomerArea(hotelId);
+
+  if (!customerCoordinates) {
+    const liveCoordinates = await requestCurrentCoordinates();
+    if (liveCoordinates) {
+      const detectedArea = customerArea || (await resolveCustomerAreaLabel(liveCoordinates));
+      setCheckoutCustomerLocationDraft(hotelId, liveCoordinates, detectedArea);
+      customerCoordinates = liveCoordinates;
+      customerArea = getCheckoutCustomerArea(hotelId);
+    }
+  }
+
   const feeDetails = await resolveOrderFeeDetails(hotel, customerCoordinates);
   const serviceFee = feeDetails.serviceFee;
   const itemsTotal = getCartItemsTotal(cart);

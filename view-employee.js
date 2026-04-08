@@ -7,11 +7,14 @@ import {
   formatDateOnly,
   formatDistanceKm,
   formatTime,
+  normalizeCoordinates,
   pluralize,
 } from "./helpers.js";
 import { renderEmptyState, renderStatusPill } from "./view-common.js";
 
 export function renderEmployeePortal(portalState) {
+  document.body.classList.toggle("modal-open", Boolean(portalState.mapModal));
+
   if (!portalState.currentUser) {
     elements.app.innerHTML = renderEmployeeAuth();
     return;
@@ -153,7 +156,7 @@ function renderBlockedEmployeeProfile() {
           <div>
             <p class="eyebrow">Employee access</p>
             <h2 class="view-title">Access Blocked</h2>
-            <p class="view-copy">This employee account is currently blocked. Contact the admin for help.</p>
+            <p class="view-copy">This employee account is currently blocked. Contact your delivery coordinator for help.</p>
           </div>
 
           <div class="button-row">
@@ -171,38 +174,125 @@ function renderEmployeeDashboard(portalState) {
   const shopOrders = [...portalState.ummaShopOrders].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
   const pendingOrders = orders.filter((item) => (item.status || "Pending") !== "Paid").length;
   const paidOrders = orders.length - pendingOrders;
+  const mapReadyOrders = orders.filter((item) => Boolean(getOrderCustomerCoordinates(item))).length;
+  const currentSection = portalState.employeeSection || "dashboard";
 
   return `
-    <section class="view-shell">
-      <div class="view-header">
-        <div>
-          <p class="eyebrow">Employee workspace</p>
-          <h2 class="view-title">Employee Orders Panel</h2>
-          <p class="view-copy">Read-only access to live hotel and Shop Here orders.</p>
+    <section class="view-shell admin-panel-shell">
+      <aside class="card admin-sidebar ${portalState.employeeSidebarOpen ? "is-open" : ""}" aria-label="Employee navigation">
+        <div class="admin-sidebar-head">
+          <div>
+            <p class="eyebrow">Employee menu</p>
+            <h3 class="card-title">Workflow</h3>
+          </div>
+          <button class="button button-ghost button-small" id="employeeSidebarClose" type="button">Close</button>
         </div>
 
-        <div class="toolbar">
-          <span class="summary-chip">${escapeHtml(profile.fullName || profile.email || "Employee")}</span>
-          <button class="button button-ghost" id="logoutEmployee" type="button">Logout</button>
+        <div class="admin-nav-list">
+          ${renderEmployeeNavButton("dashboard", "Dashboard", `${pendingOrders} pending order${pluralize(pendingOrders)}`, currentSection)}
+          ${renderEmployeeNavButton("hotelOrders", "Hotel Orders", `${orders.length} hotel order${pluralize(orders.length)}`, currentSection)}
+          ${renderEmployeeNavButton("shopOrders", "Shop Here Orders", `${shopOrders.length} shop request${pluralize(shopOrders.length)}`, currentSection)}
+          ${renderEmployeeNavButton("mapOrders", "Customer Maps", `${mapReadyOrders} map-ready order${pluralize(mapReadyOrders)}`, currentSection)}
         </div>
+
+        <div class="info-box admin-sidebar-note">
+          <p>Use this menu to switch between workflow sections quickly on mobile and desktop.</p>
+        </div>
+      </aside>
+
+      ${portalState.employeeSidebarOpen ? `<button class="admin-sidebar-backdrop" id="employeeSidebarBackdrop" type="button" aria-label="Close employee navigation"></button>` : ""}
+
+      <div class="admin-main-stack">
+        <div class="view-header admin-main-header">
+          <div>
+            <p class="eyebrow">Employee workspace</p>
+            <h2 class="view-title">Employee Orders Panel</h2>
+            <p class="view-copy">Read-only access to live hotel and Shop Here orders.</p>
+          </div>
+
+          <div class="toolbar">
+            <button class="button button-outline admin-menu-button" id="employeeMenuToggle" type="button">
+              <span class="hamburger-icon" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+              Menu
+            </button>
+            <span class="summary-chip">${escapeHtml(profile.fullName || profile.email || "Employee")}</span>
+            <button class="button button-ghost" id="logoutEmployee" type="button">Logout</button>
+          </div>
+        </div>
+
+        ${renderEmployeeSection(currentSection, {
+          mapReadyOrders,
+          orders,
+          paidOrders,
+          pendingOrders,
+          profile,
+          shopOrders,
+          hotels: portalState.hotels,
+        })}
       </div>
 
+      ${renderEmployeeMapModal(portalState.mapModal, portalState.mapMode)}
+    </section>
+  `;
+}
+
+function renderEmployeeNavButton(sectionId, label, meta, currentSection) {
+  const activeClass = currentSection === sectionId ? " is-active" : "";
+
+  return `
+    <button class="employeeNavBtn admin-nav-btn${activeClass}" data-section="${escapeHtml(sectionId)}" type="button">
+      <span class="admin-nav-copy">
+        <span class="admin-nav-title">${escapeHtml(label)}</span>
+        <span class="admin-nav-meta">${escapeHtml(meta)}</span>
+      </span>
+      <span class="summary-chip admin-nav-pill">${escapeHtml(label)}</span>
+    </button>
+  `;
+}
+
+function renderEmployeeSection(section, context) {
+  if (section === "hotelOrders") {
+    return renderEmployeeOrdersSection(context.orders, context.hotels);
+  }
+
+  if (section === "shopOrders") {
+    return renderEmployeeShopOrdersSection(context.shopOrders);
+  }
+
+  if (section === "mapOrders") {
+    return renderEmployeeMapOrdersSection(context.orders, context.hotels);
+  }
+
+  return renderEmployeeDashboardSection(context);
+}
+
+function renderEmployeeDashboardSection(context) {
+  return `
+    <section class="view-shell">
       <div class="stats-grid">
         <article class="stat-card">
           <span class="stat-label">Hotel Orders</span>
-          <strong>${orders.length}</strong>
+          <strong>${context.orders.length}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Pending</span>
-          <strong>${pendingOrders}</strong>
+          <strong>${context.pendingOrders}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Paid</span>
-          <strong>${paidOrders}</strong>
+          <strong>${context.paidOrders}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Shop Here</span>
-          <strong>${shopOrders.length}</strong>
+          <strong>${context.shopOrders.length}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Map Ready</span>
+          <strong>${context.mapReadyOrders}</strong>
         </article>
       </div>
 
@@ -210,22 +300,22 @@ function renderEmployeeDashboard(portalState) {
         <article class="card">
           <div class="section-head">
             <h4>Employee Profile</h4>
-            ${renderStatusPill(String(profile.status || "Active"), String(profile.status || "active").toLowerCase() === "active" ? "active" : "inactive")}
+            ${renderStatusPill(String(context.profile.status || "Active"), String(context.profile.status || "active").toLowerCase() === "active" ? "active" : "inactive")}
           </div>
 
           <div class="summary-list">
-            <div class="summary-item"><span>Full name</span><strong>${escapeHtml(profile.fullName || "N/A")}</strong></div>
-            <div class="summary-item"><span>Email</span><strong>${escapeHtml(profile.email || "N/A")}</strong></div>
-            <div class="summary-item"><span>ID number</span><strong>${escapeHtml(profile.idNumber || "N/A")}</strong></div>
-            <div class="summary-item"><span>ID card</span><strong>${profile.idCardUrl ? "Uploaded" : "Missing"}</strong></div>
-            <div class="summary-item"><span>Joined</span><strong>${formatDateOnly(profile.createdAt)}</strong></div>
+            <div class="summary-item"><span>Full name</span><strong>${escapeHtml(context.profile.fullName || "N/A")}</strong></div>
+            <div class="summary-item"><span>Email</span><strong>${escapeHtml(context.profile.email || "N/A")}</strong></div>
+            <div class="summary-item"><span>ID number</span><strong>${escapeHtml(context.profile.idNumber || "N/A")}</strong></div>
+            <div class="summary-item"><span>ID card</span><strong>${context.profile.idCardUrl ? "Uploaded" : "Missing"}</strong></div>
+            <div class="summary-item"><span>Joined</span><strong>${formatDateOnly(context.profile.createdAt)}</strong></div>
           </div>
 
           ${
-            profile.idCardUrl
+            context.profile.idCardUrl
               ? `
                   <div class="button-row">
-                    <a class="button button-outline button-small" href="${escapeHtml(profile.idCardUrl)}" target="_blank" rel="noreferrer">
+                    <a class="button button-outline button-small" href="${escapeHtml(context.profile.idCardUrl)}" target="_blank" rel="noreferrer">
                       Open ID Card
                     </a>
                   </div>
@@ -236,46 +326,73 @@ function renderEmployeeDashboard(portalState) {
 
         <article class="card">
           <div class="section-head">
-            <h4>Portal Access</h4>
+            <h4>Workflow Guide</h4>
             ${renderStatusPill("Read Only", "inactive")}
           </div>
 
           <div class="summary-list">
-            <div class="summary-item"><span>What you can do</span><strong>View live orders</strong></div>
-            <div class="summary-item"><span>Hotel orders</span><strong>${orders.length}</strong></div>
-            <div class="summary-item"><span>Shop Here orders</span><strong>${shopOrders.length}</strong></div>
-            <div class="summary-item"><span>Hotels listed</span><strong>${portalState.hotels.length}</strong></div>
+            <div class="summary-item"><span>Step 1</span><strong>Open Hotel Orders</strong></div>
+            <div class="summary-item"><span>Step 2</span><strong>Check pending and paid status</strong></div>
+            <div class="summary-item"><span>Step 3</span><strong>Use Customer Maps for navigation</strong></div>
+            <div class="summary-item"><span>Step 4</span><strong>Review Shop Here requests</strong></div>
           </div>
 
-          <p class="tiny">This employee page does not change orders, payments, or hotel settings. It only displays live order activity.</p>
+          <p class="tiny">Employees can only view live data. Any payment, deletion, or hotel setup must be handled in admin/hotel pages.</p>
         </article>
       </div>
+    </section>
+  `;
+}
 
-      <section class="view-shell">
-        <div class="section-head">
-          <h4>Hotel Orders</h4>
-          <span class="summary-chip">${orders.length} order${pluralize(orders.length)}</span>
-        </div>
+function renderEmployeeOrdersSection(orders, hotels) {
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Hotel Orders</h4>
+        <span class="summary-chip">${orders.length} order${pluralize(orders.length)}</span>
+      </div>
 
-        ${
-          orders.length
-            ? `<div class="order-list">${orders.map((order) => renderEmployeeOrderCard(order, portalState.hotels)).join("")}</div>`
-            : renderEmptyState("No hotel orders yet", "Live hotel orders will appear here for employees.")
-        }
-      </section>
+      ${
+        orders.length
+          ? `<div class="order-list">${orders.map((order) => renderEmployeeOrderCard(order, hotels)).join("")}</div>`
+          : renderEmptyState("No hotel orders yet", "Live hotel orders will appear here for employees.")
+      }
+    </section>
+  `;
+}
 
-      <section class="view-shell">
-        <div class="section-head">
-          <h4>Shop Here Orders</h4>
-          <span class="summary-chip">${shopOrders.length} shop order${pluralize(shopOrders.length)}</span>
-        </div>
+function renderEmployeeShopOrdersSection(shopOrders) {
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Shop Here Orders</h4>
+        <span class="summary-chip">${shopOrders.length} shop order${pluralize(shopOrders.length)}</span>
+      </div>
 
-        ${
-          shopOrders.length
-            ? `<div class="order-list">${shopOrders.map(renderEmployeeShopOrderCard).join("")}</div>`
-            : renderEmptyState("No Shop Here orders yet", "Shop Here requests will appear here for employees.")
-        }
-      </section>
+      ${
+        shopOrders.length
+          ? `<div class="order-list">${shopOrders.map(renderEmployeeShopOrderCard).join("")}</div>`
+          : renderEmptyState("No Shop Here orders yet", "Shop Here requests will appear here for employees.")
+      }
+    </section>
+  `;
+}
+
+function renderEmployeeMapOrdersSection(orders, hotels) {
+  const mapOrders = orders.filter((item) => Boolean(getOrderCustomerCoordinates(item)));
+
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Customer Map Orders</h4>
+        <span class="summary-chip">${mapOrders.length} order${pluralize(mapOrders.length)}</span>
+      </div>
+
+      ${
+        mapOrders.length
+          ? `<div class="order-list">${mapOrders.map((order) => renderEmployeeOrderCard(order, hotels)).join("")}</div>`
+          : renderEmptyState("No map-ready orders yet", "Orders with shared customer coordinates will appear here.")
+      }
     </section>
   `;
 }
@@ -290,6 +407,10 @@ function getHotelForOrder(hotels, hotelId) {
   );
 }
 
+function getOrderCustomerCoordinates(order) {
+  return normalizeCoordinates(order?.customerCoordinates);
+}
+
 function renderEmployeeOrderCard(order, hotels) {
   const hotel = getHotelForOrder(hotels, order.hotelId);
   const items = Array.isArray(order.items) ? order.items : [];
@@ -297,6 +418,7 @@ function renderEmployeeOrderCard(order, hotels) {
     ? items.reduce((total, item) => total + Number(item.price || 0) * Number(item.qty || 1), 0)
     : Number(order.itemsTotal || 0);
   const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
+  const customerCoordinates = getOrderCustomerCoordinates(order);
 
   return `
     <article class="card order-card">
@@ -351,9 +473,28 @@ function renderEmployeeOrderCard(order, hotels) {
         <div class="summary-item"><span>Items total</span><strong>${formatCurrency(itemsTotal)}</strong></div>
         <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(order.serviceFee ?? SERVICE_FEE)}</strong></div>
         <div class="summary-item"><span>Distance</span><strong>${Number.isFinite(order.distanceKm) ? formatDistanceKm(order.distanceKm) : "Unknown"}</strong></div>
-        <div class="summary-item"><span>Customer map point</span><strong>${escapeHtml(formatCoordinatePair(order.customerCoordinates))}</strong></div>
+        <div class="summary-item"><span>Map shared</span><strong>${customerCoordinates ? "Yes" : "No"}</strong></div>
         <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
       </div>
+
+      ${
+        customerCoordinates
+          ? `
+              <div class="button-row">
+                <button
+                  class="button button-outline button-small viewCustomerMapBtn"
+                  data-customer-area="${escapeHtml(order.customerArea || "")}"
+                  data-customer-name="${escapeHtml(order.customerName || "Customer")}"
+                  data-latitude="${escapeHtml(String(customerCoordinates.latitude))}"
+                  data-longitude="${escapeHtml(String(customerCoordinates.longitude))}"
+                  type="button"
+                >
+                  View Map
+                </button>
+              </div>
+            `
+          : `<p class="tiny">Customer map coordinates were not shared for this order.</p>`
+      }
     </article>
   `;
 }
@@ -402,4 +543,100 @@ function renderEmployeeShopOrderCard(order) {
       </div>
     </article>
   `;
+}
+
+function renderEmployeeMapModal(mapModal, mapMode) {
+  const coordinates = normalizeCoordinates({
+    latitude: mapModal?.latitude,
+    longitude: mapModal?.longitude,
+  });
+
+  if (!coordinates) {
+    return "";
+  }
+
+  const latitude = coordinates.latitude;
+  const longitude = coordinates.longitude;
+  const activeMode = mapMode === "satellite" ? "satellite" : "road";
+  const previewUrl = activeMode === "satellite"
+    ? buildSatelliteEmbedUrl(latitude, longitude)
+    : buildRoadMapEmbedUrl(latitude, longitude);
+
+  return `
+    <section class="modal-backdrop employee-map-modal">
+      <button class="modal-overlay" id="employeeMapBackdrop" type="button" aria-label="Close customer map"></button>
+      <article class="card modal-card employee-map-card">
+        <div class="section-head">
+          <h4>Customer Map</h4>
+          <button class="button button-outline button-small" id="closeEmployeeMap" type="button">Close</button>
+        </div>
+
+        <div class="summary-list">
+          <div class="summary-item"><span>Customer</span><strong>${escapeHtml(mapModal.customerName || "Customer")}</strong></div>
+          <div class="summary-item"><span>Area</span><strong>${escapeHtml(mapModal.customerArea || "Not shared")}</strong></div>
+          <div class="summary-item"><span>Coordinates</span><strong>${escapeHtml(formatCoordinatePair(coordinates))}</strong></div>
+        </div>
+
+        <div class="button-row">
+          <button class="button ${activeMode === "road" ? "button-primary" : "button-outline"} button-small employeeMapModeBtn" data-mode="road" type="button">
+            Road Map
+          </button>
+          <button class="button ${activeMode === "satellite" ? "button-primary" : "button-outline"} button-small employeeMapModeBtn" data-mode="satellite" type="button">
+            Reality View
+          </button>
+        </div>
+
+        <div class="employee-map-frame-shell">
+          <iframe
+            class="employee-map-frame"
+            src="${escapeHtml(previewUrl)}"
+            title="Customer map preview"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+          ></iframe>
+        </div>
+
+        <div class="button-row employee-map-links">
+          <a class="button button-outline button-small" href="${escapeHtml(buildRoadMapLink(latitude, longitude))}" target="_blank" rel="noreferrer">
+            Open Road Map
+          </a>
+          <a class="button button-outline button-small" href="${escapeHtml(buildSatelliteLink(latitude, longitude))}" target="_blank" rel="noreferrer">
+            Open Reality View
+          </a>
+        </div>
+
+        <p class="tiny">Road map shows streets and routes. Reality view shows image-based surroundings.</p>
+      </article>
+    </section>
+  `;
+}
+
+function buildRoadMapEmbedUrl(latitude, longitude) {
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  const delta = 0.008;
+  const left = (lon - delta).toFixed(6);
+  const bottom = (lat - delta).toFixed(6);
+  const right = (lon + delta).toFixed(6);
+  const top = (lat + delta).toFixed(6);
+
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat.toFixed(6)}%2C${lon.toFixed(6)}`;
+}
+
+function buildRoadMapLink(latitude, longitude) {
+  const lat = Number(latitude).toFixed(6);
+  const lon = Number(longitude).toFixed(6);
+  return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`;
+}
+
+function buildSatelliteEmbedUrl(latitude, longitude) {
+  const lat = Number(latitude).toFixed(6);
+  const lon = Number(longitude).toFixed(6);
+  return `https://maps.google.com/maps?q=${lat},${lon}&hl=en&z=18&t=k&output=embed`;
+}
+
+function buildSatelliteLink(latitude, longitude) {
+  const lat = Number(latitude).toFixed(6);
+  const lon = Number(longitude).toFixed(6);
+  return `https://maps.google.com/?q=${lat},${lon}&t=k`;
 }
