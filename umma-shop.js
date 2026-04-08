@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   query,
   updateDoc,
@@ -29,6 +30,8 @@ const HIDDEN_CLASS = "is-hidden";
 const LOCATION_NAME = "Around Umma University";
 const CUSTOMER_EMAIL_STORAGE_KEY = "UMMA_SHOP_CUSTOMER_EMAIL";
 const SHOP_ORDER_SUBMIT_FALLBACK_URL = "https://ummeats.vercel.app/api/submit-umma-shop-order";
+const SHOP_ORDER_VISIBILITY_MAX_ATTEMPTS = 4;
+const SHOP_ORDER_VISIBILITY_RETRY_MS = 300;
 
 const ordersCollection = collection(db, "ummaShopOrders");
 const feedbackCollection = collection(db, "ummaShopFeedbacks");
@@ -121,6 +124,10 @@ function getOrderSubmitErrorMessage(error) {
 
   if (normalized.includes("shop here order submit failed with 404")) {
     return "Order API route is not available on this host. Open the app from the main Ummeats domain and retry.";
+  }
+
+  if (normalized.includes("accepted the order, but it was not visible in this app project")) {
+    return "Order API is writing outside this app database. Contact admin to fix server Firebase project settings.";
   }
 
   if (normalized.includes("networkerror") || normalized.includes("failed to fetch")) {
@@ -427,6 +434,37 @@ function renderItems() {
   });
 }
 
+function sleep(milliseconds) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
+async function waitForOrderVisibility(orderId) {
+  const normalizedId = String(orderId || "").trim();
+  if (!normalizedId) {
+    return false;
+  }
+
+  for (let attempt = 0; attempt < SHOP_ORDER_VISIBILITY_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const snapshot = await getDoc(doc(db, "ummaShopOrders", normalizedId));
+      if (snapshot.exists()) {
+        return true;
+      }
+    } catch (error) {
+      console.warn("Shop Here visibility check failed", error);
+      return false;
+    }
+
+    if (attempt < SHOP_ORDER_VISIBILITY_MAX_ATTEMPTS - 1) {
+      await sleep(SHOP_ORDER_VISIBILITY_RETRY_MS);
+    }
+  }
+
+  return false;
+}
+
 async function createShopOrder(orderPayload) {
   const submitUrls = [new URL("/api/submit-umma-shop-order", window.location.origin).href];
   if (!submitUrls.includes(SHOP_ORDER_SUBMIT_FALLBACK_URL)) {
@@ -450,6 +488,11 @@ async function createShopOrder(orderPayload) {
       const result = await response.json().catch(() => null);
       if (!response.ok || result?.ok === false || !result?.id) {
         throw new Error(result?.error || `Shop Here order submit failed with ${response.status}.`);
+      }
+
+      const isVisible = await waitForOrderVisibility(result.id);
+      if (!isVisible) {
+        throw new Error("Shop Here API accepted the order, but it was not visible in this app project.");
       }
 
       return {
