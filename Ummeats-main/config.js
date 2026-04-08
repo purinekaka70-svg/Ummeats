@@ -40,7 +40,7 @@ export function getServiceFeeForHotel(hotelOrName) {
   const hotelName = typeof hotelOrName === "string" ? hotelOrName : hotelOrName?.name;
   const normalizedName = String(hotelName || "").trim().replace(/\s+/g, " ").toLowerCase();
 
-  if (normalizedName.includes("staff lounge")) {
+  if (/\bstaff\s+(lounge|lodge|loge)\b/.test(normalizedName)) {
     return STAFF_LOUNGE_SERVICE_FEE;
   }
 
