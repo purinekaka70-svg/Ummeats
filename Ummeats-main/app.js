@@ -67,6 +67,10 @@ const hotelOrderAlertTracker = {
   ready: false,
 };
 const liveNotificationAlertTracker = new Set();
+const UMMA_UNIVERSITY_REFERENCE_COORDINATES = Object.freeze({
+  latitude: -1.77726,
+  longitude: 36.82064,
+});
 
 bootstrap();
 
@@ -377,6 +381,18 @@ function buildCustomerAreaLabel(payload) {
   return label || String(payload?.display_name || "").split(",").slice(0, 2).join(", ").trim();
 }
 
+function isUmmaLocationText(value) {
+  return /umma\s+universit/i.test(String(value || ""));
+}
+
+function getReferenceCoordinatesForLocationText(value) {
+  if (!isUmmaLocationText(value)) {
+    return null;
+  }
+
+  return normalizeCoordinates(UMMA_UNIVERSITY_REFERENCE_COORDINATES);
+}
+
 async function resolveCustomerAreaLabel(coordinates) {
   if (!coordinates || typeof fetch !== "function") {
     return "";
@@ -424,17 +440,32 @@ function buildCustomerAreaSearchQueries(customerArea, customerSpecificArea, hote
   return [...new Set(queries)];
 }
 
-async function resolveCoordinatesFromAreaText(customerArea, customerSpecificArea, hotelLocation) {
+function buildHotelLocationSearchQueries(hotel) {
+  const hotelArea = getHotelLocation(hotel);
+  const hotelName = String(hotel?.name || "").trim();
+
+  const queries = [
+    [hotelArea, "Kenya"].filter(Boolean).join(", "),
+    [hotelName, hotelArea, "Kenya"].filter(Boolean).join(", "),
+    [hotelName, "Kenya"].filter(Boolean).join(", "),
+  ]
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return [...new Set(queries)];
+}
+
+async function resolveCoordinatesFromTextQueries(queries) {
   if (typeof fetch !== "function") {
     return null;
   }
 
-  const queries = buildCustomerAreaSearchQueries(customerArea, customerSpecificArea, hotelLocation);
-  if (!queries.length) {
+  const uniqueQueries = [...new Set((Array.isArray(queries) ? queries : []).map((item) => String(item || "").trim()).filter(Boolean))];
+  if (!uniqueQueries.length) {
     return null;
   }
 
-  for (const query of queries) {
+  for (const query of uniqueQueries) {
     try {
       const url = new URL("https://nominatim.openstreetmap.org/search");
       url.searchParams.set("format", "jsonv2");
@@ -466,6 +497,27 @@ async function resolveCoordinatesFromAreaText(customerArea, customerSpecificArea
   }
 
   return null;
+}
+
+async function resolveCoordinatesFromAreaText(customerArea, customerSpecificArea, hotelLocation) {
+  const queries = buildCustomerAreaSearchQueries(customerArea, customerSpecificArea, hotelLocation);
+  const geocoded = await resolveCoordinatesFromTextQueries(queries);
+  if (geocoded) {
+    return geocoded;
+  }
+
+  const fallbackReference = getReferenceCoordinatesForLocationText(`${customerSpecificArea} ${customerArea} ${hotelLocation}`);
+  return fallbackReference;
+}
+
+async function resolveHotelCoordinatesFallback(hotel) {
+  const queries = buildHotelLocationSearchQueries(hotel);
+  const geocoded = await resolveCoordinatesFromTextQueries(queries);
+  if (geocoded) {
+    return geocoded;
+  }
+
+  return getReferenceCoordinatesForLocationText(getHotelLocation(hotel));
 }
 
 function requestCurrentCoordinates() {
@@ -552,9 +604,13 @@ async function captureCustomerCheckoutLocation(hotelId) {
   showToast("Delivery coordinates shared. Type your area manually if needed.", "info");
 }
 
-async function resolveOrderFeeDetails(hotel, customerCoordinates = null) {
-  const hotelCoordinates = getHotelCoordinates(hotel);
+async function resolveOrderFeeDetails(hotel, customerCoordinates = null, customerArea = "", customerSpecificArea = "") {
+  let hotelCoordinates = getHotelCoordinates(hotel);
   const baseFee = getServiceFeeForHotel(hotel);
+
+  if (!hotelCoordinates) {
+    hotelCoordinates = await resolveHotelCoordinatesFallback(hotel);
+  }
 
   if (!hotelCoordinates) {
     return {
@@ -568,7 +624,15 @@ async function resolveOrderFeeDetails(hotel, customerCoordinates = null) {
     };
   }
 
-  const normalizedCustomerCoordinates = normalizeCoordinates(customerCoordinates);
+  let normalizedCustomerCoordinates = normalizeCoordinates(customerCoordinates);
+  if (!normalizedCustomerCoordinates) {
+    normalizedCustomerCoordinates = await resolveCoordinatesFromAreaText(
+      customerArea,
+      customerSpecificArea,
+      getHotelLocation(hotel),
+    );
+  }
+
   if (!normalizedCustomerCoordinates) {
     return {
       customerCoordinates: null,
@@ -1839,19 +1903,12 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     }
   }
 
-  if (!customerCoordinates) {
-    const areaCoordinates = await resolveCoordinatesFromAreaText(
-      customerArea,
-      customerSpecificArea,
-      getHotelLocation(hotel),
-    );
-    if (areaCoordinates) {
-      setCheckoutCustomerLocationDraft(hotelId, areaCoordinates, customerArea);
-      customerCoordinates = areaCoordinates;
-    }
+  const feeDetails = await resolveOrderFeeDetails(hotel, customerCoordinates, customerArea, customerSpecificArea);
+  if (!customerCoordinates && feeDetails.customerCoordinates) {
+    setCheckoutCustomerLocationDraft(hotelId, feeDetails.customerCoordinates, customerArea);
+    customerCoordinates = feeDetails.customerCoordinates;
+    customerArea = getCheckoutCustomerArea(hotelId);
   }
-
-  const feeDetails = await resolveOrderFeeDetails(hotel, customerCoordinates);
   const serviceFee = feeDetails.serviceFee;
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
