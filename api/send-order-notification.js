@@ -37,14 +37,88 @@ async function writeNotification(firestore, payload) {
   });
 }
 
+function parseRecipientCount(result) {
+  const candidate = result?.recipients ?? result?.total ?? result?.successful;
+  const count = Number(candidate);
+  return Number.isFinite(count) ? count : null;
+}
+
+function hasPushRecipients(result) {
+  const recipientCount = parseRecipientCount(result);
+  if (recipientCount === null) {
+    return true;
+  }
+
+  return recipientCount > 0;
+}
+
+function buildTagEqualsFilter(key, value) {
+  const normalizedKey = String(key || "").trim();
+  const normalizedValue = String(value || "").trim();
+  if (!normalizedKey || !normalizedValue) {
+    return [];
+  }
+
+  return [
+    {
+      field: "tag",
+      key: normalizedKey,
+      relation: "=",
+      value: normalizedValue,
+    },
+  ];
+}
+
 async function trySendPush(payload) {
   try {
-    await sendPushMessage(payload);
+    const result = await sendPushMessage(payload);
+    if (!hasPushRecipients(result)) {
+      console.warn("Push notification had zero recipients", {
+        aliases: payload.aliases || [],
+        filters: payload.filters || [],
+      });
+      return false;
+    }
     return true;
   } catch (error) {
     console.warn("Push notification send failed", error);
     return false;
   }
+}
+
+async function sendPushWithFallbackTargets({ aliasTargets = [], appId, body, filterSets = [], title, url }) {
+  const normalizedAliases = [...new Set(aliasTargets.map((item) => String(item || "").trim()).filter(Boolean))];
+  if (normalizedAliases.length) {
+    const aliasSent = await trySendPush({
+      aliases: normalizedAliases,
+      appId,
+      body,
+      title,
+      url,
+    });
+    if (aliasSent) {
+      return true;
+    }
+  }
+
+  for (const filters of filterSets) {
+    if (!Array.isArray(filters) || !filters.length) {
+      continue;
+    }
+
+    const filterSent = await trySendPush({
+      appId,
+      body,
+      filters,
+      title,
+      url,
+    });
+    if (filterSent) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteUrl }) {
@@ -97,10 +171,11 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
 
   if (!order.onesignalAdminDispatchedAt) {
     if (
-      await trySendPush({
-        aliases: ["admin"],
+      await sendPushWithFallbackTargets({
+        aliasTargets: ["admin"],
         appId,
         body: orderMessage,
+        filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "New order received",
         url: `${siteUrl}/admin.html`,
       })
@@ -112,10 +187,14 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
 
   if (targetHotelId && !order.onesignalHotelDispatchedAt) {
     if (
-      await trySendPush({
-        aliases: [targetHotelId],
+      await sendPushWithFallbackTargets({
+        aliasTargets: [targetHotelId],
         appId,
         body: orderMessage,
+        filterSets: [
+          buildTagEqualsFilter("hotel_id", targetHotelId),
+          buildTagEqualsFilter("notification_target", targetHotelId),
+        ],
         title: "New order received",
         url: `${siteUrl}/index.html`,
       })
@@ -162,10 +241,11 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
 
   if (!order.onesignalAdminDispatchedAt) {
     if (
-      await trySendPush({
-        aliases: ["admin"],
+      await sendPushWithFallbackTargets({
+        aliasTargets: ["admin"],
         appId,
         body: message,
+        filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "New Shop Here order",
         url: `${siteUrl}/umma-shop.html`,
       })
@@ -245,10 +325,14 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
 
   if (targetCustomerId && !order.onesignalCustomerPaidDispatchedAt) {
     if (
-      await trySendPush({
-        aliases: [targetCustomerId],
+      await sendPushWithFallbackTargets({
+        aliasTargets: [targetCustomerId],
         appId,
         body: customerMessage,
+        filterSets: [
+          buildTagEqualsFilter("customer_id", targetCustomerId),
+          buildTagEqualsFilter("notification_target", targetCustomerId),
+        ],
         title: "Order marked as paid",
         url: `${siteUrl}/index.html`,
       })
@@ -260,10 +344,11 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
 
   if (!order.onesignalAdminPaidDispatchedAt) {
     if (
-      await trySendPush({
-        aliases: ["admin"],
+      await sendPushWithFallbackTargets({
+        aliasTargets: ["admin"],
         appId,
         body: adminHotelMessage,
+        filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "Order marked as paid",
         url: `${siteUrl}/admin.html`,
       })
@@ -275,10 +360,14 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
 
   if (targetHotelId && !order.onesignalHotelPaidDispatchedAt) {
     if (
-      await trySendPush({
-        aliases: [targetHotelId],
+      await sendPushWithFallbackTargets({
+        aliasTargets: [targetHotelId],
         appId,
         body: adminHotelMessage,
+        filterSets: [
+          buildTagEqualsFilter("hotel_id", targetHotelId),
+          buildTagEqualsFilter("notification_target", targetHotelId),
+        ],
         title: "Order marked as paid",
         url: `${siteUrl}/index.html`,
       })

@@ -36,6 +36,7 @@ const adminShopOrderAlertTracker = {
 };
 const adminNotificationAlertTracker = new Set();
 const adminOrderStatusTracker = new Map();
+const adminNotificationPromptButton = document.getElementById("adminNotificationPromptButton");
 
 bootstrap();
 
@@ -54,13 +55,21 @@ function bootstrap() {
 function bindEvents() {
   document.addEventListener("click", handleClick);
   document.addEventListener("submit", handleSubmit);
+
+  if (adminNotificationPromptButton) {
+    adminNotificationPromptButton.addEventListener("click", handleAdminNotificationPromptClick);
+  }
 }
 
 function bindPushSyncEvents() {
-  window.addEventListener("focus", syncAdminPushSubscription);
+  window.addEventListener("focus", () => {
+    syncAdminPushSubscription();
+    updateAdminNotificationPromptButtonState();
+  });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {
       syncAdminPushSubscription();
+      updateAdminNotificationPromptButtonState();
     }
   });
 }
@@ -87,6 +96,78 @@ function hydrateShell() {
   window.alert = (message) => {
     showToast(String(message ?? ""), inferToastTone(String(message ?? "")));
   };
+
+  updateAdminNotificationPromptButtonState();
+}
+
+function getNotificationPermissionState() {
+  if (!window.isSecureContext || typeof Notification === "undefined") {
+    return "unsupported";
+  }
+
+  return Notification.permission;
+}
+
+function setNotificationButtonVariant(button, variant) {
+  button.classList.remove("button-primary", "button-outline", "button-danger-soft");
+  button.classList.add(variant);
+}
+
+function updateAdminNotificationPromptButtonState() {
+  if (!adminNotificationPromptButton) {
+    return;
+  }
+
+  const permission = getNotificationPermissionState();
+
+  if (!state.currentAdmin || permission === "unsupported" || permission === "granted") {
+    adminNotificationPromptButton.classList.add("is-hidden");
+    adminNotificationPromptButton.disabled = false;
+    return;
+  }
+
+  adminNotificationPromptButton.classList.remove("is-hidden");
+  adminNotificationPromptButton.disabled = false;
+
+  if (permission === "denied") {
+    adminNotificationPromptButton.textContent = "Notifications Blocked";
+    adminNotificationPromptButton.setAttribute("aria-label", "Notifications are blocked in this browser");
+    setNotificationButtonVariant(adminNotificationPromptButton, "button-danger-soft");
+    return;
+  }
+
+  adminNotificationPromptButton.textContent = "Enable Notifications";
+  adminNotificationPromptButton.setAttribute("aria-label", "Enable browser notifications for admin");
+  setNotificationButtonVariant(adminNotificationPromptButton, "button-primary");
+}
+
+async function handleAdminNotificationPromptClick() {
+  const permission = getNotificationPermissionState();
+  if (permission === "unsupported") {
+    showToast("This browser cannot enable web push notifications here.", "warn");
+    updateAdminNotificationPromptButtonState();
+    return;
+  }
+
+  if (permission === "denied") {
+    showToast("Notifications are blocked. Allow them in browser site settings, then refresh.", "warn");
+    updateAdminNotificationPromptButtonState();
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!state.currentAdmin || !user) {
+    showToast("Login as admin first to enable notifications.", "warn");
+    updateAdminNotificationPromptButtonState();
+    return;
+  }
+
+  await registerPushSubscription("admin", user.email || "Admin", {
+    requestPermission: true,
+    role: "admin",
+    silent: false,
+  });
+  updateAdminNotificationPromptButtonState();
 }
 
 function subscribeToCollections() {
@@ -173,6 +254,7 @@ function subscribeToAuth() {
       state.adminPanelSection = "dashboard";
       state.adminSidebarOpen = false;
       renderAdmin();
+      updateAdminNotificationPromptButtonState();
       return;
     }
 
@@ -186,6 +268,7 @@ function subscribeToAuth() {
         silent: true,
       });
       renderAdmin();
+      updateAdminNotificationPromptButtonState();
       return;
     }
 
@@ -195,6 +278,7 @@ function subscribeToAuth() {
     state.adminSidebarOpen = false;
     showToast("This account is registered as employee access, not admin.", "warn");
     renderAdmin();
+    updateAdminNotificationPromptButtonState();
   });
 }
 
@@ -417,6 +501,7 @@ async function handleClick(event) {
     await unregisterPushSubscription("admin");
     await signOut(auth);
     showToast("Admin logged out.", "info");
+    updateAdminNotificationPromptButtonState();
     return;
   }
 
@@ -457,13 +542,19 @@ async function handleSubmit(event) {
       return;
     }
 
-    await registerPushSubscription("admin", credentials.user.email || user, {
+    const pushEnabled = await registerPushSubscription("admin", credentials.user.email || user, {
       requestPermission: true,
       role: "admin",
       silent: false,
     });
     form.reset();
-    showToast("Admin login successful.", "success");
+    showToast(
+      pushEnabled
+        ? "Admin login successful. Browser notifications enabled."
+        : "Admin login successful. Tap Enable Notifications to allow browser alerts.",
+      pushEnabled ? "success" : "warn",
+    );
+    updateAdminNotificationPromptButtonState();
   } catch (error) {
     console.error(error);
     alert("Wrong admin email or password.");

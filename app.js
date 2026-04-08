@@ -1642,12 +1642,17 @@ async function loginHotel(form) {
   state.currentHotelId = hotel.id;
   state.hotelAuthView = "login";
   state.currentAdmin = false;
-  await registerPushSubscription(hotel.id, hotel.name, {
+  const pushEnabled = await registerPushSubscription(hotel.id, hotel.name, {
     hotelId: hotel.id,
     role: "hotel",
   });
   switchTab("hotel");
-  showToast("Hotel login successful.", "success");
+  showToast(
+    pushEnabled
+      ? "Hotel login successful. Browser notifications enabled."
+      : "Hotel login successful. Tap Enable Notifications to allow browser alerts.",
+    pushEnabled ? "success" : "warn",
+  );
 }
 
 async function addMenuItem(form) {

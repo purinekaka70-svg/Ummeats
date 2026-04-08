@@ -100,7 +100,7 @@ export function renderHotelPortal() {
             <input name="hotelAccuracy" type="hidden" value="" />
 
             <div class="button-row">
-              <button class="button button-outline button-small captureHotelLocationBtn" type="button">
+              <button class="button button-primary button-small captureHotelLocationBtn" type="button">
                 Use Current Location
               </button>
             </div>
@@ -209,7 +209,7 @@ export function renderHotelPortal() {
           </div>
 
           <div class="button-row">
-            <button class="button button-outline button-small" id="saveHotelCurrentLocation" type="button">
+            <button class="button button-primary button-small" id="saveHotelCurrentLocation" type="button">
               ${hotelCoordinates ? "Refresh Delivery Location" : "Save Delivery Location"}
             </button>
           </div>
