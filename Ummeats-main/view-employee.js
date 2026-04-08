@@ -411,6 +411,12 @@ function getOrderCustomerCoordinates(order) {
   return normalizeCoordinates(order?.customerCoordinates);
 }
 
+function getOrderCustomerAreaSummary(order) {
+  const area = String(order?.customerArea || "").trim();
+  const specificArea = String(order?.customerSpecificArea || "").trim();
+  return [area, specificArea].filter(Boolean).join(" - ");
+}
+
 function renderEmployeeOrderCard(order, hotels) {
   const hotel = getHotelForOrder(hotels, order.hotelId);
   const items = Array.isArray(order.items) ? order.items : [];
@@ -419,6 +425,7 @@ function renderEmployeeOrderCard(order, hotels) {
     : Number(order.itemsTotal || 0);
   const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
   const customerCoordinates = getOrderCustomerCoordinates(order);
+  const areaSummary = getOrderCustomerAreaSummary(order);
 
   return `
     <article class="card order-card">
@@ -446,7 +453,7 @@ function renderEmployeeOrderCard(order, hotels) {
         </div>
         <div class="meta-block">
           <span>Customer area</span>
-          <strong>${escapeHtml(order.customerArea || "Not shared")}</strong>
+          <strong>${escapeHtml(areaSummary || "Not shared")}</strong>
         </div>
       </div>
 
@@ -483,7 +490,7 @@ function renderEmployeeOrderCard(order, hotels) {
               <div class="button-row">
                 <button
                   class="button button-outline button-small viewCustomerMapBtn"
-                  data-customer-area="${escapeHtml(order.customerArea || "")}"
+                  data-customer-area="${escapeHtml(areaSummary)}"
                   data-customer-name="${escapeHtml(order.customerName || "Customer")}"
                   data-latitude="${escapeHtml(String(customerCoordinates.latitude))}"
                   data-longitude="${escapeHtml(String(customerCoordinates.longitude))}"

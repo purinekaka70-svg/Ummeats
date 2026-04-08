@@ -182,6 +182,7 @@ export function getCheckoutDraft(hotelId) {
     custPhone: draft.custPhone ?? saved.custPhone ?? state.currentCustomer?.phone ?? "",
     customerAccuracy: draft.customerAccuracy ?? "",
     customerArea: draft.customerArea ?? "",
+    customerSpecificArea: draft.customerSpecificArea ?? "",
     customerLatitude: draft.customerLatitude ?? "",
     customerLocationLabel: draft.customerLocationLabel ?? "",
     customerLongitude: draft.customerLongitude ?? "",

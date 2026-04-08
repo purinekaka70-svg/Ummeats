@@ -340,6 +340,7 @@ function renderHotelOrderCard(order) {
         <div class="summary-item"><span>Service fee</span><strong>${formatCurrency(order.serviceFee || 0)}</strong></div>
         <div class="summary-item"><span>Distance</span><strong>${Number.isFinite(order.distanceKm) ? formatDistanceKm(order.distanceKm) : "Unknown"}</strong></div>
         <div class="summary-item"><span>Area</span><strong>${escapeHtml(order.customerArea || "Not shared")}</strong></div>
+        <div class="summary-item"><span>Specific area</span><strong>${escapeHtml(order.customerSpecificArea || "Not shared")}</strong></div>
       </div>
 
       <div class="button-row">

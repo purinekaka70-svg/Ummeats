@@ -299,20 +299,27 @@ function getCheckoutCustomerArea(hotelId) {
   return String(draft.customerArea || "").trim();
 }
 
+function getCheckoutCustomerSpecificArea(hotelId) {
+  const draft = state.checkoutDrafts[hotelId] || {};
+  return String(draft.customerSpecificArea || "").trim();
+}
+
 function getCheckoutLocationStatusCopy(hotelId) {
   const coordinates = readCheckoutCustomerCoordinates(hotelId);
   const area = getCheckoutCustomerArea(hotelId);
+  const specificArea = getCheckoutCustomerSpecificArea(hotelId);
+  const areaSummary = [area, specificArea].filter(Boolean).join(" - ");
 
-  if (coordinates && area) {
-    return `Shared delivery point: ${area} (${formatCoordinatePair(coordinates)}). The delivery person and hotel will receive it with your order.`;
+  if (coordinates && areaSummary) {
+    return `Shared delivery point: ${areaSummary} (${formatCoordinatePair(coordinates)}). The delivery person and hotel will receive it with your order.`;
   }
 
   if (coordinates) {
     return `Shared delivery point: ${formatCoordinatePair(coordinates)}. The delivery person and hotel will receive it with your order.`;
   }
 
-  if (area) {
-    return `Area noted: ${area}. Click Use My Current Location to attach exact coordinates for delivery.`;
+  if (areaSummary) {
+    return `Area noted: ${areaSummary}. Click Use My Current Location to attach exact coordinates for delivery.`;
   }
 
   return "Type your area and use current location so the delivery person and hotel can receive your delivery point.";
@@ -1072,7 +1079,7 @@ function handleInput(event) {
   state.checkoutDrafts[hotelId] = state.checkoutDrafts[hotelId] || {};
   state.checkoutDrafts[hotelId][field] = input.value;
 
-  if (field === "customerArea") {
+  if (field === "customerArea" || field === "customerSpecificArea") {
     updateCheckoutLocationStatus(hotelId);
   }
 }
@@ -1667,6 +1674,17 @@ function openCartModal(hotelId) {
             value="${escapeHtml(draft.customerArea)}"
           />
         </label>
+
+        <label class="field">
+          <span class="field-label">Specific area (edit text)</span>
+          <input
+            class="input checkout-input"
+            data-field="customerSpecificArea"
+            data-hotel="${escapeHtml(hotelId)}"
+            placeholder="Room, block, gate, floor, or exact stay point"
+            value="${escapeHtml(draft.customerSpecificArea || "")}"
+          />
+        </label>
       </div>
 
       <div class="button-row">
@@ -1747,6 +1765,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   const hotel = getHotelById(hotelId);
   let customerCoordinates = readCheckoutCustomerCoordinates(hotelId);
   let customerArea = getCheckoutCustomerArea(hotelId);
+  const customerSpecificArea = getCheckoutCustomerSpecificArea(hotelId);
 
   if (!customerCoordinates) {
     const liveCoordinates = await requestCurrentCoordinates();
@@ -1773,6 +1792,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     customerName,
     customerPhone,
     ...(customerArea ? { customerArea } : {}),
+    ...(customerSpecificArea ? { customerSpecificArea } : {}),
     hotelId,
     items: cart.map((item) => ({
       name: item.name,
@@ -1838,9 +1858,10 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     return;
   }
 
+  const areaSummary = [customerArea, customerSpecificArea].filter(Boolean).join(" - ");
   const message = `New order from ${customerName} (${customerPhone}) - ${formatCurrency(total)} for ${hotel.name}${
     Number.isFinite(feeDetails.distanceKm) ? ` (${formatDistanceKm(feeDetails.distanceKm)})` : ""
-  }${customerArea ? ` - ${customerArea}` : ""}`;
+  }${areaSummary ? ` - ${areaSummary}` : ""}`;
 
   try {
     await addDoc(collection(db, "notifications"), {
