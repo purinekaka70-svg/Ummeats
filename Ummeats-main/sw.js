@@ -1,4 +1,4 @@
-const APP_CACHE = "tamu-app-v31";
+const APP_CACHE = "tamu-app-v32";
 const APP_SHELL = [
   "./",
   "./index.html",
