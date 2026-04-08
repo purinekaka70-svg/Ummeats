@@ -220,6 +220,16 @@ button {
 .button {
   text-decoration: none;
   font-weight: 700;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(17, 83, 57, 0.18);
+}
+
+.button:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
 }
 
 .button-primary {
@@ -231,45 +241,48 @@ button {
 .button-primary:hover {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
+  color: #fff;
 }
 
 .button-secondary {
-  background: var(--secondary);
-  border-color: var(--secondary);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
 .button-secondary:hover {
-  filter: brightness(0.95);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
 }
 
 .button-outline {
-  background: transparent;
-  border-color: var(--line-strong);
-  color: var(--ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .button-ghost {
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(81, 64, 35, 0.12);
-  color: var(--ink);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .button-danger {
-  background: var(--danger);
-  border-color: var(--danger);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
 .button-danger-soft {
-  background: var(--danger-soft);
-  border-color: rgba(180, 76, 56, 0.24);
-  color: var(--danger);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 
 .button-success {
-  background: var(--success);
-  border-color: var(--success);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #fff;
 }
 
@@ -1459,6 +1472,13 @@ button {
   gap: 14px;
 }
 
+.auth-flow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  max-width: 640px;
+}
+
 .employee-portal-grid {
   align-items: start;
 }
@@ -1466,6 +1486,25 @@ button {
 .auth-card form,
 .action-card form {
   display: contents;
+}
+
+.auth-switch {
+  margin: 0;
+}
+
+.auth-switch-btn {
+  background: none;
+  border: 0;
+  color: var(--accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.auth-switch-btn:hover {
+  color: var(--accent);
 }
 
 .footer {

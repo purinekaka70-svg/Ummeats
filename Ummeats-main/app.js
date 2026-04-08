@@ -1139,6 +1139,12 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("hotelAuthSwitchBtn")) {
+    state.hotelAuthView = button.dataset.hotelAuthView === "register" ? "register" : "login";
+    syncUi();
+    return;
+  }
+
   if (button.classList.contains("openHotelCartBtn")) {
     openHotelCartShortcut(button.dataset.hotel);
     return;
@@ -1237,6 +1243,7 @@ async function handleClick(event) {
   if (button.id === "logoutHotel") {
     await unregisterPushSubscription(state.currentHotelId);
     state.currentHotelId = null;
+    state.hotelAuthView = "login";
     state.currentAdmin = false;
     syncActivePushSubscription();
     syncUi();
@@ -1590,7 +1597,9 @@ async function registerHotel(form) {
 
     form.reset();
     updateHotelRegistrationCoordinateStatus(form, null);
+    state.hotelAuthView = "login";
     showToast("Hotel registered. Wait for admin approval and subscription activation.", "success");
+    syncUi();
   } catch (error) {
     console.error(error);
     showToast("Registration failed.", "error");
@@ -1631,6 +1640,7 @@ async function loginHotel(form) {
   }
 
   state.currentHotelId = hotel.id;
+  state.hotelAuthView = "login";
   state.currentAdmin = false;
   await registerPushSubscription(hotel.id, hotel.name, {
     hotelId: hotel.id,

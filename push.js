@@ -7,12 +7,17 @@ import {
 import { showToast } from "./ui.js";
 
 const ONESIGNAL_SDK_URL = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+const DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH = "push/onesignal/OneSignalSDKWorker.js";
+const DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE = "push/onesignal/";
+const FALLBACK_ONESIGNAL_SERVICE_WORKER_PATH = "OneSignalSDKWorker.js";
+const ONESIGNAL_SDK_LOAD_TIMEOUT_MS = 15000;
 const PUSH_NOTIFICATION_ICON = "./icons/icon-192.png";
 const NOTIFICATION_TAG_TTL_MS = 8000;
 let foregroundListenerBound = false;
 let identityListenersBound = false;
 let notificationRegistrationPromise = null;
 let oneSignalReadyPromise = null;
+let oneSignalInitError = null;
 let activePushIdentity = null;
 let identitySyncPromise = null;
 const recentNotificationTags = new Map();
@@ -33,8 +38,156 @@ function normalizePushTarget(target) {
   return String(target || "").trim();
 }
 
-function resolveOneSignalPath(pathname) {
-  return new URL(pathname, window.location.href).pathname;
+function normalizePath(pathname, { trailingSlash = false } = {}) {
+  let normalized = String(pathname || "").trim().replace(/\\/g, "/");
+  normalized = normalized.replace(/^\.?\//, "").replace(/^\/+/, "").replace(/\/{2,}/g, "/");
+
+  if (!normalized) {
+    return "";
+  }
+
+  normalized = trailingSlash ? `${normalized.replace(/\/+$/, "")}/` : normalized.replace(/\/+$/, "");
+  return normalized;
+}
+
+function getSiteBasePath() {
+  const pathname = String(window.location.pathname || "/").trim();
+  const segments = pathname.split("/").filter(Boolean);
+  if (!segments.length) {
+    return "";
+  }
+
+  const lastSegment = segments[segments.length - 1];
+  if (lastSegment && lastSegment.includes(".")) {
+    segments.pop();
+  }
+
+  return segments.length ? `${segments.join("/")}/` : "";
+}
+
+function resolveOneSignalWorkerPath(pathname) {
+  const normalizedPath = normalizePath(pathname);
+  if (!normalizedPath) {
+    return "";
+  }
+
+  const siteBasePath = getSiteBasePath();
+  if (!siteBasePath || normalizedPath.startsWith(siteBasePath)) {
+    return normalizedPath;
+  }
+
+  return `${siteBasePath}${normalizedPath}`;
+}
+
+function resolveOneSignalWorkerScope(scopePath) {
+  const normalizedScope = normalizePath(scopePath, { trailingSlash: true });
+  if (!normalizedScope) {
+    return "/";
+  }
+
+  const siteBasePath = getSiteBasePath();
+  const scopedPath = !siteBasePath || normalizedScope.startsWith(siteBasePath)
+    ? normalizedScope
+    : `${siteBasePath}${normalizedScope}`;
+
+  return `/${scopedPath}`;
+}
+
+function isNotificationPermissionGranted(OneSignal) {
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    return true;
+  }
+
+  return OneSignal?.Notifications?.permission === true;
+}
+
+function buildOneSignalWorkerCandidates() {
+  const configuredPath = normalizePath(ONESIGNAL_SERVICE_WORKER_PATH);
+  const configuredScope = normalizePath(ONESIGNAL_SERVICE_WORKER_SCOPE, { trailingSlash: true });
+  const candidates = [
+    {
+      path: configuredPath || DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH,
+      scope: configuredScope || DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE,
+    },
+    {
+      path: DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH,
+      scope: DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE,
+    },
+    {
+      path: FALLBACK_ONESIGNAL_SERVICE_WORKER_PATH,
+      scope: configuredScope || DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE,
+    },
+  ];
+
+  const seen = new Set();
+  return candidates.filter((item) => {
+    if (!item.path || !item.scope) {
+      return false;
+    }
+
+    const key = `${item.path}|${item.scope}`;
+    if (seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+}
+
+async function isOneSignalWorkerScriptAccessible(pathname) {
+  if (typeof fetch !== "function") {
+    return true;
+  }
+
+  try {
+    const workerUrl = new URL(pathname, `${window.location.origin}/`).href;
+    const response = await fetch(workerUrl, {
+      cache: "no-store",
+      credentials: "same-origin",
+      method: "GET",
+    });
+    if (!response.ok) {
+      return false;
+    }
+
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    if (!contentType) {
+      return true;
+    }
+
+    if (contentType.includes("text/html")) {
+      return false;
+    }
+
+    return contentType.includes("javascript") || contentType.includes("ecmascript") || contentType.includes("text/plain");
+  } catch {
+    return false;
+  }
+}
+
+async function resolveOneSignalWorkerSettings() {
+  const candidates = buildOneSignalWorkerCandidates();
+
+  for (const candidate of candidates) {
+    const resolvedPath = resolveOneSignalWorkerPath(candidate.path);
+    if (!resolvedPath) {
+      continue;
+    }
+
+    if (!(await isOneSignalWorkerScriptAccessible(resolvedPath))) {
+      continue;
+    }
+
+    return {
+      serviceWorkerParam: {
+        scope: resolveOneSignalWorkerScope(candidate.scope),
+      },
+      serviceWorkerPath: resolvedPath,
+    };
+  }
+
+  return null;
 }
 
 function ensureOneSignalPageScript() {
@@ -182,7 +335,7 @@ async function syncOneSignalIdentity(OneSignal, identity, options = {}) {
   await OneSignal.login(identity.externalId);
   await OneSignal.User.addTags(createPushTags(identity));
 
-  if (options.ensureOptIn && OneSignal.Notifications.permission && !OneSignal.User.PushSubscription.optedIn) {
+  if (options.ensureOptIn && isNotificationPermissionGranted(OneSignal) && !OneSignal.User.PushSubscription.optedIn) {
     await OneSignal.User.PushSubscription.optIn();
   }
 
@@ -259,6 +412,7 @@ async function getOneSignal() {
     return null;
   }
 
+  oneSignalInitError = null;
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   ensureOneSignalPageScript();
 
@@ -266,10 +420,15 @@ async function getOneSignal() {
     const timeoutId = window.setTimeout(() => {
       oneSignalReadyPromise = null;
       reject(new Error("OneSignal SDK load timed out."));
-    }, 15000);
+    }, ONESIGNAL_SDK_LOAD_TIMEOUT_MS);
 
     window.OneSignalDeferred.push(async (OneSignal) => {
       try {
+        const workerSettings = await resolveOneSignalWorkerSettings();
+        if (!workerSettings) {
+          throw new Error("OneSignal worker file is unreachable. Verify the worker URL returns JavaScript.");
+        }
+
         await OneSignal.init({
           allowLocalhostAsSecureOrigin: isLocalhostOrigin(),
           appId,
@@ -280,10 +439,7 @@ async function getOneSignal() {
             enable: true,
           },
           safari_web_id: String(ONESIGNAL_SAFARI_WEB_ID || "").trim() || undefined,
-          serviceWorkerParam: {
-            scope: resolveOneSignalPath(ONESIGNAL_SERVICE_WORKER_SCOPE),
-          },
-          serviceWorkerPath: resolveOneSignalPath(ONESIGNAL_SERVICE_WORKER_PATH),
+          ...workerSettings,
           welcomeNotification: {
             disable: true,
           },
@@ -293,6 +449,7 @@ async function getOneSignal() {
         OneSignal.Notifications.setDefaultUrl(new URL("./index.html", window.location.href).href);
         bindOneSignalForegroundListeners(OneSignal);
         bindOneSignalIdentityListeners(OneSignal);
+        oneSignalInitError = null;
         window.clearTimeout(timeoutId);
         resolve(OneSignal);
       } catch (error) {
@@ -302,6 +459,7 @@ async function getOneSignal() {
       }
     });
   }).catch((error) => {
+    oneSignalInitError = error;
     console.warn("OneSignal initialization failed", error);
     return null;
   });
@@ -314,7 +472,13 @@ async function ensureOneSignalPush(options = {}) {
   const OneSignal = await getOneSignal();
   if (!OneSignal) {
     if (!silent) {
-      showToast("OneSignal is not configured correctly for browser push.", "warn");
+      const initErrorMessage = String(oneSignalInitError?.message || "").trim();
+      showToast(
+        initErrorMessage
+          ? `Push setup failed: ${initErrorMessage}`
+          : "Push setup failed. Check HTTPS and OneSignal worker routing.",
+        "warn",
+      );
     }
     return null;
   }
@@ -326,7 +490,7 @@ async function ensureOneSignalPush(options = {}) {
     return null;
   }
 
-  if (requestPermission && !OneSignal.Notifications.permission) {
+  if (requestPermission && !isNotificationPermissionGranted(OneSignal)) {
     await OneSignal.Notifications.requestPermission();
   }
 
@@ -351,7 +515,7 @@ export async function registerPushSubscription(target, label, options = {}) {
       return false;
     }
 
-    if (OneSignal.Notifications.permission) {
+    if (isNotificationPermissionGranted(OneSignal)) {
       if (!options.silent) {
         showToast("Browser notifications enabled on this device.", "success");
       }

@@ -18,6 +18,22 @@
       "dest": "/api/send-order-notification.js"
     },
     {
+      "src": "/OneSignalSDKWorker.js",
+      "dest": "/OneSignalSDKWorker.js"
+    },
+    {
+      "src": "/OneSignalSDKUpdaterWorker.js",
+      "dest": "/OneSignalSDKUpdaterWorker.js"
+    },
+    {
+      "src": "/push/onesignal/OneSignalSDKWorker.js",
+      "dest": "/push/onesignal/OneSignalSDKWorker.js"
+    },
+    {
+      "src": "/push/onesignal/OneSignalSDKUpdaterWorker.js",
+      "dest": "/push/onesignal/OneSignalSDKUpdaterWorker.js"
+    },
+    {
       "handle": "filesystem"
     },
     {

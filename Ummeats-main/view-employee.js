@@ -1,5 +1,4 @@
 import { DEFAULT_HOTEL_LOCATION, SERVICE_FEE } from "./config.js";
-import { elements } from "./state.js";
 import {
   escapeHtml,
   formatCoordinatePair,
@@ -12,33 +11,46 @@ import {
 } from "./helpers.js";
 import { renderEmptyState, renderStatusPill } from "./view-common.js";
 
+function getEmployeeAppElement() {
+  return document.getElementById("app");
+}
+
 export function renderEmployeePortal(portalState) {
+  const appElement = getEmployeeAppElement();
+  if (!appElement) {
+    return;
+  }
+
   document.body.classList.toggle("modal-open", Boolean(portalState.mapModal));
 
   if (!portalState.currentUser) {
-    elements.app.innerHTML = renderEmployeeAuth();
+    appElement.innerHTML = renderEmployeeAuth(portalState);
     return;
   }
 
   if (portalState.profileStatus === "loading") {
-    elements.app.innerHTML = renderEmployeeLoading();
+    appElement.innerHTML = renderEmployeeLoading();
     return;
   }
 
   if (!portalState.employeeProfile) {
-    elements.app.innerHTML = renderMissingEmployeeProfile();
+    appElement.innerHTML = renderMissingEmployeeProfile();
     return;
   }
 
   if (String(portalState.employeeProfile.status || "active").toLowerCase() === "blocked") {
-    elements.app.innerHTML = renderBlockedEmployeeProfile();
+    appElement.innerHTML = renderBlockedEmployeeProfile();
     return;
   }
 
-  elements.app.innerHTML = renderEmployeeDashboard(portalState);
+  appElement.innerHTML = renderEmployeeDashboard(portalState);
 }
 
-function renderEmployeeAuth() {
+function renderEmployeeAuth(portalState) {
+  const authView = portalState?.authView === "register" ? "register" : "login";
+  const loginHiddenClass = authView === "register" ? " is-hidden" : "";
+  const registerHiddenClass = authView === "register" ? "" : " is-hidden";
+
   return `
     <section class="view-shell">
       <div class="view-header">
@@ -49,8 +61,8 @@ function renderEmployeeAuth() {
         </div>
       </div>
 
-      <div class="two-column employee-portal-grid">
-        <form id="employeeLogin" class="card auth-card">
+      <div class="auth-flow-grid employee-portal-grid">
+        <form id="employeeLogin" class="card auth-card${loginHiddenClass}">
           <p class="eyebrow">Returning employee</p>
           <h3 class="card-title">Login</h3>
 
@@ -66,9 +78,13 @@ function renderEmployeeAuth() {
 
           <p class="tiny">Use the same employee email and password you created on this page.</p>
           <button class="button button-primary" type="submit">Login</button>
+          <p class="tiny auth-switch">
+            Don&apos;t have an account?
+            <button class="auth-switch-btn employeeAuthSwitchBtn" data-auth-view="register" type="button">Register</button>
+          </p>
         </form>
 
-        <form id="employeeRegister" class="card auth-card">
+        <form id="employeeRegister" class="card auth-card${registerHiddenClass}">
           <p class="eyebrow">New employee</p>
           <h3 class="card-title">Create Account</h3>
 
@@ -106,6 +122,10 @@ function renderEmployeeAuth() {
 
           <p class="tiny">Upload a clear ID card image or PDF. Employee access is read-only and shows live platform orders only.</p>
           <button class="button button-secondary" type="submit">Create Employee Account</button>
+          <p class="tiny auth-switch">
+            Already have an account?
+            <button class="auth-switch-btn employeeAuthSwitchBtn" data-auth-view="login" type="button">Login</button>
+          </p>
         </form>
       </div>
     </section>

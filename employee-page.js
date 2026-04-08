@@ -25,6 +25,7 @@ import { renderEmployeePortal } from "./view-employee.js";
 
 const EMPLOYEE_ID_CARD_MAX_BYTES = 5 * 1024 * 1024;
 const portalState = {
+  authView: "login",
   currentUser: null,
   employeeProfile: null,
   employeeSection: "dashboard",
@@ -100,6 +101,7 @@ function subscribeToAuth() {
       portalState.mapModal = null;
       portalState.profileStatus = "idle";
       portalState.pendingRegistration = false;
+      portalState.authView = "login";
       renderEmployeePortal(portalState);
       return;
     }
@@ -118,6 +120,12 @@ function subscribeToAuth() {
 async function handleClick(event) {
   const button = event.target.closest("button");
   if (!button) {
+    return;
+  }
+
+  if (button.classList.contains("employeeAuthSwitchBtn")) {
+    portalState.authView = button.dataset.authView === "register" ? "register" : "login";
+    renderEmployeePortal(portalState);
     return;
   }
 

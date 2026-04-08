@@ -19,6 +19,7 @@ export const state = {
   currentInfoSection: null,
   selectedLocation: null,
   currentHotelId: null,
+  hotelAuthView: "login",
   currentAdmin: false,
   adminPanelSection: "dashboard",
   adminSidebarOpen: false,

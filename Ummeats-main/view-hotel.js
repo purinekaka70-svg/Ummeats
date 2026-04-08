@@ -17,6 +17,10 @@ import { renderBrowseMenuTabs, renderGateCard, renderInlineBadge, renderNotifica
 
 export function renderHotelPortal() {
   if (!state.currentHotelId) {
+    const authView = state.hotelAuthView === "register" ? "register" : "login";
+    const loginHiddenClass = authView === "register" ? " is-hidden" : "";
+    const registerHiddenClass = authView === "register" ? "" : " is-hidden";
+
     elements.app.innerHTML = `
       <section class="view-shell">
         ${
@@ -40,8 +44,8 @@ export function renderHotelPortal() {
           </div>
         </div>
 
-        <div class="two-column">
-          <form id="hotelLogin" class="card auth-card">
+        <div class="auth-flow-grid">
+          <form id="hotelLogin" class="card auth-card${loginHiddenClass}">
             <p class="eyebrow">Returning hotel</p>
             <h3 class="card-title">Login</h3>
 
@@ -56,9 +60,13 @@ export function renderHotelPortal() {
             </label>
 
             <button class="button button-primary button-small" type="submit">Login</button>
+            <p class="tiny auth-switch">
+              Don&apos;t have an account?
+              <button class="auth-switch-btn hotelAuthSwitchBtn" data-hotel-auth-view="register" type="button">Register</button>
+            </p>
           </form>
 
-          <form id="hotelRegister" class="card auth-card">
+          <form id="hotelRegister" class="card auth-card${registerHiddenClass}">
             <p class="eyebrow">New hotel</p>
             <h3 class="card-title">Register</h3>
 
@@ -102,6 +110,10 @@ export function renderHotelPortal() {
             </p>
 
             <button class="button button-secondary button-small" type="submit">Register</button>
+            <p class="tiny auth-switch">
+              Already have an account?
+              <button class="auth-switch-btn hotelAuthSwitchBtn" data-hotel-auth-view="login" type="button">Login</button>
+            </p>
           </form>
         </div>
       </section>
