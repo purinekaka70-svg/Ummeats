@@ -24,7 +24,6 @@ import {
   renderEmptyState,
   renderInlineBadge,
 } from "./view-common.js";
-
 export function renderRestaurants() {
   const selectedLocation = state.selectedLocation;
   const locationCards = getLocationCards();

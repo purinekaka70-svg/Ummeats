@@ -138,6 +138,25 @@ export function getMenuScheduleDetails(item) {
   };
 }
 
+<<<<<<< HEAD
+=======
+function sanitizeNotificationKeyPart(value) {
+  return String(value || "").trim().replace(/\//g, "_").slice(0, 400);
+}
+
+export function buildNotificationDocId({ to, type, refId }) {
+  const normalizedTo = sanitizeNotificationKeyPart(to);
+  const normalizedType = sanitizeNotificationKeyPart(type).toLowerCase();
+  const normalizedRefId = sanitizeNotificationKeyPart(refId);
+
+  if (!normalizedTo || !normalizedType || !normalizedRefId) {
+    return "";
+  }
+
+  return `${normalizedTo}__${normalizedType}__${normalizedRefId}`;
+}
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 export function sortMenuItems(items) {
   return [...(Array.isArray(items) ? items : [])].sort((left, right) => {
     const leftSchedule = getMenuScheduleDetails(left);

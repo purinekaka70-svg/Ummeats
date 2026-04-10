@@ -30,6 +30,7 @@ import { elements, getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
 
+<<<<<<< HEAD
 const adminOrderAlertTracker = {
   ids: new Set(),
   ready: false,
@@ -42,6 +43,11 @@ const adminNotificationAlertTracker = new Set();
 const adminOrderStatusTracker = new Map();
 const adminShopOrderStatusTracker = new Map();
 const adminNotificationPromptButton = document.getElementById("adminNotificationPromptButton");
+=======
+const adminNotificationAlertTracker = new Set();
+const adminNotificationPromptButton = document.getElementById("adminNotificationPromptButton");
+let adminCollectionUnsubscribers = [];
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 
 bootstrap();
 
@@ -53,10 +59,35 @@ function bootstrap() {
   bindPushSyncEvents();
   hydrateShell();
   subscribeToAuth();
+<<<<<<< HEAD
   subscribeToCollections();
   renderAdmin();
 }
 
+=======
+  renderAdmin();
+}
+
+function stopAdminCollectionSubscriptions() {
+  adminCollectionUnsubscribers.forEach((unsubscribe) => {
+    try {
+      unsubscribe();
+    } catch {
+      // ignore
+    }
+  });
+  adminCollectionUnsubscribers = [];
+
+  state.hotels = [];
+  state.restaurants = [];
+  state.orders = [];
+  state.ummaShopOrders = [];
+  state.feedbacks = [];
+  state.notifications = [];
+  state.employees = [];
+}
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function bindEvents() {
   document.addEventListener("click", handleClick);
   document.addEventListener("submit", handleSubmit);
@@ -175,6 +206,7 @@ async function handleAdminNotificationPromptClick() {
   updateAdminNotificationPromptButtonState();
 }
 
+<<<<<<< HEAD
 function subscribeToCollections() {
   onSnapshot(collection(db, "hotels"), (snapshot) => {
     state.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -256,6 +288,44 @@ function handleAdminOrderAlerts(snapshot) {
       tag,
     });
   });
+=======
+function startAdminCollectionSubscriptions() {
+  if (adminCollectionUnsubscribers.length) {
+    return;
+  }
+
+  adminCollectionUnsubscribers = [
+    onSnapshot(collection(db, "hotels"), (snapshot) => {
+      state.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "restaurants"), (snapshot) => {
+      state.restaurants = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "orders"), (snapshot) => {
+      state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
+      state.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "feedbacks"), (snapshot) => {
+      state.feedbacks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "notifications"), (snapshot) => {
+      handleAdminNotificationAlerts(snapshot);
+      state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "employees"), (snapshot) => {
+      state.employees = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+  ];
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 }
 
 function subscribeToAuth() {
@@ -264,6 +334,10 @@ function subscribeToAuth() {
       state.currentAdmin = false;
       state.adminPanelSection = "dashboard";
       state.adminSidebarOpen = false;
+<<<<<<< HEAD
+=======
+      stopAdminCollectionSubscriptions();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       renderAdmin();
       updateAdminNotificationPromptButtonState();
       return;
@@ -273,6 +347,10 @@ function subscribeToAuth() {
     state.currentAdmin = allowed;
 
     if (allowed) {
+<<<<<<< HEAD
+=======
+      startAdminCollectionSubscriptions();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       void registerPushSubscription("admin", user.email || "Admin", {
         requestPermission: false,
         role: "admin",
@@ -283,6 +361,10 @@ function subscribeToAuth() {
       return;
     }
 
+<<<<<<< HEAD
+=======
+    stopAdminCollectionSubscriptions();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     await signOut(auth).catch(() => undefined);
     state.currentAdmin = false;
     state.adminPanelSection = "dashboard";
@@ -293,6 +375,7 @@ function subscribeToAuth() {
   });
 }
 
+<<<<<<< HEAD
 function handleAdminOrderStatusAlerts(snapshot) {
   if (!auth.currentUser || !state.currentAdmin) {
     return;
@@ -427,6 +510,8 @@ function handleAdminShopOrderStatusAlerts(snapshot) {
   });
 }
 
+=======
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function resolveAdminNotificationTitle(item) {
   const normalizedType = String(item?.type || "").trim().toLowerCase();
   if (normalizedType === "order-paid" || normalizedType === "order_paid") {
@@ -483,7 +568,13 @@ function handleAdminNotificationAlerts(snapshot) {
 
     const title = resolveAdminNotificationTitle(item);
     const body = String(item.message || "You have a new update.");
+<<<<<<< HEAD
     const tag = `admin-notif-${docSnapshot.id}`;
+=======
+    const refId = String(item.refId || "").trim();
+    const type = String(item.type || "notification").trim().toLowerCase();
+    const tag = refId ? `notif-${type}-${refId}` : `admin-notif-${docSnapshot.id}`;
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     if (!claimNotificationTag(tag)) {
       return;
     }
@@ -665,7 +756,11 @@ async function isAllowedAdmin(uid) {
     return !employeeProfile.exists();
   } catch (error) {
     console.warn("Admin access check failed", error);
+<<<<<<< HEAD
     return true;
+=======
+    return false;
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   }
 }
 

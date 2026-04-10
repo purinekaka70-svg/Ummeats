@@ -20,6 +20,10 @@ import {
 import { db } from "./firebase.js";
 import {
   calculateDistanceKm,
+<<<<<<< HEAD
+=======
+  buildNotificationDocId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   escapeHtml,
   formatCoordinatePair,
   formatDistanceKm,
@@ -62,12 +66,16 @@ import { renderRestaurants } from "./view-restaurants.js";
 
 let deferredInstallPrompt = null;
 let installPromptWaiters = [];
+<<<<<<< HEAD
 const hotelOrderAlertTracker = {
   ids: new Set(),
   ready: false,
 };
 const liveNotificationAlertTracker = new Set();
 const orderStatusTracker = new Map();
+=======
+const liveNotificationAlertTracker = new Set();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 const UMMA_UNIVERSITY_REFERENCE_COORDINATES = Object.freeze({
   latitude: -1.77726,
   longitude: 36.82064,
@@ -749,8 +757,11 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
+<<<<<<< HEAD
     handleHotelOrderAlerts(snapshot);
     handleCustomerAndHotelOrderStatusAlerts(snapshot);
+=======
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncUi();
   });
@@ -762,6 +773,7 @@ function subscribeToCollections() {
   });
 }
 
+<<<<<<< HEAD
 function collectNewSnapshotDocs(snapshot, tracker) {
   const currentIds = new Set(snapshot.docs.map((item) => item.id));
 
@@ -804,6 +816,8 @@ function handleHotelOrderAlerts(snapshot) {
     });
 }
 
+=======
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function syncUi() {
   updateHeaderMetrics();
   updateBadges();
@@ -928,6 +942,7 @@ async function handleInstallClick() {
   updateInstallButtonState();
 }
 
+<<<<<<< HEAD
 function handleCustomerAndHotelOrderStatusAlerts(snapshot) {
   const currentIds = new Set(snapshot.docs.map((item) => item.id));
 
@@ -977,6 +992,8 @@ function handleCustomerAndHotelOrderStatusAlerts(snapshot) {
   });
 }
 
+=======
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function getActiveNotificationTarget() {
   if (state.currentHotelId) {
     return state.currentHotelId;
@@ -1032,7 +1049,13 @@ function handleLiveNotificationAlerts(snapshot) {
 
     const title = resolveNotificationTitle(item);
     const body = String(item.message || "You have a new update.");
+<<<<<<< HEAD
     const tag = `notif-${docSnapshot.id}`;
+=======
+    const refId = String(item.refId || "").trim();
+    const type = String(item.type || "notification").trim().toLowerCase();
+    const tag = refId ? `notif-${type}-${refId}` : `notif-${docSnapshot.id}`;
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 
     if (!claimNotificationTag(tag)) {
       return;
@@ -1329,8 +1352,15 @@ async function submitFeedback(form) {
     status: "New",
   };
 
+<<<<<<< HEAD
   try {
     await addDoc(collection(db, "feedbacks"), feedbackPayload);
+=======
+  let feedbackRef = null;
+
+  try {
+    feedbackRef = await addDoc(collection(db, "feedbacks"), feedbackPayload);
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   } catch (error) {
     console.error("Feedback write failed", error);
     showToast("Failed to send feedback.", "error");
@@ -1338,6 +1368,7 @@ async function submitFeedback(form) {
   }
 
   try {
+<<<<<<< HEAD
     await addDoc(collection(db, "notifications"), {
       message: `New feedback from ${name} (${phone})`,
       read: false,
@@ -1345,6 +1376,23 @@ async function submitFeedback(form) {
       to: "admin",
       type: "feedback",
     });
+=======
+    const notification = {
+      message: `New feedback from ${name} (${phone})`,
+      read: false,
+      ...(feedbackRef?.id ? { refId: feedbackRef.id } : {}),
+      timestamp: Date.now(),
+      to: "admin",
+      type: "feedback",
+    };
+
+    const notificationId = buildNotificationDocId(notification);
+    if (notificationId) {
+      await setDoc(doc(db, "notifications", notificationId), notification, { merge: true });
+    } else {
+      await addDoc(collection(db, "notifications"), notification);
+    }
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   } catch (error) {
     console.warn("Feedback notification write failed", error);
   }
@@ -1596,6 +1644,7 @@ async function registerHotel(form) {
     });
 
     try {
+<<<<<<< HEAD
       await addDoc(collection(db, "notifications"), {
         message: `New hotel registration: ${name} (${phone})`,
         read: false,
@@ -1603,6 +1652,22 @@ async function registerHotel(form) {
         to: "admin",
         type: "hotel",
       });
+=======
+      const notification = {
+        message: `New hotel registration: ${name} (${phone})`,
+        read: false,
+        refId: docRef.id,
+        timestamp: Date.now(),
+        to: "admin",
+        type: "hotel",
+      };
+      const notificationId = buildNotificationDocId(notification);
+      if (notificationId) {
+        await setDoc(doc(db, "notifications", notificationId), notification, { merge: true });
+      } else {
+        await addDoc(collection(db, "notifications"), notification);
+      }
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     } catch (error) {
       console.warn("Hotel registration notification write failed", error);
     }
@@ -2041,9 +2106,17 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   });
 
   let notificationSent = false;
+<<<<<<< HEAD
 
   try {
     const orderRef = await addDoc(collection(db, "orders"), orderPayload);
+=======
+  let createdOrderId = "";
+
+  try {
+    const orderRef = await addDoc(collection(db, "orders"), orderPayload);
+    createdOrderId = orderRef.id;
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     sendSimulatedHotelSMS(hotelId, {
       customerName,
       customerPhone,
@@ -2076,6 +2149,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
 
   if (!notificationSent) {
     try {
+<<<<<<< HEAD
       await addDoc(collection(db, "notifications"), {
         message,
         read: false,
@@ -2091,6 +2165,37 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
         to: hotelId,
         type: "order",
       });
+=======
+      const adminNotification = {
+        message,
+        read: false,
+        ...(createdOrderId ? { refId: createdOrderId } : {}),
+        timestamp: Date.now(),
+        to: "admin",
+        type: "order",
+      };
+      const adminNotificationId = buildNotificationDocId(adminNotification);
+      if (adminNotificationId) {
+        await setDoc(doc(db, "notifications", adminNotificationId), adminNotification, { merge: true });
+      } else {
+        await addDoc(collection(db, "notifications"), adminNotification);
+      }
+
+      const hotelNotification = {
+        message,
+        read: false,
+        ...(createdOrderId ? { refId: createdOrderId } : {}),
+        timestamp: Date.now(),
+        to: hotelId,
+        type: "order",
+      };
+      const hotelNotificationId = buildNotificationDocId(hotelNotification);
+      if (hotelNotificationId) {
+        await setDoc(doc(db, "notifications", hotelNotificationId), hotelNotification, { merge: true });
+      } else {
+        await addDoc(collection(db, "notifications"), hotelNotification);
+      }
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     } catch (error) {
       console.warn("Notification write failed", error);
     }

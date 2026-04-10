@@ -146,11 +146,58 @@ function normalizeNotificationTimestamp(value) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
+<<<<<<< HEAD
 function createNotificationFingerprint(item) {
   const type = String(item?.type || "").trim().toLowerCase();
   const message = String(item?.message || "").trim();
   const timestamp = normalizeNotificationTimestamp(item?.timestamp);
   return `${type}|${message}|${timestamp}`;
+=======
+function normalizeNotificationRefId(value) {
+  return String(value || "").trim().slice(0, 180);
+}
+
+function normalizeNotificationMessage(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").slice(0, 500);
+}
+
+function createNotificationFingerprint(item) {
+  const target = String(item?.to || "").trim();
+  const type = String(item?.type || "").trim().toLowerCase();
+  const refId = normalizeNotificationRefId(item?.refId);
+  if (refId) {
+    return `${target}|${type}|${refId}`;
+  }
+
+  const message = normalizeNotificationMessage(item?.message);
+  return `${target}|${type}|${message}`;
+}
+
+function dedupeNotifications(items) {
+  const list = Array.isArray(items) ? items : [];
+  const bestByFingerprint = new Map();
+
+  list.forEach((item) => {
+    const fingerprint = createNotificationFingerprint(item);
+    if (!fingerprint) {
+      return;
+    }
+
+    const existing = bestByFingerprint.get(fingerprint);
+    if (!existing) {
+      bestByFingerprint.set(fingerprint, item);
+      return;
+    }
+
+    const existingTimestamp = normalizeNotificationTimestamp(existing?.timestamp);
+    const nextTimestamp = normalizeNotificationTimestamp(item?.timestamp);
+    if (nextTimestamp >= existingTimestamp) {
+      bestByFingerprint.set(fingerprint, item);
+    }
+  });
+
+  return [...bestByFingerprint.values()];
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 }
 
 function buildAdminFallbackNotifications() {
@@ -162,6 +209,10 @@ function buildAdminFallbackNotifications() {
       id: `fallback-admin-order-${order.id}`,
       message: `${customerName} placed an order for ${hotelName}.`,
       read: true,
+<<<<<<< HEAD
+=======
+      refId: order.id,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp: normalizeNotificationTimestamp(order.createdAt),
       to: "admin",
       type: "order",
@@ -176,6 +227,10 @@ function buildAdminFallbackNotifications() {
       id: `fallback-admin-shop-${order.id}`,
       message: `${customerName} submitted a Shop Here order for ${shopName}.`,
       read: true,
+<<<<<<< HEAD
+=======
+      refId: order.id,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp: normalizeNotificationTimestamp(order.createdAt),
       to: "admin",
       type: "umma-shop-order",
@@ -190,6 +245,10 @@ function buildAdminFallbackNotifications() {
       id: `fallback-admin-feedback-${feedback.id}`,
       message: `New feedback from ${sender} (${phone})`,
       read: true,
+<<<<<<< HEAD
+=======
+      refId: feedback.id,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp: normalizeNotificationTimestamp(feedback.createdAt),
       to: "admin",
       type: "feedback",
@@ -214,6 +273,10 @@ function buildHotelFallbackNotifications(hotelId) {
           ? `Order for ${customerName} has been marked as paid.`
           : `${customerName} placed a new order.`,
         read: true,
+<<<<<<< HEAD
+=======
+        refId: order.id,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         timestamp: normalizeNotificationTimestamp(order.createdAt),
         to: hotelId,
         type: isPaid ? "order-paid" : "order",
@@ -236,6 +299,10 @@ function buildCustomerFallbackNotifications(customerId) {
           ? `Your order for ${hotelName} has been marked as paid.`
           : `Your order for ${hotelName} has been received.`,
         read: true,
+<<<<<<< HEAD
+=======
+        refId: order.id,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         timestamp: normalizeNotificationTimestamp(order.createdAt),
         to: customerId,
         type: isPaid ? "order-paid" : "order",
@@ -265,8 +332,13 @@ export function getNotificationsForTarget(target) {
     return [];
   }
 
+<<<<<<< HEAD
   const directNotifications = state.notifications.filter(
     (item) => String(item.to || "").trim() === normalizedTarget,
+=======
+  const directNotifications = dedupeNotifications(
+    state.notifications.filter((item) => String(item.to || "").trim() === normalizedTarget),
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   );
   const fallbackNotifications = buildFallbackNotificationsForTarget(normalizedTarget);
 

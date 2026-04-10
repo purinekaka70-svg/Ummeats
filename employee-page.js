@@ -5,6 +5,10 @@ import {
   doc,
   onSnapshot,
   setDoc,
+<<<<<<< HEAD
+=======
+  updateDoc,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
   createUserWithEmailAndPassword,
@@ -19,7 +23,11 @@ import {
   set as setRtdb,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 import { auth, db, rtdb } from "./firebase.js";
+<<<<<<< HEAD
 import { inferToastTone } from "./helpers.js";
+=======
+import { buildNotificationDocId, inferToastTone } from "./helpers.js";
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 import { claimNotificationTag, showBrowserNotification } from "./push.js";
 import { showToast } from "./ui.js";
 import { renderEmployeePortal } from "./view-employee.js";
@@ -124,6 +132,12 @@ const portalState = {
   ummaShopOrders: [],
 };
 
+<<<<<<< HEAD
+=======
+let unfilteredOrders = [];
+let unfilteredShopOrders = [];
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 let unsubscribeEmployeeProfile = null;
 let employeeProfileLoadTimer = null;
 const employeeOrderAlertTracker = {
@@ -219,6 +233,85 @@ function collectNewSnapshotDocs(snapshot, tracker) {
   return additions;
 }
 
+<<<<<<< HEAD
+=======
+function normalizeCounty(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+function getEmployeeCounty(profile = portalState.employeeProfile) {
+  return normalizeCounty(profile?.county);
+}
+
+function matchesEmployeeCounty(text, county) {
+  const normalizedText = String(text || "").toLowerCase();
+  const normalizedCounty = normalizeCounty(county);
+
+  if (!normalizedText || !normalizedCounty) {
+    return false;
+  }
+
+  if (normalizedText.includes(normalizedCounty)) {
+    return true;
+  }
+
+  if (normalizedCounty === "kajiado" && /umma\s+universit/i.test(normalizedText)) {
+    return true;
+  }
+
+  return false;
+}
+
+function getHotelLocationForOrder(order) {
+  if (!order?.hotelId) {
+    return "";
+  }
+
+  const hotel = portalState.hotels.find((item) => item.id === order.hotelId);
+  return String(hotel?.location || "").trim();
+}
+
+function isOrderVisibleToEmployee(order) {
+  const county = getEmployeeCounty();
+  if (!county) {
+    return false;
+  }
+
+  const text = [
+    order?.customerArea,
+    order?.customerSpecificArea,
+    getHotelLocationForOrder(order),
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return matchesEmployeeCounty(text, county);
+}
+
+function isShopOrderVisibleToEmployee(order) {
+  const county = getEmployeeCounty();
+  if (!county) {
+    return false;
+  }
+
+  const text = [order?.location, order?.shopName]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean)
+    .join(" ");
+
+  return matchesEmployeeCounty(text, county);
+}
+
+function syncEmployeeVisibleCollections() {
+  portalState.orders = unfilteredOrders.filter(isOrderVisibleToEmployee);
+  portalState.ummaShopOrders = unfilteredShopOrders.filter(isShopOrderVisibleToEmployee);
+}
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function handleEmployeeOrderAlerts(snapshot) {
   if (!portalState.currentUser || !portalState.employeeProfile) {
     collectNewSnapshotDocs(snapshot, employeeOrderAlertTracker);
@@ -226,7 +319,11 @@ function handleEmployeeOrderAlerts(snapshot) {
   }
 
   const newOrders = collectNewSnapshotDocs(snapshot, employeeOrderAlertTracker);
+<<<<<<< HEAD
   newOrders.forEach((order) => {
+=======
+  newOrders.filter(isOrderVisibleToEmployee).forEach((order) => {
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     const tag = `employee-order-${order.id}`;
     if (!claimNotificationTag(tag)) {
       return;
@@ -264,6 +361,13 @@ function handleEmployeeOrderStatusAlerts(snapshot) {
       return;
     }
 
+<<<<<<< HEAD
+=======
+    if (!isOrderVisibleToEmployee({ id: orderId, ...order })) {
+      return;
+    }
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     const tag = `employee-order-paid-${orderId}`;
     if (!claimNotificationTag(tag)) {
       return;
@@ -292,7 +396,11 @@ function handleEmployeeShopOrderAlerts(snapshot) {
   }
 
   const newOrders = collectNewSnapshotDocs(snapshot, employeeShopOrderAlertTracker);
+<<<<<<< HEAD
   newOrders.forEach((order) => {
+=======
+  newOrders.filter(isShopOrderVisibleToEmployee).forEach((order) => {
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     const tag = `employee-shop-order-${order.id}`;
     if (!claimNotificationTag(tag)) {
       return;
@@ -332,6 +440,13 @@ function handleEmployeeShopOrderStatusAlerts(snapshot) {
       return;
     }
 
+<<<<<<< HEAD
+=======
+    if (!isShopOrderVisibleToEmployee({ id: orderId, ...order })) {
+      return;
+    }
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     if (!previous.paid && current.paid) {
       const tag = `employee-shop-order-paid-${orderId}`;
       if (!claimNotificationTag(tag)) {
@@ -373,6 +488,10 @@ function handleEmployeeShopOrderStatusAlerts(snapshot) {
 function subscribeToCollections() {
   onSnapshot(collection(db, "hotels"), (snapshot) => {
     portalState.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+<<<<<<< HEAD
+=======
+    syncEmployeeVisibleCollections();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     renderEmployeeView();
   }, (error) => {
     console.warn("Employee hotels subscription failed", error);
@@ -381,7 +500,12 @@ function subscribeToCollections() {
   onSnapshot(collection(db, "orders"), (snapshot) => {
     handleEmployeeOrderAlerts(snapshot);
     handleEmployeeOrderStatusAlerts(snapshot);
+<<<<<<< HEAD
     portalState.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+=======
+    unfilteredOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    syncEmployeeVisibleCollections();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     renderEmployeeView();
   }, (error) => {
     console.warn("Employee orders subscription failed", error);
@@ -390,7 +514,12 @@ function subscribeToCollections() {
   onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
     handleEmployeeShopOrderAlerts(snapshot);
     handleEmployeeShopOrderStatusAlerts(snapshot);
+<<<<<<< HEAD
     portalState.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+=======
+    unfilteredShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+    syncEmployeeVisibleCollections();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     renderEmployeeView();
   }, (error) => {
     console.warn("Employee shop orders subscription failed", error);
@@ -416,6 +545,10 @@ function subscribeToAuth() {
       portalState.profileStatus = "idle";
       portalState.pendingRegistration = false;
       portalState.authView = loadEmployeeAuthView();
+<<<<<<< HEAD
+=======
+      syncEmployeeVisibleCollections();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       renderEmployeeView();
       return;
     }
@@ -433,11 +566,19 @@ function subscribeToAuth() {
       if (portalState.profileStatus === "loading" && !portalState.pendingRegistration) {
         scheduleEmployeeProfileLoadTimeout(user.uid);
       }
+<<<<<<< HEAD
+=======
+      syncEmployeeVisibleCollections();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       renderEmployeeView();
     }, (error) => {
       console.warn("Employee profile subscription failed", error);
       clearEmployeeProfileLoadTimer();
       portalState.profileStatus = "missing";
+<<<<<<< HEAD
+=======
+      syncEmployeeVisibleCollections();
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       renderEmployeeView();
     });
   }, (error) => {
@@ -585,6 +726,14 @@ async function handleSubmit(event) {
     return;
   }
 
+<<<<<<< HEAD
+=======
+  if (form.id === "employeeSetCounty") {
+    await updateEmployeeCounty(form);
+    return;
+  }
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   if (form.id === "employeeRegister") {
     await registerEmployee(form);
   }
@@ -613,15 +762,52 @@ async function loginEmployee(form) {
   }
 }
 
+<<<<<<< HEAD
+=======
+async function updateEmployeeCounty(form) {
+  const county = String(form.elements.employeeCounty?.value || "").trim().replace(/\s+/g, " ");
+  if (!county) {
+    showToast("Enter your work county first.", "warn");
+    return;
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    showToast("Login as employee first.", "warn");
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "employees", user.uid), {
+      county,
+      updatedAt: Date.now(),
+    });
+    showToast("Work county saved.", "success");
+    form.reset();
+  } catch (error) {
+    console.error("Employee county update failed", error);
+    showToast("Failed to save work county.", "error");
+  }
+}
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 async function registerEmployee(form) {
   const fullName = form.elements.employeeName.value.trim();
   const email = form.elements.employeeEmail.value.trim();
   const idNumber = form.elements.employeeIdNumber.value.trim();
+<<<<<<< HEAD
+=======
+  const county = String(form.elements.employeeCounty?.value || "").trim().replace(/\s+/g, " ");
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   const password = form.elements.employeePass.value.trim();
   const confirmPassword = form.elements.employeePassConfirm.value.trim();
   const idCardFile = form.elements.employeeIdCard.files?.[0];
 
+<<<<<<< HEAD
   if (!fullName || !email || !idNumber || !password || !confirmPassword) {
+=======
+  if (!fullName || !email || !idNumber || !county || !password || !confirmPassword) {
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     alert("Fill all employee account details.");
     return;
   }
@@ -650,6 +836,10 @@ async function registerEmployee(form) {
       createdAt: Date.now(),
       email: credentials.user.email || email,
       fullName,
+<<<<<<< HEAD
+=======
+      county,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       idCardFileName: idCardFile.name,
       idCardDatabasePath: uploadResult.path,
       idCardUploaded: true,
@@ -660,6 +850,7 @@ async function registerEmployee(form) {
     });
 
     try {
+<<<<<<< HEAD
       await addDoc(collection(db, "notifications"), {
         message: `New employee account created: ${fullName} (${email})`,
         read: false,
@@ -667,6 +858,22 @@ async function registerEmployee(form) {
         to: "admin",
         type: "employee",
       });
+=======
+      const notification = {
+        message: `New employee account created: ${fullName} (${email})`,
+        read: false,
+        refId: credentials.user.uid,
+        timestamp: Date.now(),
+        to: "admin",
+        type: "employee",
+      };
+      const notificationId = buildNotificationDocId(notification);
+      if (notificationId) {
+        await setDoc(doc(db, "notifications", notificationId), notification, { merge: true });
+      } else {
+        await addDoc(collection(db, "notifications"), notification);
+      }
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     } catch (error) {
       console.warn("Employee notification write failed", error);
     }

@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Hotels collection: full access
+    match /hotels/{hotelId} {
+      allow read, write: if true;
+    }
+
+    // Restaurants collection: full access
+    match /restaurants/{restaurantId} {
+      allow read, write: if true;
+    }
+
+    // Main orders collection: full access
+    match /orders/{orderId} {
+      allow read, write: if true;
+    }
+
+    // Shop Here orders collection: full access
+    match /ummaShopOrders/{orderId} {
+      allow read, write: if true;
+    }
+
+    // Feedback collections: full access
+    match /feedbacks/{docId} {
+      allow read, write: if true;
+    }
+
+    match /ummaShopFeedbacks/{docId} {
+      allow read, write: if true;
+    }
+
+    // Notifications collection: full access
+    match /notifications/{docId} {
+      allow read, write: if true;
+    }
+
+    // Employee profiles: full access
+    match /employees/{uid} {
+      allow read, write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

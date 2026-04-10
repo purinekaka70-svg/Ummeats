@@ -27,6 +27,7 @@ function nowTimestamp() {
   return Date.now();
 }
 
+<<<<<<< HEAD
 async function writeNotification(firestore, payload) {
   await firestore.collection("notifications").add({
     message: String(payload.message || "Notification"),
@@ -35,6 +36,46 @@ async function writeNotification(firestore, payload) {
     to: String(payload.to || "").trim(),
     type: String(payload.type || "order").trim(),
   });
+=======
+function sanitizeNotificationKeyPart(value) {
+  return String(value || "").trim().replace(/\//g, "_").slice(0, 400);
+}
+
+function buildNotificationDocId({ refId, to, type }) {
+  const normalizedTo = sanitizeNotificationKeyPart(to);
+  const normalizedType = sanitizeNotificationKeyPart(type).toLowerCase();
+  const normalizedRefId = sanitizeNotificationKeyPart(refId);
+
+  if (!normalizedTo || !normalizedType || !normalizedRefId) {
+    return "";
+  }
+
+  return `${normalizedTo}__${normalizedType}__${normalizedRefId}`;
+}
+
+async function writeNotification(firestore, payload) {
+  const data = {
+    message: String(payload.message || "Notification"),
+    read: false,
+    ...(payload.refId ? { refId: String(payload.refId) } : {}),
+    timestamp: payload.timestamp || nowTimestamp(),
+    to: String(payload.to || "").trim(),
+    type: String(payload.type || "order").trim(),
+  };
+
+  const docId = buildNotificationDocId({
+    refId: payload.refId,
+    to: payload.to,
+    type: payload.type,
+  });
+
+  if (docId) {
+    await firestore.collection("notifications").doc(docId).set(data, { merge: true });
+    return;
+  }
+
+  await firestore.collection("notifications").add(data);
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 }
 
 function parseRecipientCount(result) {
@@ -86,13 +127,21 @@ async function trySendPush(payload) {
   }
 }
 
+<<<<<<< HEAD
 async function sendPushWithFallbackTargets({ aliasTargets = [], appId, body, filterSets = [], title, url }) {
+=======
+async function sendPushWithFallbackTargets({ aliasTargets = [], appId, body, data = null, filterSets = [], title, url }) {
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   const normalizedAliases = [...new Set(aliasTargets.map((item) => String(item || "").trim()).filter(Boolean))];
   if (normalizedAliases.length) {
     const aliasSent = await trySendPush({
       aliases: normalizedAliases,
       appId,
       body,
+<<<<<<< HEAD
+=======
+      ...(data && typeof data === "object" ? { data } : {}),
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       title,
       url,
     });
@@ -109,6 +158,10 @@ async function sendPushWithFallbackTargets({ aliasTargets = [], appId, body, fil
     const filterSent = await trySendPush({
       appId,
       body,
+<<<<<<< HEAD
+=======
+      ...(data && typeof data === "object" ? { data } : {}),
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       filters,
       title,
       url,
@@ -150,6 +203,10 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   if (!order.notificationAdminDispatchedAt) {
     await writeNotification(firestore, {
       message: orderMessage,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: "order",
@@ -161,6 +218,10 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   if (targetHotelId && !order.notificationHotelDispatchedAt) {
     await writeNotification(firestore, {
       message: orderMessage,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetHotelId,
       type: "order",
@@ -175,6 +236,10 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
         aliasTargets: ["admin"],
         appId,
         body: orderMessage,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: "order" },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "New order received",
         url: `${siteUrl}/admin.html`,
@@ -191,6 +256,10 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
         aliasTargets: [targetHotelId],
         appId,
         body: orderMessage,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: "order" },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("hotel_id", targetHotelId),
           buildTagEqualsFilter("notification_target", targetHotelId),
@@ -231,6 +300,10 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
   if (!order.notificationAdminDispatchedAt) {
     await writeNotification(firestore, {
       message,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: "umma-shop-order",
@@ -245,6 +318,10 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
         aliasTargets: ["admin"],
         appId,
         body: message,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: "umma-shop-order" },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "New Shop Here order",
         url: `${siteUrl}/umma-shop.html`,
@@ -317,6 +394,10 @@ async function dispatchShopOrderStatus({
   if (targetCustomerId && !order[config.customerInAppField]) {
     await writeNotification(firestore, {
       message: customerMessage,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetCustomerId,
       type: config.customerType,
@@ -328,6 +409,10 @@ async function dispatchShopOrderStatus({
   if (!order[config.adminInAppField]) {
     await writeNotification(firestore, {
       message: adminMessage,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: config.customerType,
@@ -342,6 +427,10 @@ async function dispatchShopOrderStatus({
         aliasTargets: [targetCustomerId],
         appId,
         body: customerMessage,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: config.customerType },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("customer_id", targetCustomerId),
           buildTagEqualsFilter("notification_target", targetCustomerId),
@@ -361,6 +450,10 @@ async function dispatchShopOrderStatus({
         aliasTargets: ["admin"],
         appId,
         body: adminMessage,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: config.customerType },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: config.title,
         url: `${siteUrl}/umma-shop.html`,
@@ -409,6 +502,10 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   if (targetCustomerId && !order.notificationCustomerPaidDispatchedAt) {
     await writeNotification(firestore, {
       message: customerMessage,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetCustomerId,
       type: "order-paid",
@@ -420,6 +517,10 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   if (!order.notificationAdminPaidDispatchedAt) {
     await writeNotification(firestore, {
       message: adminHotelMessage,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: "order-paid",
@@ -431,6 +532,10 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   if (targetHotelId && !order.notificationHotelPaidDispatchedAt) {
     await writeNotification(firestore, {
       message: adminHotelMessage,
+<<<<<<< HEAD
+=======
+      refId: orderId,
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetHotelId,
       type: "order-paid",
@@ -445,6 +550,10 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
         aliasTargets: [targetCustomerId],
         appId,
         body: customerMessage,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: "order-paid" },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("customer_id", targetCustomerId),
           buildTagEqualsFilter("notification_target", targetCustomerId),
@@ -464,6 +573,10 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
         aliasTargets: ["admin"],
         appId,
         body: adminHotelMessage,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: "order-paid" },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "Order marked as paid",
         url: `${siteUrl}/admin.html`,
@@ -480,6 +593,10 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
         aliasTargets: [targetHotelId],
         appId,
         body: adminHotelMessage,
+<<<<<<< HEAD
+=======
+        data: { refId: orderId, type: "order-paid" },
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("hotel_id", targetHotelId),
           buildTagEqualsFilter("notification_target", targetHotelId),

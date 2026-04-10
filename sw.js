@@ -1,3 +1,12 @@
+<<<<<<< HEAD
+=======
+try {
+  importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+} catch (error) {
+  // Ignore failures so offline caching still works even if the OneSignal CDN is unreachable.
+}
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 const APP_CACHE = "tamu-app-v37";
 const APP_SHELL = [
   "./",

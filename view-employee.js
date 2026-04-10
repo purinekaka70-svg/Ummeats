@@ -110,6 +110,14 @@ function renderEmployeeAuth(portalState) {
           </label>
 
           <label class="field">
+<<<<<<< HEAD
+=======
+            <span class="field-label">Work county</span>
+            <input class="input" name="employeeCounty" placeholder="e.g. Kajiado" />
+          </label>
+
+          <label class="field">
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
             <span class="field-label">Scanned ID PDF (front + back)</span>
             <input class="input input-file" accept=".pdf,application/pdf" name="employeeIdCard" type="file" />
           </label>
@@ -126,7 +134,11 @@ function renderEmployeeAuth(portalState) {
             </label>
           </div>
 
+<<<<<<< HEAD
           <p class="tiny">Upload one clear PDF that includes both front and back of the ID. Employee access is read-only and shows live platform orders only.</p>
+=======
+          <p class="tiny">Upload one clear PDF that includes both front and back of the ID. The work county controls which orders you can view in this portal.</p>
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
           <button class="button button-secondary" type="submit">Create Employee Account</button>
           <p class="tiny auth-switch">
             Already have an account?
@@ -266,11 +278,20 @@ function renderEmployeeDashboard(portalState) {
               </span>
               Menu
             </button>
+<<<<<<< HEAD
             <span class="summary-chip">${escapeHtml(profile.fullName || profile.email || "Employee")}</span>
+=======
+            <span class="summary-chip">${escapeHtml(profile.county ? `${profile.fullName || profile.email || "Employee"} · ${profile.county}` : profile.fullName || profile.email || "Employee")}</span>
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
             <button class="button button-ghost" id="logoutEmployee" type="button">Logout</button>
           </div>
         </div>
 
+<<<<<<< HEAD
+=======
+        ${profile.county ? "" : renderEmployeeCountySetupCard()}
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         ${renderEmployeeSection(currentSection, {
           mapReadyOrders,
           orders,
@@ -287,6 +308,26 @@ function renderEmployeeDashboard(portalState) {
   `;
 }
 
+<<<<<<< HEAD
+=======
+function renderEmployeeCountySetupCard() {
+  return `
+    <form id="employeeSetCounty" class="card auth-card">
+      <p class="eyebrow">Work county</p>
+      <h3 class="card-title">Set your coverage county</h3>
+      <p class="tiny">Employees only see orders and alerts for their county. Example: Kajiado.</p>
+
+      <label class="field">
+        <span class="field-label">County</span>
+        <input class="input" name="employeeCounty" placeholder="e.g. Kajiado" />
+      </label>
+
+      <button class="button button-primary" type="submit">Save County</button>
+    </form>
+  `;
+}
+
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function renderEmployeeNavButton(sectionId, label, meta, currentSection) {
   const activeClass = currentSection === sectionId ? " is-active" : "";
 
@@ -394,7 +435,11 @@ function renderEmployeeDashboardSection(context) {
             <div class="summary-item"><span>Step 4</span><strong>Review Shop Here requests</strong></div>
           </div>
 
+<<<<<<< HEAD
           <p class="tiny">Employees can view all live orders and delete Shop Here orders only. Payment and hotel setup stay on admin/hotel pages.</p>
+=======
+          <p class="tiny">Employees can view live orders and alerts for their assigned county and delete Shop Here orders only. Payment and hotel setup stay on admin/hotel pages.</p>
+>>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         </article>
       </div>
     </section>

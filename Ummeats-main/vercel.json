@@ -1,0 +1,36 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 60
+    }
+  },
+  "routes": [
+    {
+      "src": "/OneSignalSDKWorker.js",
+      "dest": "/OneSignalSDKWorker.js"
+    },
+    {
+      "src": "/OneSignalSDKUpdaterWorker.js",
+      "dest": "/OneSignalSDKUpdaterWorker.js"
+    },
+    {
+      "src": "/push/onesignal/OneSignalSDKWorker.js",
+      "dest": "/push/onesignal/OneSignalSDKWorker.js"
+    },
+    {
+      "src": "/push/onesignal/OneSignalSDKUpdaterWorker.js",
+      "dest": "/push/onesignal/OneSignalSDKUpdaterWorker.js"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}
