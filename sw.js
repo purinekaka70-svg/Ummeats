@@ -1,3 +1,9 @@
+try {
+  importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+} catch (error) {
+  // Ignore failures so offline caching still works even if the OneSignal CDN is unreachable.
+}
+
 const APP_CACHE = "tamu-app-v37";
 const APP_SHELL = [
   "./",
@@ -29,7 +35,7 @@ const APP_SHELL = [
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
 ];
-const APP_ICON = "./icons/icon-192.png";
+const APP_ICON = "https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png";
 
 function resolveNotificationLink(link) {
   const fallback = self.registration.scope || "./";

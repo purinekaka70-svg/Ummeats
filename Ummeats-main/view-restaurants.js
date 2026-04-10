@@ -52,7 +52,7 @@ export function renderRestaurants() {
                 <article class="card launch-card">
                   <p class="launch-eyebrow">Delivery Marketplace</p>
                   <h2 class="launch-title">Go Live Supermarkets</h2>
-                  <p class="launch-copy">Shop supermarkets, essentials, and delivery-ready items around Kajiado.</p>
+                  <p class="launch-copy">Shop supermarkets, essentials, and delivery-ready items around Kenya.</p>
                   <div class="launch-actions">
                     <a class="button button-ghost" href="${MARKETPLACE_SHOP_HERE_URL}" target="_blank" rel="noreferrer">
                       Shop Here
@@ -109,6 +109,7 @@ function renderHotelLaunchCard(directoryOpen, selectedLocation, totalHotels) {
 
   return `
     <article class="card launch-card">
+      <img src="https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png" alt="Tamu Express Logo" style="height: 4rem; width: 4rem; margin-bottom: 1rem; border-radius: 0.75rem; object-fit: cover;" />
       <p class="launch-eyebrow">Tamu Express Delivery</p>
       <h1 class="launch-title">Food Delivery and Hotel Orders in Kenya</h1>
       <p class="launch-copy">${escapeHtml(copy)}</p>

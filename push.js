@@ -12,8 +12,8 @@ const DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE = "push/onesignal/";
 const FALLBACK_ONESIGNAL_SERVICE_WORKER_PATH = "OneSignalSDKWorker.js";
 const ROOT_ONESIGNAL_SERVICE_WORKER_SCOPE = "/";
 const ONESIGNAL_SDK_LOAD_TIMEOUT_MS = 15000;
-const PUSH_NOTIFICATION_ICON = "./icons/icon-192.png";
-const NOTIFICATION_TAG_TTL_MS = 8000;
+const PUSH_NOTIFICATION_ICON = "https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png";
+const NOTIFICATION_TAG_TTL_MS = 30000;
 let foregroundListenerBound = false;
 let identityListenersBound = false;
 let notificationRegistrationPromise = null;
@@ -285,10 +285,17 @@ function bindOneSignalForegroundListeners(OneSignal) {
 
   foregroundListenerBound = true;
   OneSignal.Notifications.addEventListener("foregroundWillDisplay", (event) => {
+    if (typeof event?.preventDefault === "function") {
+      event.preventDefault();
+    }
+
     const title = event.notification?.title || "New notification";
     const body = event.notification?.body || "You have a new update.";
     const link = event.notification?.launchURL || window.location.href;
-    const tag = event.notification?.notificationId || `${title}:${body}`;
+    const payload = event.notification?.additionalData || event.notification?.data || {};
+    const refId = String(payload?.refId || payload?.ref_id || "").trim();
+    const type = String(payload?.type || payload?.notificationType || "notification").trim().toLowerCase();
+    const tag = refId ? `notif-${type}-${refId}` : event.notification?.notificationId || `${title}:${body}`;
 
     if (!claimNotificationTag(tag)) {
       return;

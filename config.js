@@ -21,13 +21,40 @@ export const DISTANCE_SERVICE_FEE_BANDS = [
 export const SUPPORT_CONTACTS = ["0115613332", "0116860686"];
 export const ONESIGNAL_APP_ID = "8a058e59-ba58-44ae-a3fb-2f8c53778035";
 export const ONESIGNAL_SAFARI_WEB_ID = "web.onesignal.auto.27d2eba6-7621-43e8-b8d4-d2a9de3b8fea";
-export const ONESIGNAL_SERVICE_WORKER_PATH = "OneSignalSDKWorker.js";
+export const ONESIGNAL_SERVICE_WORKER_PATH = "sw.js";
 export const ONESIGNAL_SERVICE_WORKER_SCOPE = "/";
 export const SMS_SIMULATION_ENABLED = true;
 export const MARKETPLACE_SHOP_HERE_URL = "https://feedback-tamu.vercel.app/";
-export const SHOP_HERE_URL = "./umma-shop.html";
 export const DEFAULT_HOTEL_LOCATION = "Around Umma University";
-export const UMMA_SHOP_PAGE_URL = "./umma-shop.html";
+export const DEFAULT_SITE_URL = "https://ummeats.vercel.app";
+
+function resolveRuntimeSiteUrl() {
+  if (typeof window === "undefined") {
+    return DEFAULT_SITE_URL;
+  }
+
+  try {
+    const hostname = String(window.location?.hostname || "").trim().toLowerCase();
+    const origin = String(window.location?.origin || "").trim();
+    const localHosts = new Set(["localhost", "127.0.0.1"]);
+
+    if (!hostname || !origin) {
+      return DEFAULT_SITE_URL;
+    }
+
+    if (localHosts.has(hostname) || hostname.endsWith(".vercel.app")) {
+      return origin;
+    }
+
+    return DEFAULT_SITE_URL;
+  } catch {
+    return DEFAULT_SITE_URL;
+  }
+}
+
+export const SITE_URL = resolveRuntimeSiteUrl();
+export const SHOP_HERE_URL = `${SITE_URL}/umma-shop.html`;
+export const UMMA_SHOP_PAGE_URL = SHOP_HERE_URL;
 export const HOTEL_LOCATION_SUGGESTIONS = [
   DEFAULT_HOTEL_LOCATION,
   "My Qwetu Residence",

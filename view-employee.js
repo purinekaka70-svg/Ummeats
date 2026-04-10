@@ -110,6 +110,11 @@ function renderEmployeeAuth(portalState) {
           </label>
 
           <label class="field">
+            <span class="field-label">Work county</span>
+            <input class="input" name="employeeCounty" placeholder="e.g. Kajiado" />
+          </label>
+
+          <label class="field">
             <span class="field-label">Scanned ID PDF (front + back)</span>
             <input class="input input-file" accept=".pdf,application/pdf" name="employeeIdCard" type="file" />
           </label>
@@ -126,7 +131,7 @@ function renderEmployeeAuth(portalState) {
             </label>
           </div>
 
-          <p class="tiny">Upload one clear PDF that includes both front and back of the ID. Employee access is read-only and shows live platform orders only.</p>
+          <p class="tiny">Upload one clear PDF that includes both front and back of the ID. The work county controls which orders you can view in this portal.</p>
           <button class="button button-secondary" type="submit">Create Employee Account</button>
           <p class="tiny auth-switch">
             Already have an account?
@@ -266,10 +271,12 @@ function renderEmployeeDashboard(portalState) {
               </span>
               Menu
             </button>
-            <span class="summary-chip">${escapeHtml(profile.fullName || profile.email || "Employee")}</span>
+            <span class="summary-chip">${escapeHtml(profile.county ? `${profile.fullName || profile.email || "Employee"} · ${profile.county}` : profile.fullName || profile.email || "Employee")}</span>
             <button class="button button-ghost" id="logoutEmployee" type="button">Logout</button>
           </div>
         </div>
+
+        ${profile.county ? "" : renderEmployeeCountySetupCard()}
 
         ${renderEmployeeSection(currentSection, {
           mapReadyOrders,
@@ -284,6 +291,23 @@ function renderEmployeeDashboard(portalState) {
 
       ${renderEmployeeMapModal(portalState.mapModal, portalState.mapMode)}
     </section>
+  `;
+}
+
+function renderEmployeeCountySetupCard() {
+  return `
+    <form id="employeeSetCounty" class="card auth-card">
+      <p class="eyebrow">Work county</p>
+      <h3 class="card-title">Set your coverage county</h3>
+      <p class="tiny">Employees only see orders and alerts for their county. Example: Kajiado.</p>
+
+      <label class="field">
+        <span class="field-label">County</span>
+        <input class="input" name="employeeCounty" placeholder="e.g. Kajiado" />
+      </label>
+
+      <button class="button button-primary" type="submit">Save County</button>
+    </form>
   `;
 }
 
@@ -394,7 +418,7 @@ function renderEmployeeDashboardSection(context) {
             <div class="summary-item"><span>Step 4</span><strong>Review Shop Here requests</strong></div>
           </div>
 
-          <p class="tiny">Employees can view all live orders and delete Shop Here orders only. Payment and hotel setup stay on admin/hotel pages.</p>
+          <p class="tiny">Employees can view live orders and alerts for their assigned county and delete Shop Here orders only. Payment and hotel setup stay on admin/hotel pages.</p>
         </article>
       </div>
     </section>

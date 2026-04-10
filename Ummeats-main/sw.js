@@ -29,7 +29,7 @@ const APP_SHELL = [
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
 ];
-const APP_ICON = "./icons/icon-192.png";
+const APP_ICON = "https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png";
 
 function resolveNotificationLink(link) {
   const fallback = self.registration.scope || "./";

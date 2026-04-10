@@ -1,6 +1,17 @@
-import { addDoc, collection } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { addDoc, collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { db } from "./firebase.js";
+import { buildNotificationDocId } from "./helpers.js";
 import { dispatchOrderNotification } from "./notification-api.js";
+
+function queueNotificationWrite(writes, notification) {
+  const notificationId = buildNotificationDocId(notification);
+  if (notificationId) {
+    writes.push(setDoc(doc(db, "notifications", notificationId), notification, { merge: true }));
+    return;
+  }
+
+  writes.push(addDoc(collection(db, "notifications"), notification));
+}
 
 export async function notifyPaidOrderStatus(order, hotelName) {
   const normalizedHotelName = String(hotelName || "selected hotel").trim() || "selected hotel";
@@ -19,40 +30,38 @@ export async function notifyPaidOrderStatus(order, hotelName) {
 
   const timestamp = Date.now();
   const writes = [];
+  const refId = order.id ? String(order.id) : "";
 
   if (order.customerId) {
-    writes.push(
-      addDoc(collection(db, "notifications"), {
-        message: `Your order for ${normalizedHotelName} has been marked as paid.`,
-        read: false,
-        timestamp,
-        to: order.customerId,
-        type: "order-paid",
-      }),
-    );
+    queueNotificationWrite(writes, {
+      message: `Your order for ${normalizedHotelName} has been marked as paid.`,
+      read: false,
+      ...(refId ? { refId } : {}),
+      timestamp,
+      to: order.customerId,
+      type: "order-paid",
+    });
   }
 
   if (order.hotelId) {
-    writes.push(
-      addDoc(collection(db, "notifications"), {
-        message: `Order for ${customerName} at ${normalizedHotelName} has been marked as paid.`,
-        read: false,
-        timestamp,
-        to: order.hotelId,
-        type: "order-paid",
-      }),
-    );
-  }
-
-  writes.push(
-    addDoc(collection(db, "notifications"), {
+    queueNotificationWrite(writes, {
       message: `Order for ${customerName} at ${normalizedHotelName} has been marked as paid.`,
       read: false,
+      ...(refId ? { refId } : {}),
       timestamp,
-      to: "admin",
+      to: order.hotelId,
       type: "order-paid",
-    }),
-  );
+    });
+  }
+
+  queueNotificationWrite(writes, {
+    message: `Order for ${customerName} at ${normalizedHotelName} has been marked as paid.`,
+    read: false,
+    ...(refId ? { refId } : {}),
+    timestamp,
+    to: "admin",
+    type: "order-paid",
+  });
 
   try {
     await Promise.all(writes);
@@ -101,26 +110,27 @@ export async function notifyShopOrderStatus(order, statusType = "paid") {
   }
 
   const timestamp = Date.now();
-  const writes = [
-    addDoc(collection(db, "notifications"), {
-      message: adminMessage,
-      read: false,
-      timestamp,
-      to: "admin",
-      type: config.customerType,
-    }),
-  ];
+  const writes = [];
+  const refId = order?.id ? String(order.id) : "";
+
+  queueNotificationWrite(writes, {
+    message: adminMessage,
+    read: false,
+    ...(refId ? { refId } : {}),
+    timestamp,
+    to: "admin",
+    type: config.customerType,
+  });
 
   if (customerTarget) {
-    writes.push(
-      addDoc(collection(db, "notifications"), {
-        message: customerMessage,
-        read: false,
-        timestamp,
-        to: customerTarget,
-        type: config.customerType,
-      }),
-    );
+    queueNotificationWrite(writes, {
+      message: customerMessage,
+      read: false,
+      ...(refId ? { refId } : {}),
+      timestamp,
+      to: customerTarget,
+      type: config.customerType,
+    });
   }
 
   try {

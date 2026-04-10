@@ -30,18 +30,9 @@ import { elements, getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
 
-const adminOrderAlertTracker = {
-  ids: new Set(),
-  ready: false,
-};
-const adminShopOrderAlertTracker = {
-  ids: new Set(),
-  ready: false,
-};
 const adminNotificationAlertTracker = new Set();
-const adminOrderStatusTracker = new Map();
-const adminShopOrderStatusTracker = new Map();
 const adminNotificationPromptButton = document.getElementById("adminNotificationPromptButton");
+let adminCollectionUnsubscribers = [];
 
 bootstrap();
 
@@ -53,8 +44,26 @@ function bootstrap() {
   bindPushSyncEvents();
   hydrateShell();
   subscribeToAuth();
-  subscribeToCollections();
   renderAdmin();
+}
+
+function stopAdminCollectionSubscriptions() {
+  adminCollectionUnsubscribers.forEach((unsubscribe) => {
+    try {
+      unsubscribe();
+    } catch {
+      // ignore
+    }
+  });
+  adminCollectionUnsubscribers = [];
+
+  state.hotels = [];
+  state.restaurants = [];
+  state.orders = [];
+  state.ummaShopOrders = [];
+  state.feedbacks = [];
+  state.notifications = [];
+  state.employees = [];
 }
 
 function bindEvents() {
@@ -175,87 +184,42 @@ async function handleAdminNotificationPromptClick() {
   updateAdminNotificationPromptButtonState();
 }
 
-function subscribeToCollections() {
-  onSnapshot(collection(db, "hotels"), (snapshot) => {
-    state.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderAdmin();
-  });
-
-  onSnapshot(collection(db, "restaurants"), (snapshot) => {
-    state.restaurants = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderAdmin();
-  });
-
-  onSnapshot(collection(db, "orders"), (snapshot) => {
-    handleAdminOrderAlerts(snapshot);
-    handleAdminOrderStatusAlerts(snapshot);
-    state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderAdmin();
-  });
-
-  onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
-    handleAdminShopOrderAlerts(snapshot);
-    handleAdminShopOrderStatusAlerts(snapshot);
-    state.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderAdmin();
-  });
-
-  onSnapshot(collection(db, "feedbacks"), (snapshot) => {
-    state.feedbacks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderAdmin();
-  });
-
-  onSnapshot(collection(db, "notifications"), (snapshot) => {
-    handleAdminNotificationAlerts(snapshot);
-    state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderAdmin();
-  });
-
-  onSnapshot(collection(db, "employees"), (snapshot) => {
-    state.employees = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
-    renderAdmin();
-  });
-}
-
-function collectNewSnapshotDocs(snapshot, tracker) {
-  const currentIds = new Set(snapshot.docs.map((item) => item.id));
-
-  if (!tracker.ready) {
-    tracker.ready = true;
-    tracker.ids = currentIds;
-    return [];
-  }
-
-  const additions = snapshot.docs
-    .filter((item) => !tracker.ids.has(item.id) && !item.metadata.hasPendingWrites)
-    .map((item) => ({ id: item.id, ...item.data() }));
-
-  tracker.ids = currentIds;
-  return additions;
-}
-
-function handleAdminOrderAlerts(snapshot) {
-  const user = auth.currentUser;
-  const newOrders = collectNewSnapshotDocs(snapshot, adminOrderAlertTracker);
-  if (!user || !newOrders.length) {
+function startAdminCollectionSubscriptions() {
+  if (adminCollectionUnsubscribers.length) {
     return;
   }
 
-  newOrders.forEach((order) => {
-    const tag = `order-${order.id}`;
-    if (!claimNotificationTag(tag)) {
-      return;
-    }
-
-    const hotelName = state.hotels.find((item) => item.id === order.hotelId)?.name || "selected hotel";
-    const title = "New order received";
-    const body = `${order.customerName || "A customer"} placed an order for ${hotelName}.`;
-    showToast(`${title}: ${body}`, "info");
-    void showBrowserNotification(title, body, {
-      link: "./admin.html",
-      tag,
-    });
-  });
+  adminCollectionUnsubscribers = [
+    onSnapshot(collection(db, "hotels"), (snapshot) => {
+      state.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "restaurants"), (snapshot) => {
+      state.restaurants = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "orders"), (snapshot) => {
+      state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
+      state.ummaShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "feedbacks"), (snapshot) => {
+      state.feedbacks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "notifications"), (snapshot) => {
+      handleAdminNotificationAlerts(snapshot);
+      state.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+    onSnapshot(collection(db, "employees"), (snapshot) => {
+      state.employees = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+      renderAdmin();
+    }),
+  ];
 }
 
 function subscribeToAuth() {
@@ -264,6 +228,7 @@ function subscribeToAuth() {
       state.currentAdmin = false;
       state.adminPanelSection = "dashboard";
       state.adminSidebarOpen = false;
+      stopAdminCollectionSubscriptions();
       renderAdmin();
       updateAdminNotificationPromptButtonState();
       return;
@@ -273,6 +238,7 @@ function subscribeToAuth() {
     state.currentAdmin = allowed;
 
     if (allowed) {
+      startAdminCollectionSubscriptions();
       void registerPushSubscription("admin", user.email || "Admin", {
         requestPermission: false,
         role: "admin",
@@ -283,6 +249,7 @@ function subscribeToAuth() {
       return;
     }
 
+    stopAdminCollectionSubscriptions();
     await signOut(auth).catch(() => undefined);
     state.currentAdmin = false;
     state.adminPanelSection = "dashboard";
@@ -290,140 +257,6 @@ function subscribeToAuth() {
     showToast("This account is registered as employee access, not admin.", "warn");
     renderAdmin();
     updateAdminNotificationPromptButtonState();
-  });
-}
-
-function handleAdminOrderStatusAlerts(snapshot) {
-  if (!auth.currentUser || !state.currentAdmin) {
-    return;
-  }
-
-  const currentIds = new Set(snapshot.docs.map((item) => item.id));
-
-  snapshot.docs.forEach((item) => {
-    if (item.metadata.hasPendingWrites) {
-      return;
-    }
-
-    const order = item.data() || {};
-    const orderId = item.id;
-    const currentStatus = String(order.status || "Pending");
-    const previousStatus = adminOrderStatusTracker.get(orderId);
-    adminOrderStatusTracker.set(orderId, currentStatus);
-
-    if (!previousStatus || previousStatus === currentStatus || currentStatus !== "Paid") {
-      return;
-    }
-
-    const hotelName = state.hotels.find((hotel) => hotel.id === order.hotelId)?.name || "selected hotel";
-    const title = "Order marked as paid";
-    const body = `Order for ${order.customerName || "A customer"} at ${hotelName} has been marked as paid.`;
-    const tag = `admin-order-paid-${orderId}`;
-    if (!claimNotificationTag(tag)) {
-      return;
-    }
-
-    showToast(`${title}: ${body}`, "success");
-    void showBrowserNotification(title, body, {
-      link: "./admin.html",
-      tag,
-    });
-  });
-
-  [...adminOrderStatusTracker.keys()].forEach((orderId) => {
-    if (!currentIds.has(orderId)) {
-      adminOrderStatusTracker.delete(orderId);
-    }
-  });
-}
-
-function handleAdminShopOrderAlerts(snapshot) {
-  const user = auth.currentUser;
-  const newOrders = collectNewSnapshotDocs(snapshot, adminShopOrderAlertTracker);
-  if (!user || !newOrders.length) {
-    return;
-  }
-
-  newOrders.forEach((order) => {
-    const tag = `admin-shop-order-${order.id}`;
-    if (!claimNotificationTag(tag)) {
-      return;
-    }
-
-    const customerName = String(order.customerName || "A customer").trim() || "A customer";
-    const shopName = String(order.shopName || "Around Umma University").trim() || "Around Umma University";
-    const title = "New Shop Here order";
-    const body = `${customerName} submitted a Shop Here order for ${shopName}.`;
-    showToast(`${title}: ${body}`, "info");
-    void showBrowserNotification(title, body, {
-      link: "./umma-shop.html",
-      tag,
-    });
-  });
-}
-
-function handleAdminShopOrderStatusAlerts(snapshot) {
-  if (!auth.currentUser || !state.currentAdmin) {
-    return;
-  }
-
-  const currentIds = new Set(snapshot.docs.map((item) => item.id));
-
-  snapshot.docs.forEach((item) => {
-    if (item.metadata.hasPendingWrites) {
-      return;
-    }
-
-    const order = item.data() || {};
-    const orderId = item.id;
-    const previous = adminShopOrderStatusTracker.get(orderId) || {
-      delivered: false,
-      paid: false,
-    };
-    const current = {
-      delivered: Boolean(order.delivered),
-      paid: Boolean(order.paid),
-    };
-    adminShopOrderStatusTracker.set(orderId, current);
-
-    const customerName = String(order.customerName || "A customer").trim() || "A customer";
-    const shopName = String(order.shopName || "Around Umma University").trim() || "Around Umma University";
-
-    if (!previous.paid && current.paid) {
-      const tag = `admin-shop-order-paid-${orderId}`;
-      if (!claimNotificationTag(tag)) {
-        return;
-      }
-
-      const title = "Shop Here order marked as paid";
-      const body = `${customerName}'s Shop Here order for ${shopName} is now marked as paid.`;
-      showToast(`${title}: ${body}`, "success");
-      void showBrowserNotification(title, body, {
-        link: "./umma-shop.html",
-        tag,
-      });
-    }
-
-    if (!previous.delivered && current.delivered) {
-      const tag = `admin-shop-order-delivered-${orderId}`;
-      if (!claimNotificationTag(tag)) {
-        return;
-      }
-
-      const title = "Shop Here order marked as delivered";
-      const body = `${customerName}'s Shop Here order for ${shopName} is now marked as delivered.`;
-      showToast(`${title}: ${body}`, "success");
-      void showBrowserNotification(title, body, {
-        link: "./umma-shop.html",
-        tag,
-      });
-    }
-  });
-
-  [...adminShopOrderStatusTracker.keys()].forEach((orderId) => {
-    if (!currentIds.has(orderId)) {
-      adminShopOrderStatusTracker.delete(orderId);
-    }
   });
 }
 
@@ -483,7 +316,9 @@ function handleAdminNotificationAlerts(snapshot) {
 
     const title = resolveAdminNotificationTitle(item);
     const body = String(item.message || "You have a new update.");
-    const tag = `admin-notif-${docSnapshot.id}`;
+    const refId = String(item.refId || "").trim();
+    const type = String(item.type || "notification").trim().toLowerCase();
+    const tag = refId ? `notif-${type}-${refId}` : `admin-notif-${docSnapshot.id}`;
     if (!claimNotificationTag(tag)) {
       return;
     }
@@ -665,7 +500,7 @@ async function isAllowedAdmin(uid) {
     return !employeeProfile.exists();
   } catch (error) {
     console.warn("Admin access check failed", error);
-    return true;
+    return false;
   }
 }
 
