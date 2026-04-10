@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-import { addDoc, collection } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
-import { db } from "./firebase.js";
-import { dispatchOrderNotification } from "./notification-api.js";
-
-=======
 import { addDoc, collection, doc, setDoc } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import { db } from "./firebase.js";
 import { buildNotificationDocId } from "./helpers.js";
@@ -19,7 +13,6 @@ function queueNotificationWrite(writes, notification) {
   writes.push(addDoc(collection(db, "notifications"), notification));
 }
 
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 export async function notifyPaidOrderStatus(order, hotelName) {
   const normalizedHotelName = String(hotelName || "selected hotel").trim() || "selected hotel";
   const customerName = String(order.customerName || "A customer").trim() || "A customer";
@@ -37,42 +30,6 @@ export async function notifyPaidOrderStatus(order, hotelName) {
 
   const timestamp = Date.now();
   const writes = [];
-<<<<<<< HEAD
-
-  if (order.customerId) {
-    writes.push(
-      addDoc(collection(db, "notifications"), {
-        message: `Your order for ${normalizedHotelName} has been marked as paid.`,
-        read: false,
-        timestamp,
-        to: order.customerId,
-        type: "order-paid",
-      }),
-    );
-  }
-
-  if (order.hotelId) {
-    writes.push(
-      addDoc(collection(db, "notifications"), {
-        message: `Order for ${customerName} at ${normalizedHotelName} has been marked as paid.`,
-        read: false,
-        timestamp,
-        to: order.hotelId,
-        type: "order-paid",
-      }),
-    );
-  }
-
-  writes.push(
-    addDoc(collection(db, "notifications"), {
-      message: `Order for ${customerName} at ${normalizedHotelName} has been marked as paid.`,
-      read: false,
-      timestamp,
-      to: "admin",
-      type: "order-paid",
-    }),
-  );
-=======
   const refId = order.id ? String(order.id) : "";
 
   if (order.customerId) {
@@ -105,7 +62,6 @@ export async function notifyPaidOrderStatus(order, hotelName) {
     to: "admin",
     type: "order-paid",
   });
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 
   try {
     await Promise.all(writes);
@@ -154,28 +110,6 @@ export async function notifyShopOrderStatus(order, statusType = "paid") {
   }
 
   const timestamp = Date.now();
-<<<<<<< HEAD
-  const writes = [
-    addDoc(collection(db, "notifications"), {
-      message: adminMessage,
-      read: false,
-      timestamp,
-      to: "admin",
-      type: config.customerType,
-    }),
-  ];
-
-  if (customerTarget) {
-    writes.push(
-      addDoc(collection(db, "notifications"), {
-        message: customerMessage,
-        read: false,
-        timestamp,
-        to: customerTarget,
-        type: config.customerType,
-      }),
-    );
-=======
   const writes = [];
   const refId = order?.id ? String(order.id) : "";
 
@@ -197,7 +131,6 @@ export async function notifyShopOrderStatus(order, statusType = "paid") {
       to: customerTarget,
       type: config.customerType,
     });
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   }
 
   try {
