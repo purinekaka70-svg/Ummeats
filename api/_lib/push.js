@@ -33,11 +33,7 @@ function getFirestore() {
   return admin.firestore();
 }
 
-<<<<<<< HEAD
-async function sendPushMessage({ aliases = [], appId, body, filters = null, title, url }) {
-=======
 async function sendPushMessage({ aliases = [], appId, body, data = null, filters = null, title, url }) {
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   const restApiKey = requireEnv("ONESIGNAL_REST_API_KEY");
 
   const hasAliases = Array.isArray(aliases) && aliases.length > 0;
@@ -51,10 +47,7 @@ async function sendPushMessage({ aliases = [], appId, body, data = null, filters
     contents: {
       en: body,
     },
-<<<<<<< HEAD
-=======
     ...(data && typeof data === "object" ? { data } : {}),
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     headings: {
       en: title,
     },
