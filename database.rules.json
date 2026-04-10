@@ -1,0 +1,31 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "employeeIdCards": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true)",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['base64', 'fileName', 'mimeType', 'sizeBytes', 'uploadedAt'])",
+        "base64": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 8000000"
+        },
+        "fileName": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-zA-Z0-9._-]{1,120}$/)"
+        },
+        "mimeType": {
+          ".validate": "newData.isString() && newData.val() === 'application/pdf'"
+        },
+        "sizeBytes": {
+          ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 5242880"
+        },
+        "uploadedAt": {
+          ".validate": "newData.isNumber() && newData.val() > 0"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

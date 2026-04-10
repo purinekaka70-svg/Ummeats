@@ -1,12 +1,14 @@
-const APP_CACHE = "tamu-app-v31";
+const APP_CACHE = "tamu-app-v37";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./admin.html",
+  "./employee.html",
   "./umma-shop.html",
   "./styles.css",
   "./app.js",
   "./admin-page.js",
+  "./employee-page.js",
   "./config.js",
   "./firebase.js",
   "./helpers.js",
@@ -17,6 +19,7 @@ const APP_SHELL = [
   "./umma-shop.js",
   "./view-admin.js",
   "./view-common.js",
+  "./view-employee.js",
   "./view-hotel.js",
   "./view-orders.js",
   "./view-restaurants.js",
@@ -26,7 +29,7 @@ const APP_SHELL = [
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
 ];
-const APP_ICON = "./icons/icon-192.png";
+const APP_ICON = "https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png";
 
 function resolveNotificationLink(link) {
   const fallback = self.registration.scope || "./";

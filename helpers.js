@@ -2,6 +2,11 @@ export function formatCurrency(value) {
   return `KSh ${Number(value || 0).toLocaleString("en-KE")}`;
 }
 
+export function toFiniteNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export const MENU_DAY_OPTIONS = [
   "Monday",
   "Tuesday",
@@ -40,6 +45,65 @@ export function formatDateOnly(timestamp) {
   } catch {
     return "Not set";
   }
+}
+
+export function normalizeCoordinates(value) {
+  const latitude = toFiniteNumber(value?.latitude ?? value?.lat);
+  const longitude = toFiniteNumber(value?.longitude ?? value?.lng);
+  const accuracy = toFiniteNumber(value?.accuracy);
+
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return null;
+  }
+
+  return {
+    ...(Number.isFinite(accuracy) ? { accuracy } : {}),
+    latitude: Math.max(-90, Math.min(90, latitude)),
+    longitude: Math.max(-180, Math.min(180, longitude)),
+  };
+}
+
+export function calculateDistanceKm(origin, destination) {
+  const start = normalizeCoordinates(origin);
+  const end = normalizeCoordinates(destination);
+
+  if (!start || !end) {
+    return null;
+  }
+
+  const earthRadiusKm = 6371;
+  const latDelta = ((end.latitude - start.latitude) * Math.PI) / 180;
+  const lonDelta = ((end.longitude - start.longitude) * Math.PI) / 180;
+  const startLat = (start.latitude * Math.PI) / 180;
+  const endLat = (end.latitude * Math.PI) / 180;
+
+  const a =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(startLat) * Math.cos(endLat) * Math.sin(lonDelta / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+}
+
+export function formatDistanceKm(distanceKm) {
+  if (!Number.isFinite(distanceKm) || distanceKm < 0) {
+    return "Unknown";
+  }
+
+  if (distanceKm < 1) {
+    return `${Math.max(50, Math.round(distanceKm * 1000))} m`;
+  }
+
+  return `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km`;
+}
+
+export function formatCoordinatePair(value) {
+  const coordinates = normalizeCoordinates(value);
+  if (!coordinates) {
+    return "Unknown";
+  }
+
+  return `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`;
 }
 
 export function pluralize(count) {

@@ -10,6 +10,7 @@ export const state = {
   ummaShopOrders: [],
   feedbacks: [],
   notifications: [],
+  employees: [],
   cartByHotel: {},
   checkoutDrafts: {},
   activeHotelMenuId: null,
@@ -19,6 +20,7 @@ export const state = {
   currentInfoSection: null,
   selectedLocation: null,
   currentHotelId: null,
+  hotelAuthView: "login",
   currentAdmin: false,
   adminPanelSection: "dashboard",
   adminSidebarOpen: false,
@@ -33,6 +35,7 @@ export const elements = {
   footer: document.getElementById("footer"),
   mainContent: document.getElementById("mainContent"),
   installAppButton: document.getElementById("installAppButton"),
+  notificationPromptButton: document.getElementById("notificationPromptButton"),
   heroHotelCount: document.getElementById("heroHotelCount"),
   heroOrderCount: document.getElementById("heroOrderCount"),
   heroRestaurantCount: document.getElementById("heroRestaurantCount"),
@@ -138,8 +141,157 @@ export function getVisibleOrders() {
   return state.orders.filter((order) => order.customerId === CUSTOMER_ID);
 }
 
+function normalizeNotificationTimestamp(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function createNotificationFingerprint(item) {
+  const type = String(item?.type || "").trim().toLowerCase();
+  const message = String(item?.message || "").trim();
+  const timestamp = normalizeNotificationTimestamp(item?.timestamp);
+  return `${type}|${message}|${timestamp}`;
+}
+
+function buildAdminFallbackNotifications() {
+  const orderNotifications = state.orders.map((order) => {
+    const hotelName = getHotelById(order.hotelId).name;
+    const customerName = String(order.customerName || "A customer").trim() || "A customer";
+    return {
+      fallback: true,
+      id: `fallback-admin-order-${order.id}`,
+      message: `${customerName} placed an order for ${hotelName}.`,
+      read: true,
+      timestamp: normalizeNotificationTimestamp(order.createdAt),
+      to: "admin",
+      type: "order",
+    };
+  });
+
+  const shopOrderNotifications = state.ummaShopOrders.map((order) => {
+    const customerName = String(order.customerName || "A customer").trim() || "A customer";
+    const shopName = String(order.shopName || "Around Umma University").trim() || "Around Umma University";
+    return {
+      fallback: true,
+      id: `fallback-admin-shop-${order.id}`,
+      message: `${customerName} submitted a Shop Here order for ${shopName}.`,
+      read: true,
+      timestamp: normalizeNotificationTimestamp(order.createdAt),
+      to: "admin",
+      type: "umma-shop-order",
+    };
+  });
+
+  const feedbackNotifications = state.feedbacks.map((feedback) => {
+    const sender = String(feedback.name || "Anonymous").trim() || "Anonymous";
+    const phone = String(feedback.phone || "N/A").trim() || "N/A";
+    return {
+      fallback: true,
+      id: `fallback-admin-feedback-${feedback.id}`,
+      message: `New feedback from ${sender} (${phone})`,
+      read: true,
+      timestamp: normalizeNotificationTimestamp(feedback.createdAt),
+      to: "admin",
+      type: "feedback",
+    };
+  });
+
+  return [...orderNotifications, ...shopOrderNotifications, ...feedbackNotifications];
+}
+
+function buildHotelFallbackNotifications(hotelId) {
+  return state.orders
+    .filter((order) => String(order.hotelId || "").trim() === hotelId)
+    .map((order) => {
+      const customerName = String(order.customerName || "A customer").trim() || "A customer";
+      const normalizedStatus = String(order.status || "Pending").trim().toLowerCase();
+      const isPaid = normalizedStatus === "paid";
+
+      return {
+        fallback: true,
+        id: `fallback-hotel-order-${hotelId}-${order.id}`,
+        message: isPaid
+          ? `Order for ${customerName} has been marked as paid.`
+          : `${customerName} placed a new order.`,
+        read: true,
+        timestamp: normalizeNotificationTimestamp(order.createdAt),
+        to: hotelId,
+        type: isPaid ? "order-paid" : "order",
+      };
+    });
+}
+
+function buildCustomerFallbackNotifications(customerId) {
+  return state.orders
+    .filter((order) => String(order.customerId || "").trim() === customerId)
+    .map((order) => {
+      const hotelName = getHotelById(order.hotelId).name;
+      const normalizedStatus = String(order.status || "Pending").trim().toLowerCase();
+      const isPaid = normalizedStatus === "paid";
+
+      return {
+        fallback: true,
+        id: `fallback-customer-order-${customerId}-${order.id}`,
+        message: isPaid
+          ? `Your order for ${hotelName} has been marked as paid.`
+          : `Your order for ${hotelName} has been received.`,
+        read: true,
+        timestamp: normalizeNotificationTimestamp(order.createdAt),
+        to: customerId,
+        type: isPaid ? "order-paid" : "order",
+      };
+    });
+}
+
+function buildFallbackNotificationsForTarget(target) {
+  if (!target) {
+    return [];
+  }
+
+  if (target === "admin") {
+    return buildAdminFallbackNotifications();
+  }
+
+  if (state.hotels.some((hotel) => hotel.id === target)) {
+    return buildHotelFallbackNotifications(target);
+  }
+
+  return buildCustomerFallbackNotifications(target);
+}
+
 export function getNotificationsForTarget(target) {
-  return state.notifications.filter((item) => item.to === target);
+  const normalizedTarget = String(target || "").trim();
+  if (!normalizedTarget) {
+    return [];
+  }
+
+  const directNotifications = state.notifications.filter(
+    (item) => String(item.to || "").trim() === normalizedTarget,
+  );
+  const fallbackNotifications = buildFallbackNotificationsForTarget(normalizedTarget);
+
+  if (!directNotifications.length) {
+    return fallbackNotifications;
+  }
+
+  if (!fallbackNotifications.length) {
+    return directNotifications;
+  }
+
+  const fingerprints = new Set(directNotifications.map(createNotificationFingerprint));
+  const merged = [...directNotifications];
+
+  fallbackNotifications.forEach((item) => {
+    const fingerprint = createNotificationFingerprint(item);
+    if (fingerprints.has(fingerprint)) {
+      return;
+    }
+
+    fingerprints.add(fingerprint);
+    merged.push(item);
+  });
+
+  return merged;
 }
 
 export function getHotelById(id) {
@@ -179,6 +331,12 @@ export function getCheckoutDraft(hotelId) {
   return {
     custName: draft.custName ?? saved.custName ?? state.currentCustomer?.name ?? "",
     custPhone: draft.custPhone ?? saved.custPhone ?? state.currentCustomer?.phone ?? "",
+    customerAccuracy: draft.customerAccuracy ?? "",
+    customerArea: draft.customerArea ?? "",
+    customerSpecificArea: draft.customerSpecificArea ?? "",
+    customerLatitude: draft.customerLatitude ?? "",
+    customerLocationLabel: draft.customerLocationLabel ?? "",
+    customerLongitude: draft.customerLongitude ?? "",
     mpesaName: draft.mpesaName ?? saved.mpesaName ?? "",
     mpesaNumber: draft.mpesaNumber ?? saved.mpesaNumber ?? "",
   };

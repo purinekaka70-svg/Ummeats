@@ -83,6 +83,9 @@ async function sendPushMessage({ aliases = [], appId, body, filters = null, titl
 
 function sendJson(res, statusCode, payload) {
   res.statusCode = statusCode;
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Accept");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.end(JSON.stringify(payload));
 }

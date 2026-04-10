@@ -16,17 +16,22 @@ export function renderNotifications(items) {
     <div class="notification-list">
       ${sorted
         .map(
-          (item) => `
-            <article class="notification-item">
-              <p>${escapeHtml(item.message || "Notification")}</p>
-              <p class="tiny">${formatTime(item.timestamp)}</p>
-              ${
-                item.read
-                  ? `<span class="tiny">Read</span>`
-                  : `<button class="button button-outline button-small markNotifRead" data-id="${escapeHtml(item.id)}" type="button">Mark Read</button>`
-              }
-            </article>
-          `,
+          (item) => {
+            const canMarkRead = !item.read && !item.fallback && item.id;
+            const statusMarkup = item.read
+              ? `<span class="tiny">Read</span>`
+              : canMarkRead
+                ? `<button class="button button-outline button-small markNotifRead" data-id="${escapeHtml(item.id)}" type="button">Mark Read</button>`
+                : `<span class="tiny">New</span>`;
+
+            return `
+              <article class="notification-item">
+                <p>${escapeHtml(item.message || "Notification")}</p>
+                <p class="tiny">${formatTime(item.timestamp)}</p>
+                ${statusMarkup}
+              </article>
+            `;
+          },
         )
         .join("")}
     </div>
