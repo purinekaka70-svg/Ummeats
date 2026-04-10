@@ -6,10 +6,7 @@ import {
   getDoc,
   onSnapshot,
   query,
-<<<<<<< HEAD
-=======
   setDoc,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
@@ -20,11 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import { SERVICE_FEE_TILL } from "./config.js";
 import { auth, db } from "./firebase.js";
-<<<<<<< HEAD
-import { escapeHtml } from "./helpers.js";
-=======
 import { buildNotificationDocId, escapeHtml } from "./helpers.js";
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 import { dispatchOrderNotification } from "./notification-api.js";
 import { notifyShopOrderStatus } from "./order-status-notifications.js";
 import {
@@ -650,15 +643,6 @@ async function submitOrder() {
     const notificationSent = await dispatchOrderNotification(createdOrder.id, "umma-shop-order");
     if (!notificationSent) {
       try {
-<<<<<<< HEAD
-        await addDoc(collection(db, "notifications"), {
-          message: `${customerName} submitted a Shop Here order for ${shopName}.`,
-          read: false,
-          timestamp: Date.now(),
-          to: "admin",
-          type: "umma-shop-order",
-        });
-=======
         const notification = {
           message: `${customerName} submitted a Shop Here order for ${shopName}.`,
           read: false,
@@ -673,7 +657,6 @@ async function submitOrder() {
         } else {
           await addDoc(collection(db, "notifications"), notification);
         }
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       } catch (error) {
         console.warn("Shop Here fallback notification write failed", error);
       }
