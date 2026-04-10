@@ -45,8 +45,8 @@ export function renderAdmin() {
   const pendingShopOrders = state.ummaShopOrders.filter((order) => !order.paid).length;
   const totalFeedbacks = state.feedbacks.length;
   const totalEmployees = state.employees.length;
-  const totalNotifications = state.notifications.length;
-  const unreadStoredNotifications = state.notifications.filter((item) => !item.read).length;
+  const totalNotifications = adminNotifications.length;
+  const unreadStoredNotifications = adminNotifications.filter((item) => !item.read).length;
   const unreadFeedbacks = state.feedbacks.filter((item) => (item.status || "New") !== "Reviewed").length;
   const totalOrders = state.orders.length;
   const currentSection = state.adminPanelSection || "dashboard";
@@ -237,7 +237,7 @@ function renderDashboardSection(summary) {
           <strong>${summary.totalEmployees}</strong>
         </article>
         <article class="stat-card">
-          <span class="stat-label">Saved Alerts</span>
+          <span class="stat-label">Admin Alerts</span>
           <strong>${summary.totalNotifications}</strong>
         </article>
         <article class="stat-card">
@@ -385,7 +385,7 @@ function renderEmployeesSection() {
 }
 
 function renderNotificationsSection() {
-  const notifications = [...state.notifications].sort((left, right) => (right.timestamp || 0) - (left.timestamp || 0));
+  const notifications = [...getNotificationsForTarget("admin")].sort((left, right) => (right.timestamp || 0) - (left.timestamp || 0));
 
   return `
     <section class="view-shell">
@@ -397,7 +397,7 @@ function renderNotificationsSection() {
       ${
         notifications.length
           ? `<div class="order-list">${notifications.map(renderAdminNotificationCard).join("")}</div>`
-          : renderEmptyState("No notifications yet", "Saved alert records will appear here.")
+          : renderEmptyState("No notifications yet", "Admin alerts will appear here.")
       }
     </section>
   `;
@@ -687,6 +687,7 @@ function renderEmployeeCard(employee) {
 function renderAdminNotificationCard(notification) {
   const notificationType = String(notification.type || "notification").trim() || "notification";
   const notificationTarget = String(notification.to || "N/A").trim() || "N/A";
+  const isFallback = Boolean(notification.fallback);
   const isRead = Boolean(notification.read);
 
   return `
@@ -711,14 +712,20 @@ function renderAdminNotificationCard(notification) {
         </div>
       </div>
 
-      <div class="button-row">
-        ${
-          isRead
-            ? ""
-            : `<button class="button button-outline markNotifRead" data-id="${escapeHtml(notification.id)}" type="button">Mark Read</button>`
-        }
-        <button class="button button-danger deleteNotification" data-id="${escapeHtml(notification.id)}" type="button">Delete Notification</button>
-      </div>
+      ${
+        isFallback
+          ? `<p class="tiny">Generated from live platform activity.</p>`
+          : `
+            <div class="button-row">
+              ${
+                isRead
+                  ? ""
+                  : `<button class="button button-outline markNotifRead" data-id="${escapeHtml(notification.id)}" type="button">Mark Read</button>`
+              }
+              <button class="button button-danger deleteNotification" data-id="${escapeHtml(notification.id)}" type="button">Delete Notification</button>
+            </div>
+          `
+      }
     </article>
   `;
 }
