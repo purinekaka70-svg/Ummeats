@@ -20,10 +20,7 @@ import {
 import { db } from "./firebase.js";
 import {
   calculateDistanceKm,
-<<<<<<< HEAD
-=======
   buildNotificationDocId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   escapeHtml,
   formatCoordinatePair,
   formatDistanceKm,
@@ -66,20 +63,19 @@ import { renderRestaurants } from "./view-restaurants.js";
 
 let deferredInstallPrompt = null;
 let installPromptWaiters = [];
-<<<<<<< HEAD
-const hotelOrderAlertTracker = {
-  ids: new Set(),
-  ready: false,
-};
 const liveNotificationAlertTracker = new Set();
-const orderStatusTracker = new Map();
-=======
-const liveNotificationAlertTracker = new Set();
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
+const FAST_LOCATION_TIMEOUT_MS = 3500;
+const PRECISE_LOCATION_TIMEOUT_MS = 12000;
+const CHECKOUT_PRECISION_REFRESH_TIMEOUT_MS = 3000;
+const LOCATION_CACHE_MAX_AGE_MS = 60 * 1000;
+const REVERSE_GEOCODE_TIMEOUT_MS = 3000;
+const TARGET_LOCATION_ACCURACY_M = 50;
+const ACCEPTABLE_LOCATION_ACCURACY_M = 120;
 const UMMA_UNIVERSITY_REFERENCE_COORDINATES = Object.freeze({
   latitude: -1.77726,
   longitude: 36.82064,
 });
+const reverseGeocodeCache = new Map();
 
 bootstrap();
 
@@ -274,13 +270,81 @@ function writeCoordinatesToForm(form, coordinates) {
   form.elements.hotelAccuracy.value = coordinates?.accuracy ?? "";
 }
 
+function getCoordinateAccuracy(coordinates) {
+  const accuracy = Number(coordinates?.accuracy);
+  return Number.isFinite(accuracy) && accuracy > 0 ? accuracy : Number.POSITIVE_INFINITY;
+}
+
+function formatLocationAccuracy(coordinates) {
+  const accuracy = getCoordinateAccuracy(coordinates);
+  if (!Number.isFinite(accuracy)) {
+    return "";
+  }
+
+  if (accuracy < 1000) {
+    return `accuracy about ${Math.round(accuracy)} m`;
+  }
+
+  return `accuracy about ${(accuracy / 1000).toFixed(1)} km`;
+}
+
+function hasLocationAccuracyWithin(coordinates, threshold = ACCEPTABLE_LOCATION_ACCURACY_M) {
+  return getCoordinateAccuracy(coordinates) <= threshold;
+}
+
+function selectBestCoordinates(...candidates) {
+  return candidates
+    .filter(Boolean)
+    .sort((left, right) => getCoordinateAccuracy(left) - getCoordinateAccuracy(right))[0] || null;
+}
+
+function shouldReplaceCoordinates(nextCoordinates, currentCoordinates) {
+  if (!nextCoordinates) {
+    return false;
+  }
+
+  if (!currentCoordinates) {
+    return true;
+  }
+
+  return getCoordinateAccuracy(nextCoordinates) + 5 < getCoordinateAccuracy(currentCoordinates);
+}
+
+function setButtonBusy(button, busy, busyText = "Working...") {
+  if (!button) {
+    return;
+  }
+
+  if (!button.dataset.defaultLabel) {
+    button.dataset.defaultLabel = button.textContent || "";
+  }
+
+  button.disabled = busy;
+  button.textContent = busy ? busyText : button.dataset.defaultLabel;
+}
+
+function setHotelCoordinateStatusMessage(form, message) {
+  const status = form?.querySelector("[data-hotel-geo-status]");
+  if (status) {
+    status.textContent = String(message || "");
+  }
+}
+
+function setCheckoutLocationStatusMessage(hotelId, message) {
+  const status = document.querySelector(`[data-customer-geo-status][data-hotel="${hotelId}"]`);
+  if (status) {
+    status.textContent = String(message || "");
+  }
+}
+
 function formatCoordinateSnapshot(coordinates) {
   const normalized = normalizeCoordinates(coordinates);
   if (!normalized) {
     return "Precise delivery location not saved yet.";
   }
 
-  return `Saved map point ${normalized.latitude.toFixed(5)}, ${normalized.longitude.toFixed(5)}.`;
+  const accuracyText = formatLocationAccuracy(normalized);
+  return `Saved map point ${normalized.latitude.toFixed(5)}, ${normalized.longitude.toFixed(5)}${accuracyText ? ` (${accuracyText})` : ""}.`;
 }
 
 function updateHotelRegistrationCoordinateStatus(form, coordinates = readCoordinatesFromForm(form)) {
@@ -322,13 +386,17 @@ function getCheckoutLocationStatusCopy(hotelId) {
   const area = getCheckoutCustomerArea(hotelId);
   const specificArea = getCheckoutCustomerSpecificArea(hotelId);
   const areaSummary = [area, specificArea].filter(Boolean).join(" - ");
+  const accuracyText = formatLocationAccuracy(coordinates);
+  const coordinateSummary = coordinates
+    ? `${formatCoordinatePair(coordinates)}${accuracyText ? `, ${accuracyText}` : ""}`
+    : "";
 
   if (coordinates && areaSummary) {
-    return `Shared delivery point: ${areaSummary} (${formatCoordinatePair(coordinates)}). The delivery person and hotel will receive it with your order.`;
+    return `Shared delivery point: ${areaSummary} (${coordinateSummary}). The delivery person and hotel will receive it with your order.`;
   }
 
   if (coordinates) {
-    return `Shared delivery point: ${formatCoordinatePair(coordinates)}. The delivery person and hotel will receive it with your order.`;
+    return `Shared delivery point: ${coordinateSummary}. The delivery person and hotel will receive it with your order.`;
   }
 
   if (areaSummary) {
@@ -402,10 +470,27 @@ function getReferenceCoordinatesForLocationText(value) {
   return normalizeCoordinates(UMMA_UNIVERSITY_REFERENCE_COORDINATES);
 }
 
+function buildCoordinateCacheKey(coordinates) {
+  const normalized = normalizeCoordinates(coordinates);
+  if (!normalized) {
+    return "";
+  }
+
+  return `${normalized.latitude.toFixed(5)}:${normalized.longitude.toFixed(5)}`;
+}
+
 async function resolveCustomerAreaLabel(coordinates) {
   if (!coordinates || typeof fetch !== "function") {
     return "";
   }
+
+  const cacheKey = buildCoordinateCacheKey(coordinates);
+  if (cacheKey && reverseGeocodeCache.has(cacheKey)) {
+    return reverseGeocodeCache.get(cacheKey) || "";
+  }
+
+  let abortController = null;
+  let timeoutId = 0;
 
   try {
     const url = new URL("https://nominatim.openstreetmap.org/reverse");
@@ -415,19 +500,33 @@ async function resolveCustomerAreaLabel(coordinates) {
     url.searchParams.set("zoom", "18");
     url.searchParams.set("addressdetails", "1");
 
+    if (typeof AbortController !== "undefined") {
+      abortController = new AbortController();
+      timeoutId = window.setTimeout(() => abortController?.abort(), REVERSE_GEOCODE_TIMEOUT_MS);
+    }
+
     const response = await fetch(url.toString(), {
       headers: {
         Accept: "application/json",
       },
+      ...(abortController ? { signal: abortController.signal } : {}),
     });
     if (!response.ok) {
       return "";
     }
 
     const payload = await response.json();
-    return buildCustomerAreaLabel(payload);
+    const label = buildCustomerAreaLabel(payload);
+    if (cacheKey && label) {
+      reverseGeocodeCache.set(cacheKey, label);
+    }
+    return label;
   } catch {
     return "";
+  } finally {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
   }
 }
 
@@ -757,11 +856,6 @@ function subscribeToCollections() {
   });
 
   onSnapshot(collection(db, "orders"), (snapshot) => {
-<<<<<<< HEAD
-    handleHotelOrderAlerts(snapshot);
-    handleCustomerAndHotelOrderStatusAlerts(snapshot);
-=======
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     state.orders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncUi();
   });
@@ -773,51 +867,6 @@ function subscribeToCollections() {
   });
 }
 
-<<<<<<< HEAD
-function collectNewSnapshotDocs(snapshot, tracker) {
-  const currentIds = new Set(snapshot.docs.map((item) => item.id));
-
-  if (!tracker.ready) {
-    tracker.ready = true;
-    tracker.ids = currentIds;
-    return [];
-  }
-
-  const additions = snapshot.docs
-    .filter((item) => !tracker.ids.has(item.id) && !item.metadata.hasPendingWrites)
-    .map((item) => ({ id: item.id, ...item.data() }));
-
-  tracker.ids = currentIds;
-  return additions;
-}
-
-function handleHotelOrderAlerts(snapshot) {
-  const newOrders = collectNewSnapshotDocs(snapshot, hotelOrderAlertTracker);
-  if (!state.currentHotelId || !newOrders.length) {
-    return;
-  }
-
-  const hotel = getHotelById(state.currentHotelId);
-  newOrders
-    .filter((order) => order.hotelId === state.currentHotelId)
-    .forEach((order) => {
-      const tag = `order-${order.id}`;
-      if (!claimNotificationTag(tag)) {
-        return;
-      }
-
-      const title = "New order received";
-      const body = `${order.customerName || "A customer"} placed an order worth ${formatCurrency(order.total || 0)}.`;
-      showToast(`${hotel.name || "Hotel"}: ${body}`, "info");
-      void showBrowserNotification(title, body, {
-        link: "./index.html",
-        tag,
-      });
-    });
-}
-
-=======
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function syncUi() {
   updateHeaderMetrics();
   updateBadges();
@@ -942,58 +991,6 @@ async function handleInstallClick() {
   updateInstallButtonState();
 }
 
-<<<<<<< HEAD
-function handleCustomerAndHotelOrderStatusAlerts(snapshot) {
-  const currentIds = new Set(snapshot.docs.map((item) => item.id));
-
-  snapshot.docs.forEach((item) => {
-    if (item.metadata.hasPendingWrites) {
-      return;
-    }
-
-    const order = item.data() || {};
-    const orderId = item.id;
-    const currentStatus = String(order.status || "Pending");
-    const previousStatus = orderStatusTracker.get(orderId);
-    orderStatusTracker.set(orderId, currentStatus);
-
-    if (!previousStatus || previousStatus === currentStatus || currentStatus !== "Paid") {
-      return;
-    }
-
-    const isCustomerTarget = String(order.customerId || "").trim() === String(CUSTOMER_ID);
-    const isHotelTarget =
-      Boolean(state.currentHotelId) && String(order.hotelId || "").trim() === String(state.currentHotelId);
-    if (!isCustomerTarget && !isHotelTarget) {
-      return;
-    }
-
-    const hotelName = getHotelById(order.hotelId).name;
-    const title = "Order marked as paid";
-    const body = isHotelTarget
-      ? `${order.customerName || "A customer"} has a paid order for ${hotelName}.`
-      : `Your order for ${hotelName} has been marked as paid.`;
-    const tag = `order-paid-${orderId}`;
-    if (!claimNotificationTag(tag)) {
-      return;
-    }
-
-    showToast(`${title}: ${body}`, "success");
-    void showBrowserNotification(title, body, {
-      link: "./index.html",
-      tag,
-    });
-  });
-
-  [...orderStatusTracker.keys()].forEach((orderId) => {
-    if (!currentIds.has(orderId)) {
-      orderStatusTracker.delete(orderId);
-    }
-  });
-}
-
-=======
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 function getActiveNotificationTarget() {
   if (state.currentHotelId) {
     return state.currentHotelId;
@@ -1049,13 +1046,9 @@ function handleLiveNotificationAlerts(snapshot) {
 
     const title = resolveNotificationTitle(item);
     const body = String(item.message || "You have a new update.");
-<<<<<<< HEAD
-    const tag = `notif-${docSnapshot.id}`;
-=======
     const refId = String(item.refId || "").trim();
     const type = String(item.type || "notification").trim().toLowerCase();
     const tag = refId ? `notif-${type}-${refId}` : `notif-${docSnapshot.id}`;
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 
     if (!claimNotificationTag(tag)) {
       return;
@@ -1352,15 +1345,10 @@ async function submitFeedback(form) {
     status: "New",
   };
 
-<<<<<<< HEAD
-  try {
-    await addDoc(collection(db, "feedbacks"), feedbackPayload);
-=======
   let feedbackRef = null;
 
   try {
     feedbackRef = await addDoc(collection(db, "feedbacks"), feedbackPayload);
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   } catch (error) {
     console.error("Feedback write failed", error);
     showToast("Failed to send feedback.", "error");
@@ -1368,15 +1356,6 @@ async function submitFeedback(form) {
   }
 
   try {
-<<<<<<< HEAD
-    await addDoc(collection(db, "notifications"), {
-      message: `New feedback from ${name} (${phone})`,
-      read: false,
-      timestamp: Date.now(),
-      to: "admin",
-      type: "feedback",
-    });
-=======
     const notification = {
       message: `New feedback from ${name} (${phone})`,
       read: false,
@@ -1392,7 +1371,6 @@ async function submitFeedback(form) {
     } else {
       await addDoc(collection(db, "notifications"), notification);
     }
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   } catch (error) {
     console.warn("Feedback notification write failed", error);
   }
@@ -1644,15 +1622,6 @@ async function registerHotel(form) {
     });
 
     try {
-<<<<<<< HEAD
-      await addDoc(collection(db, "notifications"), {
-        message: `New hotel registration: ${name} (${phone})`,
-        read: false,
-        timestamp: Date.now(),
-        to: "admin",
-        type: "hotel",
-      });
-=======
       const notification = {
         message: `New hotel registration: ${name} (${phone})`,
         read: false,
@@ -1667,7 +1636,6 @@ async function registerHotel(form) {
       } else {
         await addDoc(collection(db, "notifications"), notification);
       }
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     } catch (error) {
       console.warn("Hotel registration notification write failed", error);
     }
@@ -2106,17 +2074,11 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   });
 
   let notificationSent = false;
-<<<<<<< HEAD
-
-  try {
-    const orderRef = await addDoc(collection(db, "orders"), orderPayload);
-=======
   let createdOrderId = "";
 
   try {
     const orderRef = await addDoc(collection(db, "orders"), orderPayload);
     createdOrderId = orderRef.id;
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     sendSimulatedHotelSMS(hotelId, {
       customerName,
       customerPhone,
@@ -2149,23 +2111,6 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
 
   if (!notificationSent) {
     try {
-<<<<<<< HEAD
-      await addDoc(collection(db, "notifications"), {
-        message,
-        read: false,
-        timestamp: Date.now(),
-        to: "admin",
-        type: "order",
-      });
-
-      await addDoc(collection(db, "notifications"), {
-        message,
-        read: false,
-        timestamp: Date.now(),
-        to: hotelId,
-        type: "order",
-      });
-=======
       const adminNotification = {
         message,
         read: false,
@@ -2195,7 +2140,6 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
       } else {
         await addDoc(collection(db, "notifications"), hotelNotification);
       }
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
     } catch (error) {
       console.warn("Notification write failed", error);
     }

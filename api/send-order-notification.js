@@ -6,6 +6,66 @@ const {
   sendJson,
   sendPushMessage,
 } = require("./_lib/push");
+const COUNTY_NAMES = [
+  "Baringo",
+  "Bomet",
+  "Bungoma",
+  "Busia",
+  "Elgeyo-Marakwet",
+  "Embu",
+  "Garissa",
+  "Homa Bay",
+  "Isiolo",
+  "Kajiado",
+  "Kakamega",
+  "Kericho",
+  "Kiambu",
+  "Kilifi",
+  "Kirinyaga",
+  "Kisii",
+  "Kisumu",
+  "Kitui",
+  "Kwale",
+  "Laikipia",
+  "Lamu",
+  "Machakos",
+  "Makueni",
+  "Mandera",
+  "Marsabit",
+  "Meru",
+  "Migori",
+  "Mombasa",
+  "Murang'a",
+  "Nairobi",
+  "Nakuru",
+  "Nandi",
+  "Narok",
+  "Nyamira",
+  "Nyandarua",
+  "Nyeri",
+  "Samburu",
+  "Siaya",
+  "Taita-Taveta",
+  "Tana River",
+  "Tharaka-Nithi",
+  "Trans Nzoia",
+  "Turkana",
+  "Uasin Gishu",
+  "Vihiga",
+  "Wajir",
+  "West Pokot",
+];
+const COUNTY_TEXT_ALIAS_MAP = {
+  kajiado: [
+    "kajiado",
+    "kaijiado",
+    "around umma university",
+    "umma university",
+    "my qwetu residence",
+    "kajiado town",
+    "kajiado cbd",
+  ],
+};
 
 function parseBody(req) {
   if (!req.body) {
@@ -27,16 +87,42 @@ function nowTimestamp() {
   return Date.now();
 }
 
-<<<<<<< HEAD
-async function writeNotification(firestore, payload) {
-  await firestore.collection("notifications").add({
-    message: String(payload.message || "Notification"),
-    read: false,
-    timestamp: payload.timestamp || nowTimestamp(),
-    to: String(payload.to || "").trim(),
-    type: String(payload.type || "order").trim(),
-  });
-=======
+function normalizeCountyKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\bcounty\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function detectCountyFromText(value) {
+  const normalizedValue = normalizeCountyKey(value);
+  if (!normalizedValue) {
+    return "";
+  }
+
+  for (const [countyKey, aliases] of Object.entries(COUNTY_TEXT_ALIAS_MAP)) {
+    if (aliases.some((alias) => normalizedValue.includes(normalizeCountyKey(alias)))) {
+      return COUNTY_NAMES.find((item) => normalizeCountyKey(item) === countyKey) || countyKey;
+    }
+  }
+
+  for (const county of COUNTY_NAMES) {
+    if (normalizedValue.includes(normalizeCountyKey(county))) {
+      return county;
+    }
+  }
+
+  return "";
+}
+
+function normalizeCounty(value) {
+  const detectedCounty = detectCountyFromText(value);
+  return normalizeCountyKey(detectedCounty || value);
+}
+
 function sanitizeNotificationKeyPart(value) {
   return String(value || "").trim().replace(/\//g, "_").slice(0, 400);
 }
@@ -75,7 +161,6 @@ async function writeNotification(firestore, payload) {
   }
 
   await firestore.collection("notifications").add(data);
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
 }
 
 function parseRecipientCount(result) {
@@ -110,6 +195,57 @@ function buildTagEqualsFilter(key, value) {
   ];
 }
 
+function matchesEmployeeCounty(text, county) {
+  const normalizedText = normalizeCountyKey(text);
+  const normalizedCounty = normalizeCounty(county);
+
+  if (!normalizedText || !normalizedCounty) {
+    return false;
+  }
+
+  const detectedTextCounty = normalizeCounty(detectCountyFromText(text));
+  if (detectedTextCounty) {
+    return detectedTextCounty === normalizedCounty;
+  }
+
+  return normalizedText.includes(normalizedCounty);
+}
+
+function buildEmployeeAliasTargets(employees) {
+  return [...new Set((Array.isArray(employees) ? employees : []).map((item) => String(item?.id || "").trim()).filter(Boolean))];
+}
+
+async function getMatchingEmployees(firestore, text) {
+  const normalizedText = String(text || "").trim();
+  if (!normalizedText) {
+    return [];
+  }
+
+  const snapshot = await firestore.collection("employees").get();
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .filter((employee) => String(employee.status || "active").trim().toLowerCase() !== "blocked")
+    .filter((employee) => matchesEmployeeCounty(normalizedText, employee.normalizedCounty || employee.county));
+}
+
+async function writeEmployeeNotifications({ employees, firestore, message, refId, timestamp, type }) {
+  const writes = (Array.isArray(employees) ? employees : []).map((employee) =>
+    writeNotification(firestore, {
+      message,
+      refId,
+      timestamp,
+      to: employee.id,
+      type,
+    }),
+  );
+
+  if (writes.length) {
+    await Promise.all(writes);
+  }
+
+  return writes.length;
+}
+
 async function trySendPush(payload) {
   try {
     const result = await sendPushMessage(payload);
@@ -127,21 +263,14 @@ async function trySendPush(payload) {
   }
 }
 
-<<<<<<< HEAD
-async function sendPushWithFallbackTargets({ aliasTargets = [], appId, body, filterSets = [], title, url }) {
-=======
 async function sendPushWithFallbackTargets({ aliasTargets = [], appId, body, data = null, filterSets = [], title, url }) {
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
   const normalizedAliases = [...new Set(aliasTargets.map((item) => String(item || "").trim()).filter(Boolean))];
   if (normalizedAliases.length) {
     const aliasSent = await trySendPush({
       aliases: normalizedAliases,
       appId,
       body,
-<<<<<<< HEAD
-=======
       ...(data && typeof data === "object" ? { data } : {}),
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       title,
       url,
     });
@@ -158,10 +287,7 @@ async function sendPushWithFallbackTargets({ aliasTargets = [], appId, body, dat
     const filterSent = await trySendPush({
       appId,
       body,
-<<<<<<< HEAD
-=======
       ...(data && typeof data === "object" ? { data } : {}),
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       filters,
       title,
       url,
@@ -187,26 +313,28 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   const customerName = String(order.customerName || "A customer");
   const targetHotelId = String(order.hotelId || hotelId || "").trim();
   let hotelName = "selected hotel";
+  let hotelLocation = "";
 
   if (targetHotelId) {
     const hotelSnapshot = await firestore.collection("hotels").doc(targetHotelId).get();
     if (hotelSnapshot.exists) {
-      hotelName = String(hotelSnapshot.data().name || hotelName);
+      const hotelData = hotelSnapshot.data() || {};
+      hotelName = String(hotelData.name || hotelName);
+      hotelLocation = String(hotelData.location || "").trim();
     }
   }
 
   const orderMessage = `${customerName} placed an order for ${hotelName}.`;
+  const employeeMessage = `${customerName} placed a hotel order for ${hotelName}.`;
   const timestamp = nowTimestamp();
   let sentInApp = 0;
   let sentPush = 0;
+  let matchingEmployees = null;
 
   if (!order.notificationAdminDispatchedAt) {
     await writeNotification(firestore, {
       message: orderMessage,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: "order",
@@ -218,10 +346,7 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   if (targetHotelId && !order.notificationHotelDispatchedAt) {
     await writeNotification(firestore, {
       message: orderMessage,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetHotelId,
       type: "order",
@@ -230,16 +355,32 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
     sentInApp += 1;
   }
 
+  if (!order.notificationEmployeeDispatchedAt) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+    );
+
+    if (matchingEmployees.length) {
+      sentInApp += await writeEmployeeNotifications({
+        employees: matchingEmployees,
+        firestore,
+        message: employeeMessage,
+        refId: orderId,
+        timestamp,
+        type: "order",
+      });
+      updates.notificationEmployeeDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+  }
+
   if (!order.onesignalAdminDispatchedAt) {
     if (
       await sendPushWithFallbackTargets({
         aliasTargets: ["admin"],
         appId,
         body: orderMessage,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: "order" },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "New order received",
         url: `${siteUrl}/admin.html`,
@@ -256,10 +397,7 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
         aliasTargets: [targetHotelId],
         appId,
         body: orderMessage,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: "order" },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("hotel_id", targetHotelId),
           buildTagEqualsFilter("notification_target", targetHotelId),
@@ -270,6 +408,28 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
     ) {
       updates.onesignalHotelDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
       sentPush += 1;
+    }
+  }
+
+  if (!order.onesignalEmployeeDispatchedAt) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+    );
+
+    if (
+      matchingEmployees.length &&
+      await sendPushWithFallbackTargets({
+        aliasTargets: buildEmployeeAliasTargets(matchingEmployees),
+        appId,
+        body: employeeMessage,
+        data: { refId: orderId, type: "order" },
+        title: "New hotel order",
+        url: `${siteUrl}/employee.html`,
+      })
+    ) {
+      updates.onesignalEmployeeDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += matchingEmployees.length;
     }
   }
 
@@ -296,14 +456,12 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
   const timestamp = nowTimestamp();
   let sentInApp = 0;
   let sentPush = 0;
+  let matchingEmployees = null;
 
   if (!order.notificationAdminDispatchedAt) {
     await writeNotification(firestore, {
       message,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: "umma-shop-order",
@@ -312,16 +470,32 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
     sentInApp += 1;
   }
 
+  if (!order.notificationEmployeeDispatchedAt) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.location, order.shopName].filter(Boolean).join(" "),
+    );
+
+    if (matchingEmployees.length) {
+      sentInApp += await writeEmployeeNotifications({
+        employees: matchingEmployees,
+        firestore,
+        message,
+        refId: orderId,
+        timestamp,
+        type: "umma-shop-order",
+      });
+      updates.notificationEmployeeDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+  }
+
   if (!order.onesignalAdminDispatchedAt) {
     if (
       await sendPushWithFallbackTargets({
         aliasTargets: ["admin"],
         appId,
         body: message,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: "umma-shop-order" },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "New Shop Here order",
         url: `${siteUrl}/umma-shop.html`,
@@ -329,6 +503,28 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
     ) {
       updates.onesignalAdminDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
       sentPush += 1;
+    }
+  }
+
+  if (!order.onesignalEmployeeDispatchedAt) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.location, order.shopName].filter(Boolean).join(" "),
+    );
+
+    if (
+      matchingEmployees.length &&
+      await sendPushWithFallbackTargets({
+        aliasTargets: buildEmployeeAliasTargets(matchingEmployees),
+        appId,
+        body: message,
+        data: { refId: orderId, type: "umma-shop-order" },
+        title: "New Shop Here order",
+        url: `${siteUrl}/employee.html`,
+      })
+    ) {
+      updates.onesignalEmployeeDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += matchingEmployees.length;
     }
   }
 
@@ -347,6 +543,8 @@ function resolveShopStatusConfig(statusType) {
       adminPushField: "onesignalAdminDeliveredDispatchedAt",
       customerInAppField: "notificationCustomerDeliveredDispatchedAt",
       customerPushField: "onesignalCustomerDeliveredDispatchedAt",
+      employeeInAppField: "notificationEmployeeDeliveredDispatchedAt",
+      employeePushField: "onesignalEmployeeDeliveredDispatchedAt",
       customerType: "umma-shop-order-delivered",
       label: "delivered",
       title: "Shop Here order marked as delivered",
@@ -358,6 +556,8 @@ function resolveShopStatusConfig(statusType) {
     adminPushField: "onesignalAdminPaidDispatchedAt",
     customerInAppField: "notificationCustomerPaidDispatchedAt",
     customerPushField: "onesignalCustomerPaidDispatchedAt",
+    employeeInAppField: "notificationEmployeePaidDispatchedAt",
+    employeePushField: "onesignalEmployeePaidDispatchedAt",
     customerType: "umma-shop-order-paid",
     label: "paid",
     title: "Shop Here order marked as paid",
@@ -390,14 +590,12 @@ async function dispatchShopOrderStatus({
   const timestamp = nowTimestamp();
   let sentInApp = 0;
   let sentPush = 0;
+  let matchingEmployees = null;
 
   if (targetCustomerId && !order[config.customerInAppField]) {
     await writeNotification(firestore, {
       message: customerMessage,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetCustomerId,
       type: config.customerType,
@@ -409,10 +607,7 @@ async function dispatchShopOrderStatus({
   if (!order[config.adminInAppField]) {
     await writeNotification(firestore, {
       message: adminMessage,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: config.customerType,
@@ -421,16 +616,32 @@ async function dispatchShopOrderStatus({
     sentInApp += 1;
   }
 
+  if (!order[config.employeeInAppField]) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.location, order.shopName].filter(Boolean).join(" "),
+    );
+
+    if (matchingEmployees.length) {
+      sentInApp += await writeEmployeeNotifications({
+        employees: matchingEmployees,
+        firestore,
+        message: adminMessage,
+        refId: orderId,
+        timestamp,
+        type: config.customerType,
+      });
+      updates[config.employeeInAppField] = admin.firestore.FieldValue.serverTimestamp();
+    }
+  }
+
   if (targetCustomerId && !order[config.customerPushField]) {
     if (
       await sendPushWithFallbackTargets({
         aliasTargets: [targetCustomerId],
         appId,
         body: customerMessage,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: config.customerType },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("customer_id", targetCustomerId),
           buildTagEqualsFilter("notification_target", targetCustomerId),
@@ -450,10 +661,7 @@ async function dispatchShopOrderStatus({
         aliasTargets: ["admin"],
         appId,
         body: adminMessage,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: config.customerType },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: config.title,
         url: `${siteUrl}/umma-shop.html`,
@@ -461,6 +669,28 @@ async function dispatchShopOrderStatus({
     ) {
       updates[config.adminPushField] = admin.firestore.FieldValue.serverTimestamp();
       sentPush += 1;
+    }
+  }
+
+  if (!order[config.employeePushField]) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.location, order.shopName].filter(Boolean).join(" "),
+    );
+
+    if (
+      matchingEmployees.length &&
+      await sendPushWithFallbackTargets({
+        aliasTargets: buildEmployeeAliasTargets(matchingEmployees),
+        appId,
+        body: adminMessage,
+        data: { refId: orderId, type: config.customerType },
+        title: config.title,
+        url: `${siteUrl}/employee.html`,
+      })
+    ) {
+      updates[config.employeePushField] = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += matchingEmployees.length;
     }
   }
 
@@ -485,11 +715,14 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   const targetHotelId = String(order.hotelId || hotelId || "").trim();
   const targetCustomerId = String(order.customerId || customerId || "").trim();
   let hotelName = "selected hotel";
+  let hotelLocation = "";
 
   if (targetHotelId) {
     const hotelSnapshot = await firestore.collection("hotels").doc(targetHotelId).get();
     if (hotelSnapshot.exists) {
-      hotelName = String(hotelSnapshot.data().name || hotelName);
+      const hotelData = hotelSnapshot.data() || {};
+      hotelName = String(hotelData.name || hotelName);
+      hotelLocation = String(hotelData.location || "").trim();
     }
   }
 
@@ -498,14 +731,12 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   const timestamp = nowTimestamp();
   let sentInApp = 0;
   let sentPush = 0;
+  let matchingEmployees = null;
 
   if (targetCustomerId && !order.notificationCustomerPaidDispatchedAt) {
     await writeNotification(firestore, {
       message: customerMessage,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetCustomerId,
       type: "order-paid",
@@ -517,10 +748,7 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   if (!order.notificationAdminPaidDispatchedAt) {
     await writeNotification(firestore, {
       message: adminHotelMessage,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: "admin",
       type: "order-paid",
@@ -532,10 +760,7 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   if (targetHotelId && !order.notificationHotelPaidDispatchedAt) {
     await writeNotification(firestore, {
       message: adminHotelMessage,
-<<<<<<< HEAD
-=======
       refId: orderId,
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
       timestamp,
       to: targetHotelId,
       type: "order-paid",
@@ -544,16 +769,32 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
     sentInApp += 1;
   }
 
+  if (!order.notificationEmployeePaidDispatchedAt) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+    );
+
+    if (matchingEmployees.length) {
+      sentInApp += await writeEmployeeNotifications({
+        employees: matchingEmployees,
+        firestore,
+        message: adminHotelMessage,
+        refId: orderId,
+        timestamp,
+        type: "order-paid",
+      });
+      updates.notificationEmployeePaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    }
+  }
+
   if (targetCustomerId && !order.onesignalCustomerPaidDispatchedAt) {
     if (
       await sendPushWithFallbackTargets({
         aliasTargets: [targetCustomerId],
         appId,
         body: customerMessage,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: "order-paid" },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("customer_id", targetCustomerId),
           buildTagEqualsFilter("notification_target", targetCustomerId),
@@ -573,10 +814,7 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
         aliasTargets: ["admin"],
         appId,
         body: adminHotelMessage,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: "order-paid" },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [buildTagEqualsFilter("notification_target", "admin"), buildTagEqualsFilter("role", "admin")],
         title: "Order marked as paid",
         url: `${siteUrl}/admin.html`,
@@ -593,10 +831,7 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
         aliasTargets: [targetHotelId],
         appId,
         body: adminHotelMessage,
-<<<<<<< HEAD
-=======
         data: { refId: orderId, type: "order-paid" },
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         filterSets: [
           buildTagEqualsFilter("hotel_id", targetHotelId),
           buildTagEqualsFilter("notification_target", targetHotelId),
@@ -607,6 +842,28 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
     ) {
       updates.onesignalHotelPaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
       sentPush += 1;
+    }
+  }
+
+  if (!order.onesignalEmployeePaidDispatchedAt) {
+    matchingEmployees = matchingEmployees || await getMatchingEmployees(
+      firestore,
+      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+    );
+
+    if (
+      matchingEmployees.length &&
+      await sendPushWithFallbackTargets({
+        aliasTargets: buildEmployeeAliasTargets(matchingEmployees),
+        appId,
+        body: adminHotelMessage,
+        data: { refId: orderId, type: "order-paid" },
+        title: "Order marked as paid",
+        url: `${siteUrl}/employee.html`,
+      })
+    ) {
+      updates.onesignalEmployeePaidDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += matchingEmployees.length;
     }
   }
 

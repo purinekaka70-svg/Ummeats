@@ -3,7 +3,7 @@ import {
   DEFAULT_HOTEL_LOCATION,
   getServiceFeeForHotel,
   MARKETPLACE_SHOP_HERE_URL,
-  SERVICE_FEE,
+  SERVICE_FEE_TILL,
   SHOP_HERE_URL,
 } from "./config.js";
 import {

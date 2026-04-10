@@ -3,7 +3,7 @@ import {
   DEFAULT_HOTEL_LOCATION,
   getServiceFeeForHotel,
   MARKETPLACE_SHOP_HERE_URL,
-  SERVICE_FEE,
+  SERVICE_FEE_TILL,
   SHOP_HERE_URL,
 } from "./config.js";
 import {
@@ -19,11 +19,7 @@ import {
   state,
 } from "./state.js";
 import { escapeHtml, formatCurrency, getMenuScheduleDetails, normalizeCoordinates, pluralize, sortMenuItems } from "./helpers.js";
-import {
-  renderBrowseMenuTabs,
-  renderEmptyState,
-  renderInlineBadge,
-} from "./view-common.js";
+import { renderBrowseMenuTabs, renderEmptyState, renderInlineBadge } from "./view-common.js";
 
 export function renderRestaurants() {
   const selectedLocation = state.selectedLocation;

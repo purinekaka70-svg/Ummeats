@@ -43,6 +43,13 @@ function normalizePushTarget(target) {
   return String(target || "").trim();
 }
 
+function normalizePushCounty(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
 function normalizePath(pathname, { trailingSlash = false } = {}) {
   let normalized = String(pathname || "").trim().replace(/\\/g, "/");
   normalized = normalized.replace(/^\.?\//, "").replace(/^\/+/, "").replace(/\/{2,}/g, "/");
@@ -329,6 +336,7 @@ function buildPushIdentity(target, label, options = {}) {
   const role = String(options.role || (externalId === "admin" ? "admin" : "hotel")).trim().toLowerCase();
   const identity = {
     customerId: "",
+    employeeCounty: "",
     externalId,
     hotelId: "",
     label: String(label || externalId).trim().slice(0, 80),
@@ -341,6 +349,10 @@ function buildPushIdentity(target, label, options = {}) {
 
   if (role === "customer") {
     identity.customerId = String(options.customerId || externalId).trim();
+  }
+
+  if (role === "employee") {
+    identity.employeeCounty = normalizePushCounty(options.county);
   }
 
   return identity;
@@ -360,6 +372,10 @@ function createPushTags(identity) {
 
   if (identity.customerId) {
     tags.customer_id = identity.customerId;
+  }
+
+  if (identity.employeeCounty) {
+    tags.employee_county = identity.employeeCounty;
   }
 
   return tags;

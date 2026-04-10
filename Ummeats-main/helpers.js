@@ -138,6 +138,22 @@ export function getMenuScheduleDetails(item) {
   };
 }
 
+function sanitizeNotificationKeyPart(value) {
+  return String(value || "").trim().replace(/\//g, "_").slice(0, 400);
+}
+
+export function buildNotificationDocId({ to, type, refId }) {
+  const normalizedTo = sanitizeNotificationKeyPart(to);
+  const normalizedType = sanitizeNotificationKeyPart(type).toLowerCase();
+  const normalizedRefId = sanitizeNotificationKeyPart(refId);
+
+  if (!normalizedTo || !normalizedType || !normalizedRefId) {
+    return "";
+  }
+
+  return `${normalizedTo}__${normalizedType}__${normalizedRefId}`;
+}
+
 export function sortMenuItems(items) {
   return [...(Array.isArray(items) ? items : [])].sort((left, right) => {
     const leftSchedule = getMenuScheduleDetails(left);

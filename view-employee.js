@@ -9,7 +9,7 @@ import {
   normalizeCoordinates,
   pluralize,
 } from "./helpers.js";
-import { renderEmptyState, renderStatusPill } from "./view-common.js";
+import { renderEmptyState, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
 function getEmployeeAppElement() {
   return document.getElementById("app");
@@ -110,14 +110,11 @@ function renderEmployeeAuth(portalState) {
           </label>
 
           <label class="field">
-<<<<<<< HEAD
-=======
             <span class="field-label">Work county</span>
             <input class="input" name="employeeCounty" placeholder="e.g. Kajiado" />
           </label>
 
           <label class="field">
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
             <span class="field-label">Scanned ID PDF (front + back)</span>
             <input class="input input-file" accept=".pdf,application/pdf" name="employeeIdCard" type="file" />
           </label>
@@ -134,11 +131,7 @@ function renderEmployeeAuth(portalState) {
             </label>
           </div>
 
-<<<<<<< HEAD
-          <p class="tiny">Upload one clear PDF that includes both front and back of the ID. Employee access is read-only and shows live platform orders only.</p>
-=======
           <p class="tiny">Upload one clear PDF that includes both front and back of the ID. The work county controls which orders you can view in this portal.</p>
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
           <button class="button button-secondary" type="submit">Create Employee Account</button>
           <p class="tiny auth-switch">
             Already have an account?
@@ -229,8 +222,11 @@ function renderBlockedEmployeeProfile() {
 
 function renderEmployeeDashboard(portalState) {
   const profile = portalState.employeeProfile;
+  const notifications = [...(Array.isArray(portalState.notifications) ? portalState.notifications : [])]
+    .sort((left, right) => (right.timestamp || 0) - (left.timestamp || 0));
   const orders = [...portalState.orders].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
   const shopOrders = [...portalState.ummaShopOrders].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  const unreadNotifications = notifications.filter((item) => !item.read).length;
   const pendingOrders = orders.filter((item) => (item.status || "Pending") !== "Paid").length;
   const paidOrders = orders.length - pendingOrders;
   const mapReadyOrders = orders.filter((item) => Boolean(getOrderCustomerCoordinates(item))).length;
@@ -252,6 +248,7 @@ function renderEmployeeDashboard(portalState) {
           ${renderEmployeeNavButton("hotelOrders", "Hotel Orders", `${orders.length} hotel order${pluralize(orders.length)}`, currentSection)}
           ${renderEmployeeNavButton("shopOrders", "Shop Here Orders", `${shopOrders.length} shop request${pluralize(shopOrders.length)}`, currentSection)}
           ${renderEmployeeNavButton("mapOrders", "Customer Maps", `${mapReadyOrders} map-ready order${pluralize(mapReadyOrders)}`, currentSection)}
+          ${renderEmployeeNavButton("notifications", "Notifications", `${notifications.length} alert${pluralize(notifications.length)}`, currentSection, unreadNotifications)}
         </div>
 
         <div class="info-box admin-sidebar-note">
@@ -278,22 +275,16 @@ function renderEmployeeDashboard(portalState) {
               </span>
               Menu
             </button>
-<<<<<<< HEAD
-            <span class="summary-chip">${escapeHtml(profile.fullName || profile.email || "Employee")}</span>
-=======
             <span class="summary-chip">${escapeHtml(profile.county ? `${profile.fullName || profile.email || "Employee"} · ${profile.county}` : profile.fullName || profile.email || "Employee")}</span>
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
             <button class="button button-ghost" id="logoutEmployee" type="button">Logout</button>
           </div>
         </div>
 
-<<<<<<< HEAD
-=======
-        ${profile.county ? "" : renderEmployeeCountySetupCard()}
+        ${renderEmployeeCountyManagerCard(portalState)}
 
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         ${renderEmployeeSection(currentSection, {
           mapReadyOrders,
+          notifications,
           orders,
           paidOrders,
           pendingOrders,
@@ -308,27 +299,77 @@ function renderEmployeeDashboard(portalState) {
   `;
 }
 
-<<<<<<< HEAD
-=======
-function renderEmployeeCountySetupCard() {
+function renderEmployeeCountyManagerCard(portalState) {
+  const profile = portalState?.employeeProfile || {};
+  const currentCounty = String(profile.county || "").trim();
+  const currentCountyLabel = currentCounty || "Not set";
+  const showEditor = !currentCounty || Boolean(portalState?.countyEditorOpen);
+  const suggestions = Array.isArray(portalState?.countySuggestions) ? portalState.countySuggestions : [];
+  const suggestionMarkup = suggestions.length
+    ? `
+        <datalist id="employeeCountySuggestionList">
+          ${suggestions.map((item) => `<option value="${escapeHtml(item)}"></option>`).join("")}
+        </datalist>
+      `
+    : "";
+
   return `
-    <form id="employeeSetCounty" class="card auth-card">
-      <p class="eyebrow">Work county</p>
-      <h3 class="card-title">Set your coverage county</h3>
-      <p class="tiny">Employees only see orders and alerts for their county. Example: Kajiado.</p>
+    <article class="card auth-card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Work county</p>
+          <h3 class="card-title">Coverage filter</h3>
+        </div>
+        ${
+          currentCounty
+            ? `<button class="button button-outline button-small" id="toggleEmployeeCountyEditor" type="button">${showEditor ? "Hide" : "Change County"}</button>`
+            : ""
+        }
+      </div>
 
-      <label class="field">
-        <span class="field-label">County</span>
-        <input class="input" name="employeeCounty" placeholder="e.g. Kajiado" />
-      </label>
+      <p class="tiny">Employees see hotel orders, Shop Here requests, customer maps, and alerts for the county selected here.</p>
 
-      <button class="button button-primary" type="submit">Save County</button>
-    </form>
+      <div class="summary-list">
+        <div class="summary-item"><span>Current county</span><strong>${escapeHtml(currentCountyLabel)}</strong></div>
+        <div class="summary-item"><span>Visible hotel orders</span><strong>${portalState.orders.length}</strong></div>
+        <div class="summary-item"><span>Visible Shop Here orders</span><strong>${portalState.ummaShopOrders.length}</strong></div>
+        <div class="summary-item"><span>Visible notifications</span><strong>${portalState.notifications.length}</strong></div>
+      </div>
+
+      ${
+        showEditor
+          ? `
+              <form id="employeeSetCounty" class="stack">
+                <label class="field">
+                  <span class="field-label">County</span>
+                  <input
+                    class="input"
+                    list="employeeCountySuggestionList"
+                    name="employeeCounty"
+                    placeholder="e.g. Kajiado"
+                    value="${escapeHtml(currentCounty)}"
+                  />
+                </label>
+
+                ${suggestionMarkup}
+
+                <div class="button-row">
+                  <button class="button button-primary" type="submit">${currentCounty ? "Update County" : "Save County"}</button>
+                  ${
+                    currentCounty
+                      ? `<button class="button button-outline" id="cancelEmployeeCountyEditor" type="button">Cancel</button>`
+                      : ""
+                  }
+                </div>
+              </form>
+            `
+          : `<p class="tiny">Use Change County whenever you need to switch from Kajiado to another county and load that county's orders.</p>`
+      }
+    </article>
   `;
 }
 
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
-function renderEmployeeNavButton(sectionId, label, meta, currentSection) {
+function renderEmployeeNavButton(sectionId, label, meta, currentSection, count = 0) {
   const activeClass = currentSection === sectionId ? " is-active" : "";
 
   return `
@@ -337,12 +378,19 @@ function renderEmployeeNavButton(sectionId, label, meta, currentSection) {
         <span class="admin-nav-title">${escapeHtml(label)}</span>
         <span class="admin-nav-meta">${escapeHtml(meta)}</span>
       </span>
-      <span class="summary-chip admin-nav-pill">${escapeHtml(label)}</span>
+      <span class="summary-chip admin-nav-pill">
+        ${escapeHtml(label)}
+        ${renderInlineBadge(count, "alert")}
+      </span>
     </button>
   `;
 }
 
 function renderEmployeeSection(section, context) {
+  if (section === "notifications") {
+    return renderEmployeeNotificationsSection(context.notifications);
+  }
+
   if (section === "hotelOrders") {
     return renderEmployeeOrdersSection(context.orders, context.hotels);
   }
@@ -387,6 +435,10 @@ function renderEmployeeDashboardSection(context) {
         <article class="stat-card">
           <span class="stat-label">Map Ready</span>
           <strong>${context.mapReadyOrders}</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Notifications</span>
+          <strong>${context.notifications.length}</strong>
         </article>
       </div>
 
@@ -435,13 +487,22 @@ function renderEmployeeDashboardSection(context) {
             <div class="summary-item"><span>Step 4</span><strong>Review Shop Here requests</strong></div>
           </div>
 
-<<<<<<< HEAD
-          <p class="tiny">Employees can view all live orders and delete Shop Here orders only. Payment and hotel setup stay on admin/hotel pages.</p>
-=======
           <p class="tiny">Employees can view live orders and alerts for their assigned county and delete Shop Here orders only. Payment and hotel setup stay on admin/hotel pages.</p>
->>>>>>> a647933bd6aefe8a9a13f3420ffb090b4827b629
         </article>
       </div>
+    </section>
+  `;
+}
+
+function renderEmployeeNotificationsSection(notifications) {
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Notifications</h4>
+        <span class="summary-chip">${notifications.length} alert${pluralize(notifications.length)}</span>
+      </div>
+
+      ${renderNotifications(notifications)}
     </section>
   `;
 }
