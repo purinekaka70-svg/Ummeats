@@ -49,6 +49,7 @@ export function renderRestaurants() {
             ? ""
             : `
                 <article class="card launch-card">
+                  <img src="https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png" alt="Tamu Express Marketplace Logo" style="height: 4rem; width: 4rem; margin-bottom: 1rem; border-radius: 0.75rem; object-fit: cover;" />
                   <p class="launch-eyebrow">Delivery Marketplace</p>
                   <h2 class="launch-title">Go Live Supermarkets</h2>
                   <p class="launch-copy">Shop supermarkets, essentials, and delivery-ready items around Kenya.</p>
