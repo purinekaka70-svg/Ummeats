@@ -109,9 +109,6 @@ function renderHotelLaunchCard(directoryOpen, selectedLocation, totalHotels) {
 
   return `
     <article class="card launch-card">
-node_modules/
-.env
-.DS_Store
       <img src="https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png" alt="Tamu Express Logo" style="height: 4rem; width: 4rem; margin-bottom: 1rem; border-radius: 0.75rem; object-fit: cover;" />
       <p class="launch-eyebrow">Tamu Express Delivery</p>
       <h1 class="launch-title">Food Delivery and Hotel Orders in Kenya</h1>
