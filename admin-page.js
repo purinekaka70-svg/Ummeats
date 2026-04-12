@@ -30,7 +30,10 @@ import { elements, getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
 
-const adminNotificationAlertTracker = new Set();
+const adminNotificationAlertTracker = {
+  ids: new Set(),
+  ready: false,
+};
 const adminNotificationPromptButton = document.getElementById("adminNotificationPromptButton");
 let adminCollectionUnsubscribers = [];
 
@@ -64,6 +67,8 @@ function stopAdminCollectionSubscriptions() {
   state.feedbacks = [];
   state.notifications = [];
   state.employees = [];
+  adminNotificationAlertTracker.ids = new Set();
+  adminNotificationAlertTracker.ready = false;
 }
 
 function bindEvents() {
@@ -302,17 +307,26 @@ function handleAdminNotificationAlerts(snapshot) {
     return;
   }
 
-  snapshot.docs.forEach((docSnapshot) => {
+  const adminDocs = snapshot.docs.filter((docSnapshot) => String(docSnapshot.data()?.to || "").trim() === "admin");
+  const currentIds = new Set(adminDocs.map((docSnapshot) => docSnapshot.id));
+  const previousIds = adminNotificationAlertTracker.ids;
+
+  if (!adminNotificationAlertTracker.ready) {
+    adminNotificationAlertTracker.ready = true;
+    adminNotificationAlertTracker.ids = currentIds;
+    return;
+  }
+
+  snapshot.docChanges().forEach((change) => {
+    if (change.type !== "added" || change.doc.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const docSnapshot = change.doc;
     const item = docSnapshot.data() || {};
-    if (String(item.to || "").trim() !== "admin" || item.read) {
+    if (String(item.to || "").trim() !== "admin" || item.read || previousIds.has(docSnapshot.id)) {
       return;
     }
-
-    if (adminNotificationAlertTracker.has(docSnapshot.id)) {
-      return;
-    }
-
-    adminNotificationAlertTracker.add(docSnapshot.id);
 
     const title = resolveAdminNotificationTitle(item);
     const body = String(item.message || "You have a new update.");
@@ -329,6 +343,8 @@ function handleAdminNotificationAlerts(snapshot) {
       tag,
     });
   });
+
+  adminNotificationAlertTracker.ids = currentIds;
 }
 
 async function handleClick(event) {
@@ -745,7 +761,7 @@ async function deleteNotification(notificationId) {
 
   try {
     await deleteDoc(doc(db, "notifications", notificationId));
-    adminNotificationAlertTracker.delete(notificationId);
+    adminNotificationAlertTracker.ids.delete(notificationId);
     showToast("Notification deleted.", "success");
   } catch (error) {
     console.error(error);

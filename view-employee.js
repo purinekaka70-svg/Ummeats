@@ -589,6 +589,7 @@ function renderEmployeeOrderCard(order, hotels) {
   const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
   const customerCoordinates = getOrderCustomerCoordinates(order);
   const areaSummary = getOrderCustomerAreaSummary(order);
+  const countySummary = String(order.customerCounty || order.hotelCounty || hotel.county || "").trim();
 
   return `
     <article class="card order-card">
@@ -617,6 +618,10 @@ function renderEmployeeOrderCard(order, hotels) {
         <div class="meta-block">
           <span>Customer area</span>
           <strong>${escapeHtml(areaSummary || "Not shared")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Order county</span>
+          <strong>${escapeHtml(countySummary || "Resolving")}</strong>
         </div>
       </div>
 

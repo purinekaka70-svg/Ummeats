@@ -22,7 +22,7 @@ import {
   set as setRtdb,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
 import { auth, db, rtdb } from "./firebase.js";
-import { buildNotificationDocId, inferToastTone } from "./helpers.js";
+import { buildNotificationDocId, inferToastTone, normalizeCoordinates } from "./helpers.js";
 import {
   claimNotificationTag,
   registerPushSubscription,
@@ -37,6 +37,7 @@ const EMPLOYEE_AUTH_VIEW_STORAGE_KEY = "EMPLOYEE_AUTH_VIEW";
 const EMPLOYEE_AUTH_EMAIL_STORAGE_KEY = "EMPLOYEE_AUTH_EMAIL";
 const EMPLOYEE_PORTAL_FALLBACK_MESSAGE = "Employee portal could not load fully. You can still login or refresh this page.";
 const EMPLOYEE_PROFILE_LOAD_STALL_MS = 5000;
+const EMPLOYEE_REVERSE_GEOCODE_TIMEOUT_MS = 3000;
 const employeeNotificationPromptButton = document.getElementById("employeeNotificationPromptButton");
 const COUNTY_NAMES = [
   "Baringo",
@@ -193,6 +194,7 @@ const portalState = {
   orders: [],
   profileStatus: "idle",
   pendingRegistration: false,
+  requestNotificationPermission: false,
   ummaShopOrders: [],
 };
 
@@ -217,6 +219,8 @@ const employeeNotificationAlertTracker = {
   ids: new Set(),
   ready: false,
 };
+const employeeCountyLookupCache = new Map();
+const employeeCountyLookupPending = new Set();
 
 function clearEmployeeProfileLoadTimer() {
   if (employeeProfileLoadTimer) {
@@ -365,14 +369,8 @@ function normalizeCounty(value) {
   return normalizeCountyKey(detectedCounty || value);
 }
 
-function formatCountyLabel(value) {
-  const detectedCounty = detectCountyFromText(value);
-  if (detectedCounty) {
-    return detectedCounty;
-  }
-
-  const normalizedCounty = normalizeCountyKey(value);
-  return normalizedCounty ? titleCaseWords(normalizedCounty) : "";
+function getKnownCountyLabel(value) {
+  return detectCountyFromText(value);
 }
 
 function getEmployeeCounty(profile = portalState.employeeProfile) {
@@ -395,13 +393,161 @@ function matchesEmployeeCounty(text, county) {
   return normalizedText.includes(normalizedCounty);
 }
 
-function getHotelLocationForOrder(order) {
-  if (!order?.hotelId) {
+function buildCountyLookupCacheKey(value) {
+  const coordinates = normalizeCoordinates(value);
+  if (!coordinates) {
     return "";
   }
 
-  const hotel = portalState.hotels.find((item) => item.id === order.hotelId);
+  return `${coordinates.latitude.toFixed(5)}:${coordinates.longitude.toFixed(5)}`;
+}
+
+function getCachedCountyForCoordinates(value) {
+  const cacheKey = buildCountyLookupCacheKey(value);
+  if (!cacheKey || !employeeCountyLookupCache.has(cacheKey)) {
+    return "";
+  }
+
+  return employeeCountyLookupCache.get(cacheKey) || "";
+}
+
+function extractCountyFromAddressPayload(payload) {
+  const address = payload?.address || {};
+  const countyCandidate = [
+    address.county,
+    address.state_district,
+    address.region,
+    address.state,
+    payload?.display_name,
+  ].find(Boolean);
+
+  return getKnownCountyLabel(countyCandidate);
+}
+
+function queueCountyLookupForCoordinates(value) {
+  const coordinates = normalizeCoordinates(value);
+  const cacheKey = buildCountyLookupCacheKey(coordinates);
+  if (!coordinates || !cacheKey || employeeCountyLookupCache.has(cacheKey) || employeeCountyLookupPending.has(cacheKey) || typeof fetch !== "function") {
+    return;
+  }
+
+  employeeCountyLookupPending.add(cacheKey);
+
+  let abortController = null;
+  let timeoutId = 0;
+
+  void (async () => {
+    let resolvedCounty = "";
+
+    try {
+      const url = new URL("https://nominatim.openstreetmap.org/reverse");
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("lat", String(coordinates.latitude));
+      url.searchParams.set("lon", String(coordinates.longitude));
+      url.searchParams.set("zoom", "18");
+      url.searchParams.set("addressdetails", "1");
+
+      if (typeof AbortController !== "undefined") {
+        abortController = new AbortController();
+        timeoutId = window.setTimeout(() => abortController?.abort(), EMPLOYEE_REVERSE_GEOCODE_TIMEOUT_MS);
+      }
+
+      const response = await fetch(url.toString(), {
+        headers: {
+          Accept: "application/json",
+        },
+        ...(abortController ? { signal: abortController.signal } : {}),
+      });
+
+      if (response.ok) {
+        const payload = await response.json();
+        resolvedCounty = extractCountyFromAddressPayload(payload);
+      }
+    } catch {
+      resolvedCounty = "";
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+
+      employeeCountyLookupPending.delete(cacheKey);
+      employeeCountyLookupCache.set(cacheKey, resolvedCounty);
+
+      if (resolvedCounty) {
+        syncEmployeeVisibleCollections();
+        renderEmployeeView();
+      }
+    }
+  })();
+}
+
+function getHotelForOrder(order) {
+  if (!order?.hotelId) {
+    return null;
+  }
+
+  return portalState.hotels.find((item) => item.id === order.hotelId) || null;
+}
+
+function getHotelLocationForOrder(order) {
+  const hotel = getHotelForOrder(order);
   return String(hotel?.location || "").trim();
+}
+
+function getHotelCountyForOrder(order) {
+  const hotel = getHotelForOrder(order);
+  return getKnownCountyLabel(hotel?.county || hotel?.normalizedCounty);
+}
+
+function getOrderResolvedCounty(order) {
+  const directCounty = [
+    order?.customerCounty,
+    order?.normalizedCustomerCounty,
+    order?.deliveryCounty,
+    order?.normalizedDeliveryCounty,
+    order?.county,
+    order?.normalizedCounty,
+    order?.customerArea,
+    order?.customerSpecificArea,
+  ]
+    .map(getKnownCountyLabel)
+    .find(Boolean);
+
+  if (directCounty) {
+    return directCounty;
+  }
+
+  const customerCoordinateCounty = getCachedCountyForCoordinates(order?.customerCoordinates);
+  if (customerCoordinateCounty) {
+    return customerCoordinateCounty;
+  }
+
+  const hotelCounty = [
+    order?.hotelCounty,
+    order?.normalizedHotelCounty,
+    getHotelCountyForOrder(order),
+  ]
+    .map(getKnownCountyLabel)
+    .find(Boolean);
+
+  if (hotelCounty) {
+    return hotelCounty;
+  }
+
+  const hotel = getHotelForOrder(order);
+  const hotelCoordinateCounty = getCachedCountyForCoordinates(hotel?.coordinates);
+  if (hotelCoordinateCounty) {
+    return hotelCoordinateCounty;
+  }
+
+  const hotelLocationCounty = getKnownCountyLabel(getHotelLocationForOrder(order));
+  if (hotelLocationCounty) {
+    return hotelLocationCounty;
+  }
+
+  queueCountyLookupForCoordinates(order?.customerCoordinates);
+  queueCountyLookupForCoordinates(hotel?.coordinates);
+  return "";
 }
 
 function isOrderVisibleToEmployee(order) {
@@ -410,9 +556,16 @@ function isOrderVisibleToEmployee(order) {
     return false;
   }
 
+  const resolvedCounty = normalizeCounty(getOrderResolvedCounty(order));
+  if (resolvedCounty) {
+    return resolvedCounty === county;
+  }
+
   const text = [
+    order?.customerCounty,
     order?.customerArea,
     order?.customerSpecificArea,
+    order?.hotelCounty,
     getHotelLocationForOrder(order),
   ]
     .map((item) => String(item || "").trim())
@@ -428,7 +581,16 @@ function isShopOrderVisibleToEmployee(order) {
     return false;
   }
 
-  const text = [order?.location, order?.shopName]
+  const resolvedCounty = normalizeCounty(
+    [order?.county, order?.normalizedCounty, order?.location, order?.shopName]
+      .map(getKnownCountyLabel)
+      .find(Boolean),
+  );
+  if (resolvedCounty) {
+    return resolvedCounty === county;
+  }
+
+  const text = [order?.county, order?.location, order?.shopName]
     .map((item) => String(item || "").trim())
     .filter(Boolean)
     .join(" ");
@@ -437,7 +599,7 @@ function isShopOrderVisibleToEmployee(order) {
 }
 
 function addCountySuggestion(target, value) {
-  const label = formatCountyLabel(value);
+  const label = getKnownCountyLabel(value);
   if (label) {
     target.add(label);
   }
@@ -449,16 +611,21 @@ function syncEmployeeCountySuggestions() {
   addCountySuggestion(suggestions, portalState.employeeProfile?.county);
 
   portalState.hotels.forEach((hotel) => {
+    addCountySuggestion(suggestions, hotel?.county);
     addCountySuggestion(suggestions, hotel?.location);
   });
 
   unfilteredOrders.forEach((order) => {
+    addCountySuggestion(suggestions, order?.customerCounty);
+    addCountySuggestion(suggestions, order?.hotelCounty);
     addCountySuggestion(suggestions, order?.customerArea);
     addCountySuggestion(suggestions, order?.customerSpecificArea);
+    addCountySuggestion(suggestions, getOrderResolvedCounty(order));
     addCountySuggestion(suggestions, getHotelLocationForOrder(order));
   });
 
   unfilteredShopOrders.forEach((order) => {
+    addCountySuggestion(suggestions, order?.county);
     addCountySuggestion(suggestions, order?.location);
     addCountySuggestion(suggestions, order?.shopName);
   });
@@ -665,16 +832,17 @@ function getEmployeePushContext() {
   };
 }
 
-function syncEmployeePushSubscription() {
+function syncEmployeePushSubscription(options = {}) {
   const context = getEmployeePushContext();
   if (!context) {
     return;
   }
 
+  const requestPermission = options.requestPermission === true;
   void registerPushSubscription(context.target, context.label, {
     ...context.options,
-    requestPermission: false,
-    silent: true,
+    requestPermission,
+    silent: !requestPermission,
   });
 }
 
@@ -750,6 +918,7 @@ function resolveEmployeeNotificationTitle(item) {
 
 function handleEmployeeNotificationAlerts(snapshot) {
   const currentIds = new Set(snapshot.docs.map((item) => item.id));
+  const previousIds = employeeNotificationAlertTracker.ids;
 
   if (!employeeNotificationAlertTracker.ready) {
     employeeNotificationAlertTracker.ready = true;
@@ -757,8 +926,13 @@ function handleEmployeeNotificationAlerts(snapshot) {
     return;
   }
 
-  snapshot.docs.forEach((docSnapshot) => {
-    if (employeeNotificationAlertTracker.ids.has(docSnapshot.id)) {
+  snapshot.docChanges().forEach((change) => {
+    if (change.type !== "added" || change.doc.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const docSnapshot = change.doc;
+    if (previousIds.has(docSnapshot.id)) {
       return;
     }
 
@@ -892,6 +1066,7 @@ function subscribeToAuth() {
       portalState.mapModal = null;
       portalState.profileStatus = "idle";
       portalState.pendingRegistration = false;
+      portalState.requestNotificationPermission = false;
       portalState.authView = loadEmployeeAuthView();
       syncEmployeeVisibleCollections();
       void unregisterPushSubscription().catch(() => false);
@@ -918,8 +1093,12 @@ function subscribeToAuth() {
         String(snapshot.data()?.status || "active").trim().toLowerCase() !== "blocked"
       ) {
         startEmployeeNotificationSubscription(user.uid);
-        syncEmployeePushSubscription();
+        syncEmployeePushSubscription({
+          requestPermission: portalState.requestNotificationPermission && getNotificationPermissionState() === "default",
+        });
+        portalState.requestNotificationPermission = false;
       } else {
+        portalState.requestNotificationPermission = false;
         stopEmployeeNotificationSubscription();
       }
       if (!snapshot.exists()) {
@@ -1138,22 +1317,24 @@ async function loginEmployee(form) {
     portalState.authEmailDraft = email;
     portalState.authView = "login";
     saveEmployeeAuthView(portalState.authView);
+    portalState.requestNotificationPermission = getNotificationPermissionState() === "default";
     await signInWithEmailAndPassword(auth, email, password);
     form.reset();
     showToast("Employee login successful.", "success");
   } catch (error) {
     console.error(error);
+    portalState.requestNotificationPermission = false;
     showToast(getAuthErrorMessage(error, "login"), "error");
   }
 }
 
 async function updateEmployeeCounty(form) {
   const countyInput = String(form.elements.employeeCounty?.value || "").trim().replace(/\s+/g, " ");
-  const normalizedCounty = normalizeCounty(countyInput);
-  const formattedCounty = formatCountyLabel(countyInput);
+  const formattedCounty = getKnownCountyLabel(countyInput);
+  const normalizedCounty = normalizeCounty(formattedCounty);
 
   if (!normalizedCounty || !formattedCounty) {
-    showToast("Enter your work county first.", "warn");
+    showToast("Enter a valid Kenyan county first.", "warn");
     return;
   }
 
@@ -1187,14 +1368,14 @@ async function registerEmployee(form) {
   const email = form.elements.employeeEmail.value.trim();
   const idNumber = form.elements.employeeIdNumber.value.trim();
   const countyInput = String(form.elements.employeeCounty?.value || "").trim().replace(/\s+/g, " ");
-  const county = formatCountyLabel(countyInput);
-  const normalizedCounty = normalizeCounty(countyInput);
+  const county = getKnownCountyLabel(countyInput);
+  const normalizedCounty = normalizeCounty(county);
   const password = form.elements.employeePass.value.trim();
   const confirmPassword = form.elements.employeePassConfirm.value.trim();
   const idCardFile = form.elements.employeeIdCard.files?.[0];
 
   if (!fullName || !email || !idNumber || !county || !normalizedCounty || !password || !confirmPassword) {
-    alert("Fill all employee account details.");
+    alert("Fill all employee account details and use a valid Kenyan county.");
     return;
   }
 
@@ -1207,6 +1388,7 @@ async function registerEmployee(form) {
 
   portalState.pendingRegistration = true;
   portalState.profileStatus = "loading";
+  portalState.requestNotificationPermission = getNotificationPermissionState() === "default";
   saveEmployeeAuthEmail(email);
   portalState.authEmailDraft = email;
   renderEmployeeView();
@@ -1263,6 +1445,7 @@ async function registerEmployee(form) {
     console.error(error);
     portalState.pendingRegistration = false;
     portalState.profileStatus = auth.currentUser ? "loading" : "idle";
+    portalState.requestNotificationPermission = false;
 
     if (uploadResult?.path) {
       await removeRtdb(rtdbRef(rtdb, uploadResult.path)).catch(() => undefined);

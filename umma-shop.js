@@ -657,6 +657,10 @@ async function submitOrder() {
         } else {
           await addDoc(collection(db, "notifications"), notification);
         }
+
+        await updateDoc(doc(db, "ummaShopOrders", createdOrder.id), {
+          notificationAdminDispatchedAt: Date.now(),
+        }).catch(() => undefined);
       } catch (error) {
         console.warn("Shop Here fallback notification write failed", error);
       }

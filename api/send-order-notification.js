@@ -215,17 +215,58 @@ function buildEmployeeAliasTargets(employees) {
   return [...new Set((Array.isArray(employees) ? employees : []).map((item) => String(item?.id || "").trim()).filter(Boolean))];
 }
 
+function buildOrderEmployeeMatchSources(order, hotelLocation = "") {
+  return [
+    order?.customerCounty,
+    order?.normalizedCustomerCounty,
+    order?.hotelCounty,
+    order?.normalizedHotelCounty,
+    order?.customerArea,
+    order?.customerSpecificArea,
+    hotelLocation,
+  ].filter(Boolean);
+}
+
+function buildShopEmployeeMatchSources(order) {
+  return [
+    order?.county,
+    order?.normalizedCounty,
+    order?.location,
+    order?.shopName,
+  ].filter(Boolean);
+}
+
 async function getMatchingEmployees(firestore, text) {
-  const normalizedText = String(text || "").trim();
-  if (!normalizedText) {
+  const sources = (Array.isArray(text) ? text : [text])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+  if (!sources.length) {
     return [];
   }
+
+  const normalizedText = sources.join(" ");
+  const candidateCountyKeys = [...new Set(
+    sources
+      .map((item) => normalizeCounty(detectCountyFromText(item)))
+      .filter(Boolean),
+  )];
 
   const snapshot = await firestore.collection("employees").get();
   return snapshot.docs
     .map((item) => ({ id: item.id, ...item.data() }))
     .filter((employee) => String(employee.status || "active").trim().toLowerCase() !== "blocked")
-    .filter((employee) => matchesEmployeeCounty(normalizedText, employee.normalizedCounty || employee.county));
+    .filter((employee) => {
+      const employeeCounty = normalizeCounty(employee.normalizedCounty || employee.county);
+      if (!employeeCounty) {
+        return false;
+      }
+
+      if (candidateCountyKeys.length) {
+        return candidateCountyKeys.includes(employeeCounty);
+      }
+
+      return matchesEmployeeCounty(normalizedText, employeeCounty);
+    });
 }
 
 async function writeEmployeeNotifications({ employees, firestore, message, refId, timestamp, type }) {
@@ -358,7 +399,7 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   if (!order.notificationEmployeeDispatchedAt) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+      buildOrderEmployeeMatchSources(order, hotelLocation),
     );
 
     if (matchingEmployees.length) {
@@ -414,7 +455,7 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   if (!order.onesignalEmployeeDispatchedAt) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+      buildOrderEmployeeMatchSources(order, hotelLocation),
     );
 
     if (
@@ -473,7 +514,7 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
   if (!order.notificationEmployeeDispatchedAt) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.location, order.shopName].filter(Boolean).join(" "),
+      buildShopEmployeeMatchSources(order),
     );
 
     if (matchingEmployees.length) {
@@ -509,7 +550,7 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
   if (!order.onesignalEmployeeDispatchedAt) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.location, order.shopName].filter(Boolean).join(" "),
+      buildShopEmployeeMatchSources(order),
     );
 
     if (
@@ -619,7 +660,7 @@ async function dispatchShopOrderStatus({
   if (!order[config.employeeInAppField]) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.location, order.shopName].filter(Boolean).join(" "),
+      buildShopEmployeeMatchSources(order),
     );
 
     if (matchingEmployees.length) {
@@ -675,7 +716,7 @@ async function dispatchShopOrderStatus({
   if (!order[config.employeePushField]) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.location, order.shopName].filter(Boolean).join(" "),
+      buildShopEmployeeMatchSources(order),
     );
 
     if (
@@ -772,7 +813,7 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   if (!order.notificationEmployeePaidDispatchedAt) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+      buildOrderEmployeeMatchSources(order, hotelLocation),
     );
 
     if (matchingEmployees.length) {
@@ -848,7 +889,7 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
   if (!order.onesignalEmployeePaidDispatchedAt) {
     matchingEmployees = matchingEmployees || await getMatchingEmployees(
       firestore,
-      [order.customerArea, order.customerSpecificArea, hotelLocation].filter(Boolean).join(" "),
+      buildOrderEmployeeMatchSources(order, hotelLocation),
     );
 
     if (

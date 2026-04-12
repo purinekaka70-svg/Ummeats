@@ -63,7 +63,10 @@ import { renderRestaurants } from "./view-restaurants.js";
 
 let deferredInstallPrompt = null;
 let installPromptWaiters = [];
-const liveNotificationAlertTracker = new Set();
+const liveNotificationAlertTracker = {
+  idsByTarget: new Map(),
+  readyTargets: new Set(),
+};
 const FAST_LOCATION_TIMEOUT_MS = 3500;
 const PRECISE_LOCATION_TIMEOUT_MS = 12000;
 const CHECKOUT_PRECISION_REFRESH_TIMEOUT_MS = 3000;
@@ -76,6 +79,66 @@ const UMMA_UNIVERSITY_REFERENCE_COORDINATES = Object.freeze({
   longitude: 36.82064,
 });
 const reverseGeocodeCache = new Map();
+const COUNTY_NAMES = [
+  "Baringo",
+  "Bomet",
+  "Bungoma",
+  "Busia",
+  "Elgeyo-Marakwet",
+  "Embu",
+  "Garissa",
+  "Homa Bay",
+  "Isiolo",
+  "Kajiado",
+  "Kakamega",
+  "Kericho",
+  "Kiambu",
+  "Kilifi",
+  "Kirinyaga",
+  "Kisii",
+  "Kisumu",
+  "Kitui",
+  "Kwale",
+  "Laikipia",
+  "Lamu",
+  "Machakos",
+  "Makueni",
+  "Mandera",
+  "Marsabit",
+  "Meru",
+  "Migori",
+  "Mombasa",
+  "Murang'a",
+  "Nairobi",
+  "Nakuru",
+  "Nandi",
+  "Narok",
+  "Nyamira",
+  "Nyandarua",
+  "Nyeri",
+  "Samburu",
+  "Siaya",
+  "Taita-Taveta",
+  "Tana River",
+  "Tharaka-Nithi",
+  "Trans Nzoia",
+  "Turkana",
+  "Uasin Gishu",
+  "Vihiga",
+  "Wajir",
+  "West Pokot",
+];
+const COUNTY_TEXT_ALIAS_MAP = {
+  kajiado: [
+    "kajiado",
+    "kaijiado",
+    "around umma university",
+    "umma university",
+    "my qwetu residence",
+    "kajiado town",
+    "kajiado cbd",
+  ],
+};
 
 bootstrap();
 
@@ -437,6 +500,50 @@ function setCheckoutCustomerLocationDraft(hotelId, coordinates, area = "") {
   updateCheckoutLocationStatus(hotelId);
 }
 
+function normalizeCountyKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\bcounty\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function detectCountyFromText(value) {
+  const normalizedValue = normalizeCountyKey(value);
+  if (!normalizedValue) {
+    return "";
+  }
+
+  for (const [countyKey, aliases] of Object.entries(COUNTY_TEXT_ALIAS_MAP)) {
+    if (aliases.some((alias) => normalizedValue.includes(normalizeCountyKey(alias)))) {
+      return COUNTY_NAMES.find((item) => normalizeCountyKey(item) === countyKey) || "";
+    }
+  }
+
+  for (const county of COUNTY_NAMES) {
+    if (normalizedValue.includes(normalizeCountyKey(county))) {
+      return county;
+    }
+  }
+
+  return "";
+}
+
+function extractCountyFromAddressPayload(payload) {
+  const address = payload?.address || {};
+  const countyCandidate = [
+    address.county,
+    address.state_district,
+    address.region,
+    address.state,
+    payload?.display_name,
+  ].find(Boolean);
+
+  return detectCountyFromText(countyCandidate);
+}
+
 function buildCustomerAreaLabel(payload) {
   const address = payload?.address || {};
   const primary = [
@@ -458,35 +565,14 @@ function buildCustomerAreaLabel(payload) {
   return label || String(payload?.display_name || "").split(",").slice(0, 2).join(", ").trim();
 }
 
-function isUmmaLocationText(value) {
-  return /umma\s+universit/i.test(String(value || ""));
-}
-
-function getReferenceCoordinatesForLocationText(value) {
-  if (!isUmmaLocationText(value)) {
-    return null;
-  }
-
-  return normalizeCoordinates(UMMA_UNIVERSITY_REFERENCE_COORDINATES);
-}
-
-function buildCoordinateCacheKey(coordinates) {
-  const normalized = normalizeCoordinates(coordinates);
-  if (!normalized) {
-    return "";
-  }
-
-  return `${normalized.latitude.toFixed(5)}:${normalized.longitude.toFixed(5)}`;
-}
-
-async function resolveCustomerAreaLabel(coordinates) {
+async function resolveReverseGeocodeSummary(coordinates) {
   if (!coordinates || typeof fetch !== "function") {
-    return "";
+    return { county: "", label: "" };
   }
 
   const cacheKey = buildCoordinateCacheKey(coordinates);
   if (cacheKey && reverseGeocodeCache.has(cacheKey)) {
-    return reverseGeocodeCache.get(cacheKey) || "";
+    return reverseGeocodeCache.get(cacheKey) || { county: "", label: "" };
   }
 
   let abortController = null;
@@ -512,22 +598,79 @@ async function resolveCustomerAreaLabel(coordinates) {
       ...(abortController ? { signal: abortController.signal } : {}),
     });
     if (!response.ok) {
-      return "";
+      return { county: "", label: "" };
     }
 
     const payload = await response.json();
-    const label = buildCustomerAreaLabel(payload);
-    if (cacheKey && label) {
-      reverseGeocodeCache.set(cacheKey, label);
+    const summary = {
+      county: extractCountyFromAddressPayload(payload),
+      label: buildCustomerAreaLabel(payload),
+    };
+    if (cacheKey) {
+      reverseGeocodeCache.set(cacheKey, summary);
     }
-    return label;
+    return summary;
   } catch {
-    return "";
+    return { county: "", label: "" };
   } finally {
     if (timeoutId) {
       window.clearTimeout(timeoutId);
     }
   }
+}
+
+function isUmmaLocationText(value) {
+  return /umma\s+universit/i.test(String(value || ""));
+}
+
+function getReferenceCoordinatesForLocationText(value) {
+  if (!isUmmaLocationText(value)) {
+    return null;
+  }
+
+  return normalizeCoordinates(UMMA_UNIVERSITY_REFERENCE_COORDINATES);
+}
+
+function buildCoordinateCacheKey(coordinates) {
+  const normalized = normalizeCoordinates(coordinates);
+  if (!normalized) {
+    return "";
+  }
+
+  return `${normalized.latitude.toFixed(5)}:${normalized.longitude.toFixed(5)}`;
+}
+
+async function resolveCustomerAreaLabel(coordinates) {
+  const summary = await resolveReverseGeocodeSummary(coordinates);
+  return summary.label;
+}
+
+async function resolveCountyFromCoordinates(coordinates) {
+  const summary = await resolveReverseGeocodeSummary(coordinates);
+  return summary.county;
+}
+
+async function resolveHotelCounty(hotel) {
+  const explicitCounty = detectCountyFromText(hotel?.county || hotel?.normalizedCounty);
+  if (explicitCounty) {
+    return explicitCounty;
+  }
+
+  const coordinateCounty = await resolveCountyFromCoordinates(getHotelCoordinates(hotel));
+  if (coordinateCounty) {
+    return coordinateCounty;
+  }
+
+  return detectCountyFromText(getHotelLocation(hotel));
+}
+
+async function resolveOrderCustomerCounty(customerArea, customerSpecificArea, customerCoordinates) {
+  const knownCounty = detectCountyFromText([customerSpecificArea, customerArea].filter(Boolean).join(" "));
+  if (knownCounty) {
+    return knownCounty;
+  }
+
+  return resolveCountyFromCoordinates(customerCoordinates);
 }
 
 function buildCustomerAreaSearchQueries(customerArea, customerSpecificArea, hotelLocation) {
@@ -680,14 +823,22 @@ async function updateCurrentHotelCoordinates() {
   }
 
   try {
+    const county = await resolveCountyFromCoordinates(coordinates);
     await updateDoc(doc(db, "hotels", hotel.id), {
+      ...(county ? {
+        county,
+        normalizedCounty: normalizeCountyKey(county),
+      } : {}),
       coordinates: {
         ...(Number.isFinite(coordinates.accuracy) ? { accuracy: coordinates.accuracy } : {}),
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
       },
     });
-    showToast("Hotel delivery map point updated.", "success");
+    showToast(
+      county ? `Hotel delivery map point updated for ${county}.` : "Hotel delivery map point updated.",
+      "success",
+    );
   } catch (error) {
     console.error(error);
     showToast("Failed to update hotel location.", "error");
@@ -999,6 +1150,17 @@ function getActiveNotificationTarget() {
   return CUSTOMER_ID;
 }
 
+function resetLiveNotificationAlertTracker(target = null) {
+  if (target) {
+    liveNotificationAlertTracker.idsByTarget.delete(target);
+    liveNotificationAlertTracker.readyTargets.delete(target);
+    return;
+  }
+
+  liveNotificationAlertTracker.idsByTarget.clear();
+  liveNotificationAlertTracker.readyTargets.clear();
+}
+
 function resolveNotificationTitle(item) {
   const normalizedType = String(item?.type || "").trim().toLowerCase();
   if (normalizedType === "order-paid" || normalizedType === "order_paid") {
@@ -1030,19 +1192,27 @@ function handleLiveNotificationAlerts(snapshot) {
     return;
   }
 
-  snapshot.docs.forEach((docSnapshot) => {
+  const targetDocs = snapshot.docs.filter((docSnapshot) => String(docSnapshot.data()?.to || "").trim() === target);
+  const currentIds = new Set(targetDocs.map((docSnapshot) => docSnapshot.id));
+  const previousIds = liveNotificationAlertTracker.idsByTarget.get(target) || new Set();
+
+  if (!liveNotificationAlertTracker.readyTargets.has(target)) {
+    liveNotificationAlertTracker.readyTargets.add(target);
+    liveNotificationAlertTracker.idsByTarget.set(target, currentIds);
+    return;
+  }
+
+  snapshot.docChanges().forEach((change) => {
+    if (change.type !== "added" || change.doc.metadata.hasPendingWrites) {
+      return;
+    }
+
+    const docSnapshot = change.doc;
     const item = docSnapshot.data() || {};
     const itemTarget = String(item.to || "").trim();
-    if (itemTarget !== target || item.read) {
+    if (itemTarget !== target || item.read || previousIds.has(docSnapshot.id)) {
       return;
     }
-
-    const trackerKey = `${target}:${docSnapshot.id}`;
-    if (liveNotificationAlertTracker.has(trackerKey)) {
-      return;
-    }
-
-    liveNotificationAlertTracker.add(trackerKey);
 
     const title = resolveNotificationTitle(item);
     const body = String(item.message || "You have a new update.");
@@ -1060,6 +1230,8 @@ function handleLiveNotificationAlerts(snapshot) {
       tag,
     });
   });
+
+  liveNotificationAlertTracker.idsByTarget.set(target, currentIds);
 }
 
 async function handleNotificationPromptClick() {
@@ -1270,6 +1442,7 @@ async function handleClick(event) {
 
   if (button.id === "logoutHotel") {
     await unregisterPushSubscription(state.currentHotelId);
+    resetLiveNotificationAlertTracker(state.currentHotelId);
     state.currentHotelId = null;
     state.hotelAuthView = "login";
     state.currentAdmin = false;
@@ -1604,12 +1777,17 @@ async function registerHotel(form) {
   }
 
   try {
+    const county = await resolveCountyFromCoordinates(coordinates);
     const docRef = await addDoc(collection(db, "hotels"), {
       name,
       phone,
       pass,
       till,
       location,
+      ...(county ? {
+        county,
+        normalizedCounty: normalizeCountyKey(county),
+      } : {}),
       coordinates,
       approved: false,
       blocked: false,
@@ -1685,6 +1863,7 @@ async function loginHotel(form) {
   }
 
   state.currentHotelId = hotel.id;
+  resetLiveNotificationAlertTracker(hotel.id);
   state.hotelAuthView = "login";
   state.currentAdmin = false;
   const pushEnabled = await registerPushSubscription(hotel.id, hotel.name, {
@@ -2023,6 +2202,11 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   const serviceFee = feeDetails.serviceFee;
   const itemsTotal = getCartItemsTotal(cart);
   const total = itemsTotal + serviceFee;
+  const resolvedCustomerCoordinates = normalizeCoordinates(feeDetails.customerCoordinates || customerCoordinates);
+  const [customerCounty, hotelCounty] = await Promise.all([
+    resolveOrderCustomerCounty(customerArea, customerSpecificArea, resolvedCustomerCoordinates),
+    resolveHotelCounty(hotel),
+  ]);
 
   if (feeDetails.serviceFeeSource !== "distance") {
     showToast("Distance could not be confirmed from location or typed area. Delivery fee used base amount.", "warn");
@@ -2034,7 +2218,15 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     customerName,
     customerPhone,
     ...(customerArea ? { customerArea } : {}),
+    ...(customerCounty ? {
+      customerCounty,
+      normalizedCustomerCounty: normalizeCountyKey(customerCounty),
+    } : {}),
     ...(customerSpecificArea ? { customerSpecificArea } : {}),
+    ...(hotelCounty ? {
+      hotelCounty,
+      normalizedHotelCounty: normalizeCountyKey(hotelCounty),
+    } : {}),
     hotelId,
     items: cart.map((item) => ({
       name: item.name,
@@ -2104,15 +2296,12 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     return;
   }
 
-  const areaSummary = [customerArea, customerSpecificArea].filter(Boolean).join(" - ");
-  const message = `New order from ${customerName} (${customerPhone}) - ${formatCurrency(total)} for ${hotel.name}${
-    Number.isFinite(feeDetails.distanceKm) ? ` (${formatDistanceKm(feeDetails.distanceKm)})` : ""
-  }${areaSummary ? ` - ${areaSummary}` : ""}`;
+  const notificationMessage = `${customerName} placed an order for ${hotel.name}.`;
 
   if (!notificationSent) {
     try {
       const adminNotification = {
-        message,
+        message: notificationMessage,
         read: false,
         ...(createdOrderId ? { refId: createdOrderId } : {}),
         timestamp: Date.now(),
@@ -2127,7 +2316,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
       }
 
       const hotelNotification = {
-        message,
+        message: notificationMessage,
         read: false,
         ...(createdOrderId ? { refId: createdOrderId } : {}),
         timestamp: Date.now(),
@@ -2139,6 +2328,13 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
         await setDoc(doc(db, "notifications", hotelNotificationId), hotelNotification, { merge: true });
       } else {
         await addDoc(collection(db, "notifications"), hotelNotification);
+      }
+
+      if (createdOrderId) {
+        await updateDoc(doc(db, "orders", createdOrderId), {
+          notificationAdminDispatchedAt: Date.now(),
+          notificationHotelDispatchedAt: Date.now(),
+        }).catch(() => undefined);
       }
     } catch (error) {
       console.warn("Notification write failed", error);
