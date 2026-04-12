@@ -280,8 +280,6 @@ function renderEmployeeDashboard(portalState) {
           </div>
         </div>
 
-        ${renderEmployeeCountyManagerCard(portalState)}
-
         ${renderEmployeeSection(currentSection, {
           mapReadyOrders,
           notifications,
@@ -291,6 +289,7 @@ function renderEmployeeDashboard(portalState) {
           profile,
           shopOrders,
           hotels: portalState.hotels,
+          portalState,
         })}
       </div>
 
@@ -415,6 +414,8 @@ function renderEmployeeDashboardSection(context) {
 
   return `
     <section class="view-shell">
+      ${renderEmployeeCountyManagerCard(context.portalState)}
+
       <div class="stats-grid">
         <article class="stat-card">
           <span class="stat-label">Hotel Orders</span>
@@ -589,7 +590,6 @@ function renderEmployeeOrderCard(order, hotels) {
   const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
   const customerCoordinates = getOrderCustomerCoordinates(order);
   const areaSummary = getOrderCustomerAreaSummary(order);
-  const countySummary = String(order.customerCounty || order.hotelCounty || hotel.county || "").trim();
 
   return `
     <article class="card order-card">
@@ -618,10 +618,6 @@ function renderEmployeeOrderCard(order, hotels) {
         <div class="meta-block">
           <span>Customer area</span>
           <strong>${escapeHtml(areaSummary || "Not shared")}</strong>
-        </div>
-        <div class="meta-block">
-          <span>Order county</span>
-          <strong>${escapeHtml(countySummary || "Resolving")}</strong>
         </div>
       </div>
 
