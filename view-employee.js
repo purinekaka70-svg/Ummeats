@@ -1,5 +1,6 @@
 import { DEFAULT_HOTEL_LOCATION, SERVICE_FEE } from "./config.js";
 import {
+  buildWhatsAppLink,
   escapeHtml,
   formatCoordinatePair,
   formatCurrency,
@@ -590,6 +591,10 @@ function renderEmployeeOrderCard(order, hotels) {
   const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
   const customerCoordinates = getOrderCustomerCoordinates(order);
   const areaSummary = getOrderCustomerAreaSummary(order);
+  const customerWaLink = buildWhatsAppLink(
+    order.customerPhone,
+    `Hello ${order.customerName || "customer"}, I am the delivery person from Tamu Express for your order at ${hotel.name}.`,
+  );
 
   return `
     <article class="card order-card">
@@ -662,9 +667,21 @@ function renderEmployeeOrderCard(order, hotels) {
                 >
                   View Map
                 </button>
+                ${
+                  customerWaLink
+                    ? `<a class="button button-outline button-small" href="${escapeHtml(customerWaLink)}" target="_blank" rel="noreferrer">WhatsApp Customer</a>`
+                    : ""
+                }
               </div>
             `
-          : `<p class="tiny">Customer map coordinates were not shared for this order.</p>`
+          : `
+              ${
+                customerWaLink
+                  ? `<div class="button-row"><a class="button button-outline button-small" href="${escapeHtml(customerWaLink)}" target="_blank" rel="noreferrer">WhatsApp Customer</a></div>`
+                  : ""
+              }
+              <p class="tiny">Customer map coordinates were not shared for this order.</p>
+            `
       }
     </article>
   `;

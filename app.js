@@ -8,6 +8,7 @@ import {
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
 import {
   ANNOUNCEMENT_TEXT,
   DEFAULT_HOTEL_LOCATION,
@@ -17,7 +18,7 @@ import {
   SERVICE_FEE_TILL,
   SMS_SIMULATION_ENABLED,
 } from "./config.js";
-import { db } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 import {
   calculateDistanceKm,
   buildNotificationDocId,
@@ -39,6 +40,12 @@ import {
 } from "./push.js";
 import { dispatchOrderNotification } from "./notification-api.js";
 import { notifyPaidOrderStatus } from "./order-status-notifications.js";
+import {
+  ensureCustomerSession,
+  loginHotelWithServer,
+  registerHotelWithServer,
+  resolveAuthSession,
+} from "./security.js";
 import {
   CUSTOMER_ID,
   elements,
@@ -140,9 +147,24 @@ const COUNTY_TEXT_ALIAS_MAP = {
   ],
 };
 
-bootstrap();
+void bootstrap();
 
-function bootstrap() {
+async function bootstrap() {
+  try {
+    const session = await resolveAuthSession().catch(() => null);
+    if (session?.role === "hotel" && session.hotelId) {
+      state.currentHotelId = session.hotelId;
+      state.currentTab = "hotel";
+    } else if (!auth.currentUser || auth.currentUser.isAnonymous) {
+      await ensureCustomerSession();
+    } else {
+      await signOut(auth).catch(() => undefined);
+      await ensureCustomerSession();
+    }
+  } catch (error) {
+    console.warn("Guest session bootstrap failed", error);
+  }
+
   bindStaticEvents();
   bindInstallFlow();
   bindNotificationPermissionFlow();
@@ -1388,7 +1410,7 @@ async function handleClick(event) {
   }
 
   if (button.id === "confirmOrderBtn") {
-    await handlePlaceOrder(button.dataset.hotel, { clearCartAfter: false, closeModal: true });
+    await handlePlaceOrder(button.dataset.hotel, { clearCartAfter: true, closeModal: true });
     return;
   }
 
@@ -1404,6 +1426,11 @@ async function handleClick(event) {
 
   if (button.classList.contains("markNotifRead")) {
     await updateDoc(doc(db, "notifications", button.dataset.id), { read: true });
+    return;
+  }
+
+  if (button.classList.contains("deleteNotification")) {
+    await deleteUserNotification(button.dataset.id);
     return;
   }
 
@@ -1446,6 +1473,8 @@ async function handleClick(event) {
     state.currentHotelId = null;
     state.hotelAuthView = "login";
     state.currentAdmin = false;
+    await signOut(auth).catch(() => undefined);
+    await ensureCustomerSession().catch(() => undefined);
     syncActivePushSubscription();
     syncUi();
     return;
@@ -1466,6 +1495,25 @@ function handleInput(event) {
 
   if (field === "customerArea" || field === "customerSpecificArea") {
     updateCheckoutLocationStatus(hotelId);
+  }
+}
+
+async function deleteUserNotification(notificationIdValue) {
+  const notificationId = String(notificationIdValue || "").trim();
+  if (!notificationId) {
+    return;
+  }
+
+  if (!window.confirm("Delete this notification?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "notifications", notificationId));
+    showToast("Notification deleted.", "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Failed to delete notification.", "error");
   }
 }
 
@@ -1778,45 +1826,18 @@ async function registerHotel(form) {
 
   try {
     const county = await resolveCountyFromCoordinates(coordinates);
-    const docRef = await addDoc(collection(db, "hotels"), {
-      name,
-      phone,
-      pass,
-      till,
-      location,
+    await registerHotelWithServer({
+      coordinates,
       ...(county ? {
         county,
         normalizedCounty: normalizeCountyKey(county),
       } : {}),
-      coordinates,
-      approved: false,
-      blocked: false,
-      subscriptionExpiry: null,
+      location,
+      name,
+      password: pass,
+      phone,
+      till,
     });
-
-    await setDoc(doc(db, "restaurants", docRef.id), {
-      hotelId: docRef.id,
-      menu: [],
-    });
-
-    try {
-      const notification = {
-        message: `New hotel registration: ${name} (${phone})`,
-        read: false,
-        refId: docRef.id,
-        timestamp: Date.now(),
-        to: "admin",
-        type: "hotel",
-      };
-      const notificationId = buildNotificationDocId(notification);
-      if (notificationId) {
-        await setDoc(doc(db, "notifications", notificationId), notification, { merge: true });
-      } else {
-        await addDoc(collection(db, "notifications"), notification);
-      }
-    } catch (error) {
-      console.warn("Hotel registration notification write failed", error);
-    }
 
     form.reset();
     updateHotelRegistrationCoordinateStatus(form, null);
@@ -1825,58 +1846,53 @@ async function registerHotel(form) {
     syncUi();
   } catch (error) {
     console.error(error);
-    showToast("Registration failed.", "error");
+    showToast(String(error?.message || "Registration failed."), "error");
   }
 }
 
 async function loginHotel(form) {
   const name = form.elements.hotelName.value.trim();
   const pass = form.elements.hotelPass.value.trim();
-  const normalizedName = normalizeHotelAccountName(name);
 
   if (!name || !pass) {
     alert("Enter hotel name and password.");
     return;
   }
 
-  const hotel = state.hotels.find(
-    (item) => normalizeHotelAccountName(item.name) === normalizedName && item.pass === pass,
-  );
-  if (!hotel) {
-    alert("Wrong hotel name or password.");
-    return;
-  }
+  try {
+    const result = await loginHotelWithServer(name, pass);
+    const hotelId = String(result?.hotelId || "").trim();
+    const hotel =
+      state.hotels.find((item) => item.id === hotelId) ||
+      {
+        id: hotelId,
+        name: String(result?.hotelName || name).trim() || name,
+      };
 
-  if (!hotel.approved) {
-    alert("Hotel not approved yet.");
-    return;
-  }
+    if (!hotelId) {
+      alert("Hotel login failed.");
+      return;
+    }
 
-  if (hotel.blocked) {
-    alert("Hotel is blocked.");
-    return;
+    state.currentHotelId = hotelId;
+    resetLiveNotificationAlertTracker(hotelId);
+    state.hotelAuthView = "login";
+    state.currentAdmin = false;
+    const pushEnabled = await registerPushSubscription(hotelId, hotel.name, {
+      hotelId,
+      role: "hotel",
+    });
+    switchTab("hotel");
+    showToast(
+      pushEnabled
+        ? "Hotel login successful. Browser notifications enabled."
+        : "Hotel login successful. Tap Enable Notifications to allow browser alerts.",
+      pushEnabled ? "success" : "warn",
+    );
+  } catch (error) {
+    console.error(error);
+    alert(String(error?.message || "Wrong hotel name or password."));
   }
-
-  if (!hotel.subscriptionExpiry || hotel.subscriptionExpiry < Date.now()) {
-    alert("Subscription expired. Contact admin.");
-    return;
-  }
-
-  state.currentHotelId = hotel.id;
-  resetLiveNotificationAlertTracker(hotel.id);
-  state.hotelAuthView = "login";
-  state.currentAdmin = false;
-  const pushEnabled = await registerPushSubscription(hotel.id, hotel.name, {
-    hotelId: hotel.id,
-    role: "hotel",
-  });
-  switchTab("hotel");
-  showToast(
-    pushEnabled
-      ? "Hotel login successful. Browser notifications enabled."
-      : "Hotel login successful. Tap Enable Notifications to allow browser alerts.",
-    pushEnabled ? "success" : "warn",
-  );
 }
 
 async function addMenuItem(form) {
@@ -1979,11 +1995,22 @@ function openCartModal(hotelId) {
       <div class="menu-list">
         ${cart
           .map(
-            (item) => `
+            (item, index) => `
               <div class="order-item">
                 <div class="split-row">
                   <strong>${escapeHtml(`${item.qty} x ${item.name}`)}</strong>
-                  <span class="item-price">${formatCurrency(item.price * item.qty)}</span>
+                  <div class="inline-list">
+                    <span class="item-price">${formatCurrency(item.price * item.qty)}</span>
+                    <button
+                      class="button button-danger-soft button-small removeItem"
+                      data-hotel="${escapeHtml(hotelId)}"
+                      data-index="${escapeHtml(String(index))}"
+                      type="button"
+                      aria-label="Remove ${escapeHtml(item.name)} from cart"
+                    >
+                      X
+                    </button>
+                  </div>
                 </div>
               </div>
             `,
@@ -2207,6 +2234,7 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     resolveOrderCustomerCounty(customerArea, customerSpecificArea, resolvedCustomerCoordinates),
     resolveHotelCounty(hotel),
   ]);
+  const deliveryCounty = customerCounty || hotelCounty || detectCountyFromText([customerSpecificArea, customerArea].join(" "));
 
   if (feeDetails.serviceFeeSource !== "distance") {
     showToast("Distance could not be confirmed from location or typed area. Delivery fee used base amount.", "warn");
@@ -2223,6 +2251,12 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
       normalizedCustomerCounty: normalizeCountyKey(customerCounty),
     } : {}),
     ...(customerSpecificArea ? { customerSpecificArea } : {}),
+    ...(deliveryCounty ? {
+      county: deliveryCounty,
+      deliveryCounty,
+      normalizedCounty: normalizeCountyKey(deliveryCounty),
+      normalizedDeliveryCounty: normalizeCountyKey(deliveryCounty),
+    } : {}),
     ...(hotelCounty ? {
       hotelCounty,
       normalizedHotelCounty: normalizeCountyKey(hotelCounty),

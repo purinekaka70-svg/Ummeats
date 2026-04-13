@@ -1,43 +1,84 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Hotels collection: full access
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isEmployee() {
+      return signedIn() && exists(/databases/$(database)/documents/employees/$(request.auth.uid));
+    }
+
+    function isEmployeeSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isHotel() {
+      return signedIn() && request.auth.token.role == "hotel";
+    }
+
+    function hotelOwns(hotelId) {
+      return isHotel() && request.auth.token.hotelId == hotelId;
+    }
+
+    match /admins/{uid} {
+      allow read: if isAdmin() && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    match /hotelAccountNames/{docId} {
+      allow read, write: if false;
+    }
+
+    match /hotelCredentials/{docId} {
+      allow read, write: if false;
+    }
+
     match /hotels/{hotelId} {
-      allow read, write: if true;
+      allow read: if signedIn();
+      allow create: if false;
+      allow update: if isAdmin() || hotelOwns(hotelId);
+      allow delete: if isAdmin();
     }
 
-    // Restaurants collection: full access
     match /restaurants/{restaurantId} {
-      allow read, write: if true;
+      allow read: if signedIn();
+      allow create: if isAdmin() || hotelOwns(request.resource.data.hotelId);
+      allow update: if isAdmin() || hotelOwns(resource.data.hotelId);
+      allow delete: if isAdmin();
     }
 
-    // Main orders collection: full access
     match /orders/{orderId} {
-      allow read, write: if true;
+      allow read, write: if signedIn();
     }
 
-    // Shop Here orders collection: full access
     match /ummaShopOrders/{orderId} {
-      allow read, write: if true;
+      allow read, write: if signedIn();
     }
 
-    // Feedback collections: full access
     match /feedbacks/{docId} {
-      allow read, write: if true;
+      allow create: if signedIn();
+      allow read, update, delete: if isAdmin();
     }
 
     match /ummaShopFeedbacks/{docId} {
-      allow read, write: if true;
+      allow create: if signedIn();
+      allow read, update, delete: if isAdmin();
     }
 
-    // Notifications collection: full access
     match /notifications/{docId} {
-      allow read, write: if true;
+      allow read, write: if signedIn();
     }
 
-    // Employee profiles: full access
     match /employees/{uid} {
-      allow read, write: if true;
+      allow create: if isEmployeeSelf(uid);
+      allow read: if isAdmin() || isEmployeeSelf(uid);
+      allow update: if isAdmin() || isEmployeeSelf(uid);
+      allow delete: if isAdmin();
     }
 
     match /{document=**} {

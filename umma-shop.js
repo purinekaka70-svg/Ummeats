@@ -26,6 +26,7 @@ import {
   showBrowserNotification,
   unregisterPushSubscription,
 } from "./push.js";
+import { ensureAdminAccess, ensureCustomerSession } from "./security.js";
 
 const ACTIVE_CLASS = "is-active";
 const HIDDEN_CLASS = "is-hidden";
@@ -34,6 +35,7 @@ const CUSTOMER_EMAIL_STORAGE_KEY = "UMMA_SHOP_CUSTOMER_EMAIL";
 const SHOP_ORDER_SUBMIT_FALLBACK_URL = "https://ummeats.vercel.app/api/submit-umma-shop-order";
 const SHOP_ORDER_VISIBILITY_MAX_ATTEMPTS = 4;
 const SHOP_ORDER_VISIBILITY_RETRY_MS = 300;
+const LOCATION_COUNTY = "Kajiado";
 
 const ordersCollection = collection(db, "ummaShopOrders");
 const feedbackCollection = collection(db, "ummaShopFeedbacks");
@@ -179,9 +181,15 @@ function isPermissionDeniedError(error) {
   );
 }
 
-bootstrap();
+void bootstrap();
 
-function bootstrap() {
+async function bootstrap() {
+  try {
+    await ensureCustomerSession();
+  } catch (error) {
+    console.warn("Shop guest session bootstrap failed", error);
+  }
+
   bindEvents();
   bindPushSyncEvents();
   hydrateStaticCopy();
@@ -244,7 +252,7 @@ function bindPushSyncEvents() {
 
 function syncAdminPushSubscription() {
   const user = auth.currentUser;
-  if (!user) {
+  if (!user || user.isAnonymous) {
     return;
   }
 
@@ -282,18 +290,33 @@ function hydrateCustomerOrders() {
 }
 
 function subscribeToAdminAuth() {
-  onAuthStateChanged(auth, (user) => {
-    if (user) {
-      void registerPushSubscription("admin", user.email || "Admin", {
-        requestPermission: false,
-        role: "admin",
-        silent: true,
-      });
+  onAuthStateChanged(auth, async (user) => {
+    if (user && !user.isAnonymous) {
+      let allowed = false;
+      try {
+        const result = await ensureAdminAccess(user);
+        allowed = Boolean(result?.ok);
+      } catch (error) {
+        console.warn("Shop admin access verification failed", error);
+      }
 
-      showAdminPanel();
-      listenForAdminOrders();
-      listenForAdminFeedbacks();
-      return;
+      if (allowed) {
+        void registerPushSubscription("admin", user.email || "Admin", {
+          requestPermission: false,
+          role: "admin",
+          silent: true,
+        });
+
+        showAdminPanel();
+        listenForAdminOrders();
+        listenForAdminFeedbacks();
+        return;
+      }
+
+      await signOut(auth).catch(() => undefined);
+      await ensureCustomerSession().catch(() => undefined);
+      setStatusLine(elements.adminLoginStatus, "This account is not approved for admin access.", "error");
+      setViewMode("orders");
     }
 
     if (unsubscribeAdminOrders) {
@@ -369,7 +392,7 @@ function setViewMode(view) {
 }
 
 function showAdminLogin() {
-  if (auth.currentUser) {
+  if (auth.currentUser && !auth.currentUser.isAnonymous) {
     showAdminPanel();
     return;
   }
@@ -623,6 +646,7 @@ async function submitOrder() {
   }
 
   const orderPayload = {
+    county: LOCATION_COUNTY,
     createdAt: Date.now(),
     customerEmail,
     customerName,
@@ -630,6 +654,7 @@ async function submitOrder() {
     items: orderItems.map((item) => ({ name: item.name, qty: item.qty })),
     location: LOCATION_NAME,
     mpesaCode,
+    normalizedCounty: LOCATION_COUNTY.toLowerCase(),
     paymentTargets: [`Till ${SERVICE_FEE_TILL}`],
     paid: false,
     serviceFeeTill: SERVICE_FEE_TILL,
@@ -873,6 +898,14 @@ async function loginAdmin() {
 
   try {
     const credentials = await signInWithEmailAndPassword(auth, email, password);
+    const access = await ensureAdminAccess(credentials.user).catch(() => ({ ok: false }));
+    if (!access?.ok) {
+      await signOut(auth).catch(() => undefined);
+      await ensureCustomerSession().catch(() => undefined);
+      setStatusLine(elements.adminLoginStatus, "This account is not approved for admin access.", "error");
+      return;
+    }
+
     await registerPushSubscription("admin", credentials.user.email || email, {
       requestPermission: true,
       role: "admin",
@@ -891,6 +924,7 @@ async function loginAdmin() {
 async function logoutAdmin() {
   await unregisterPushSubscription("admin");
   await signOut(auth);
+  await ensureCustomerSession().catch(() => undefined);
   hideElement(elements.adminPanel);
   setViewMode("orders");
 }

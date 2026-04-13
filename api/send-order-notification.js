@@ -217,8 +217,12 @@ function buildEmployeeAliasTargets(employees) {
 
 function buildOrderEmployeeMatchSources(order, hotelLocation = "") {
   return [
+    order?.deliveryCounty,
+    order?.normalizedDeliveryCounty,
     order?.customerCounty,
     order?.normalizedCustomerCounty,
+    order?.county,
+    order?.normalizedCounty,
     order?.hotelCounty,
     order?.normalizedHotelCounty,
     order?.customerArea,

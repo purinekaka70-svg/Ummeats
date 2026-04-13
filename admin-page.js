@@ -2,23 +2,18 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   getDocs,
   onSnapshot,
   setDoc,
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
-  ref as rtdbRef,
-  remove as removeRtdb,
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
-import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { auth, db, rtdb } from "./firebase.js";
-import { inferToastTone } from "./helpers.js";
+import { auth, db } from "./firebase.js";
+import { formatTime, inferToastTone } from "./helpers.js";
 import {
   claimNotificationTag,
   registerPushSubscription,
@@ -26,7 +21,8 @@ import {
   unregisterPushSubscription,
 } from "./push.js";
 import { notifyPaidOrderStatus, notifyShopOrderStatus } from "./order-status-notifications.js";
-import { elements, getRestaurantByHotelId, state } from "./state.js";
+import { ensureAdminAccess, getCurrentIdToken } from "./security.js";
+import { getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
 
@@ -34,10 +30,411 @@ const adminNotificationAlertTracker = {
   ids: new Set(),
   ready: false,
 };
+const ADMIN_API_FALLBACK_ORIGIN = "https://ummeats.vercel.app";
 const adminNotificationPromptButton = document.getElementById("adminNotificationPromptButton");
 let adminCollectionUnsubscribers = [];
+const employeeIdCardCache = new Map();
 
 bootstrap();
+
+function buildAdminApiUrls(pathname) {
+  const normalizedPath = String(pathname || "").trim();
+  if (!normalizedPath) {
+    return [];
+  }
+
+  const urls = [new URL(normalizedPath, window.location.origin).href];
+  const fallbackUrl = new URL(normalizedPath, ADMIN_API_FALLBACK_ORIGIN).href;
+  if (!urls.includes(fallbackUrl)) {
+    urls.push(fallbackUrl);
+  }
+
+  return urls;
+}
+
+async function postAdminJson(pathname, payload = {}) {
+  const idToken = await getCurrentIdToken();
+  if (!idToken) {
+    throw new Error("Login as admin first.");
+  }
+
+  const urls = buildAdminApiUrls(pathname);
+  const errors = [];
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        body: JSON.stringify(payload),
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || result?.ok === false) {
+        throw new Error(result?.error || `Request failed with ${response.status}.`);
+      }
+
+      return result || {};
+    } catch (error) {
+      errors.push(`${url} -> ${String(error?.message || "Request failed").trim()}`);
+    }
+  }
+
+  throw new Error(errors.join(" | ") || "Request failed.");
+}
+
+async function fetchEmployeeIdCardFile(employeeId) {
+  const normalizedEmployeeId = String(employeeId || "").trim();
+  if (!normalizedEmployeeId) {
+    throw new Error("Employee ID is missing.");
+  }
+
+  if (employeeIdCardCache.has(normalizedEmployeeId)) {
+    return employeeIdCardCache.get(normalizedEmployeeId);
+  }
+
+  const result = await postAdminJson("/api/admin-employee-id-card", {
+    employeeId: normalizedEmployeeId,
+  });
+  employeeIdCardCache.set(normalizedEmployeeId, result);
+  return result;
+}
+
+function decodeBase64ToBytes(base64Value) {
+  const normalizedValue = String(base64Value || "").trim();
+  const binary = window.atob(normalizedValue);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+function buildPdfBlobUrlFromBase64(base64Value, mimeType = "application/pdf") {
+  const bytes = decodeBase64ToBytes(base64Value);
+  const blob = new Blob([bytes], { type: mimeType || "application/pdf" });
+  return URL.createObjectURL(blob);
+}
+
+function sanitizeDownloadFileName(value, fallback = "document.pdf") {
+  const normalized = String(value || "").trim().replace(/[^a-zA-Z0-9._-]+/g, "-");
+  return normalized || fallback;
+}
+
+async function openEmployeeIdCard(employeeId, directUrl = "") {
+  const normalizedDirectUrl = String(directUrl || "").trim();
+  if (normalizedDirectUrl) {
+    window.open(normalizedDirectUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  const file = await fetchEmployeeIdCardFile(employeeId);
+  const blobUrl = buildPdfBlobUrlFromBase64(file.base64, file.mimeType);
+  const openedWindow = window.open(blobUrl, "_blank", "noopener,noreferrer");
+
+  if (!openedWindow) {
+    const anchor = document.createElement("a");
+    anchor.href = blobUrl;
+    anchor.target = "_blank";
+    anchor.rel = "noreferrer";
+    anchor.click();
+  }
+
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60 * 1000);
+}
+
+async function downloadEmployeeIdCard(employeeId, directUrl = "") {
+  const normalizedDirectUrl = String(directUrl || "").trim();
+  if (normalizedDirectUrl) {
+    const anchor = document.createElement("a");
+    anchor.download = sanitizeDownloadFileName(`${employeeId}-id-card.pdf`, `${employeeId}-id-card.pdf`);
+    anchor.href = normalizedDirectUrl;
+    anchor.target = "_blank";
+    anchor.rel = "noreferrer";
+    anchor.click();
+    return;
+  }
+
+  const file = await fetchEmployeeIdCardFile(employeeId);
+  const blobUrl = buildPdfBlobUrlFromBase64(file.base64, file.mimeType);
+  const anchor = document.createElement("a");
+  anchor.download = sanitizeDownloadFileName(file.fileName, `${employeeId}-id-card.pdf`);
+  anchor.href = blobUrl;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60 * 1000);
+}
+
+function normalizePdfText(value) {
+  return String(value ?? "")
+    .replace(/[^\x20-\x7E]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function escapePdfString(value) {
+  return normalizePdfText(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+function wrapPdfLine(value, maxChars = 92) {
+  const normalizedValue = normalizePdfText(value);
+  if (!normalizedValue) {
+    return [""];
+  }
+
+  const words = normalizedValue.split(" ");
+  const lines = [];
+  let currentLine = "";
+
+  words.forEach((word) => {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+    if (nextLine.length <= maxChars) {
+      currentLine = nextLine;
+      return;
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    if (word.length <= maxChars) {
+      currentLine = word;
+      return;
+    }
+
+    let remainingWord = word;
+    while (remainingWord.length > maxChars) {
+      lines.push(remainingWord.slice(0, maxChars));
+      remainingWord = remainingWord.slice(maxChars);
+    }
+    currentLine = remainingWord;
+  });
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines.length ? lines : [""];
+}
+
+function buildAdminExportSections() {
+  const hotels = [...state.hotels].sort((left, right) => String(left.name || "").localeCompare(String(right.name || "")));
+  const orders = [...state.orders].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  const shopOrders = [...state.ummaShopOrders].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  const feedbacks = [...state.feedbacks].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  const employees = [...state.employees].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  const notifications = [...state.notifications].sort((left, right) => (right.timestamp || 0) - (left.timestamp || 0));
+
+  return [
+    {
+      lines: [
+        `Generated: ${normalizePdfText(new Date().toLocaleString("en-KE", { hour12: false }))}`,
+        `Hotels: ${hotels.length}`,
+        `Orders: ${orders.length}`,
+        `Shop Here Orders: ${shopOrders.length}`,
+        `Employees: ${employees.length}`,
+        `Feedbacks: ${feedbacks.length}`,
+        `Notifications: ${notifications.length}`,
+      ],
+      title: "Platform Summary",
+    },
+    {
+      lines: hotels.length
+        ? hotels.map((hotel) => [
+          `Hotel: ${hotel.name || "Unknown hotel"}`,
+          `Phone: ${hotel.phone || "N/A"}`,
+          `County: ${hotel.county || "N/A"}`,
+          `Location: ${hotel.location || "Around Umma University"}`,
+          `Approved: ${hotel.approved ? "Yes" : "No"} | Blocked: ${hotel.blocked ? "Yes" : "No"}`,
+          `Subscription Expiry: ${hotel.subscriptionExpiry ? formatTime(hotel.subscriptionExpiry) : "Not set"}`,
+        ].join(" | "))
+        : ["No hotel records available."],
+      title: "Hotels",
+    },
+    {
+      lines: orders.length
+        ? orders.map((order) => {
+          const items = Array.isArray(order.items) ? order.items : [];
+          const itemSummary = items.length
+            ? items.map((item) => `${item.qty || 1}x ${item.name || "Item"}`).join(", ")
+            : "No items";
+          return [
+            `Customer: ${order.customerName || "Unknown customer"}`,
+            `Hotel ID: ${order.hotelId || "N/A"}`,
+            `Status: ${order.status || "Pending"}`,
+            `County: ${order.deliveryCounty || order.county || order.customerCounty || order.hotelCounty || "N/A"}`,
+            `Area: ${order.customerArea || "N/A"}`,
+            `Total: ${order.total || 0}`,
+            `Created: ${order.createdAt ? formatTime(order.createdAt) : "N/A"}`,
+            `Items: ${itemSummary}`,
+          ].join(" | ");
+        })
+        : ["No order records available."],
+      title: "Hotel Orders",
+    },
+    {
+      lines: shopOrders.length
+        ? shopOrders.map((order) => {
+          const items = Array.isArray(order.items) ? order.items : [];
+          const itemSummary = items.length
+            ? items.map((item) => `${item.qty || 1}x ${item.name || "Item"}`).join(", ")
+            : "No items";
+          return [
+            `Customer: ${order.customerName || "Unknown customer"}`,
+            `Email: ${order.customerEmail || "N/A"}`,
+            `Shop: ${order.shopName || "N/A"}`,
+            `County: ${order.county || "N/A"}`,
+            `Paid: ${order.paid ? "Yes" : "No"} | Delivered: ${order.delivered ? "Yes" : "No"}`,
+            `Amount: ${order.totalAmount || 0}`,
+            `Created: ${order.createdAt ? formatTime(order.createdAt) : "N/A"}`,
+            `Items: ${itemSummary}`,
+          ].join(" | ");
+        })
+        : ["No Shop Here order records available."],
+      title: "Shop Here Orders",
+    },
+    {
+      lines: employees.length
+        ? employees.map((employee) => [
+          `Employee: ${employee.fullName || "Unknown employee"}`,
+          `Email: ${employee.email || "N/A"}`,
+          `County: ${employee.county || "N/A"}`,
+          `ID Number: ${employee.idNumber || "N/A"}`,
+          `ID PDF: ${employee.idCardUploaded || employee.idCardDatabasePath || employee.idCardUrl ? "Uploaded" : "Missing"}`,
+          `Created: ${employee.createdAt ? formatTime(employee.createdAt) : "N/A"}`,
+        ].join(" | "))
+        : ["No employee records available."],
+      title: "Employees",
+    },
+    {
+      lines: feedbacks.length
+        ? feedbacks.map((feedback) => [
+          `Name: ${feedback.name || "Anonymous"}`,
+          `Phone: ${feedback.phone || "N/A"}`,
+          `Status: ${feedback.status || "New"}`,
+          `Created: ${feedback.createdAt ? formatTime(feedback.createdAt) : "N/A"}`,
+          `Message: ${feedback.message || "No message"}`,
+        ].join(" | "))
+        : ["No feedback records available."],
+      title: "Feedbacks",
+    },
+    {
+      lines: notifications.length
+        ? notifications.map((notification) => [
+          `Type: ${notification.type || "notification"}`,
+          `Target: ${notification.to || "N/A"}`,
+          `Read: ${notification.read ? "Yes" : "No"}`,
+          `Time: ${notification.timestamp ? formatTime(notification.timestamp) : "N/A"}`,
+          `Message: ${notification.message || "Notification"}`,
+        ].join(" | "))
+        : ["No notification records available."],
+      title: "Notifications",
+    },
+  ];
+}
+
+function createPdfBlobFromSections(title, sections) {
+  const pageWidth = 595;
+  const pageHeight = 842;
+  const marginLeft = 40;
+  const marginTop = 48;
+  const fontSize = 10;
+  const lineHeight = 14;
+  const maxLinesPerPage = Math.floor((pageHeight - marginTop * 2) / lineHeight);
+  const documentLines = [];
+
+  documentLines.push(...wrapPdfLine(title, 90), "");
+  sections.forEach((section) => {
+    documentLines.push(...wrapPdfLine(section.title.toUpperCase(), 90));
+    documentLines.push("");
+    section.lines.forEach((line) => {
+      documentLines.push(...wrapPdfLine(line, 90));
+    });
+    documentLines.push("", "");
+  });
+
+  const pages = [];
+  for (let index = 0; index < documentLines.length; index += maxLinesPerPage) {
+    pages.push(documentLines.slice(index, index + maxLinesPerPage));
+  }
+
+  const objects = [];
+  const addObject = (content) => {
+    objects.push(content);
+    return objects.length;
+  };
+
+  const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>");
+  const contentIds = pages.map((pageLines) => {
+    const streamLines = [
+      "BT",
+      `/F1 ${fontSize} Tf`,
+      `${marginLeft} ${pageHeight - marginTop} Td`,
+      `${lineHeight} TL`,
+    ];
+
+    pageLines.forEach((line, lineIndex) => {
+      streamLines.push(`(${escapePdfString(line)}) Tj`);
+      if (lineIndex < pageLines.length - 1) {
+        streamLines.push("T*");
+      }
+    });
+
+    streamLines.push("ET");
+    const stream = streamLines.join("\n");
+    return addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+  });
+
+  const pagesTreeId = objects.length + pages.length + 1;
+  const pageIds = contentIds.map((contentId) =>
+    addObject(
+      `<< /Type /Page /Parent ${pagesTreeId} 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Contents ${contentId} 0 R /Resources << /Font << /F1 ${fontId} 0 R >> >> >>`,
+    ));
+  const actualPagesTreeId = addObject(
+    `<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map((pageId) => `${pageId} 0 R`).join(" ")}] >>`,
+  );
+  const catalogId = addObject(`<< /Type /Catalog /Pages ${actualPagesTreeId} 0 R >>`);
+
+  let pdfContent = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((objectContent, objectIndex) => {
+    offsets.push(pdfContent.length);
+    pdfContent += `${objectIndex + 1} 0 obj\n${objectContent}\nendobj\n`;
+  });
+
+  const xrefOffset = pdfContent.length;
+  pdfContent += `xref\n0 ${objects.length + 1}\n`;
+  pdfContent += "0000000000 65535 f \n";
+  for (let index = 1; index <= objects.length; index += 1) {
+    pdfContent += `${String(offsets[index]).padStart(10, "0")} 00000 n \n`;
+  }
+  pdfContent += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+  return new Blob([pdfContent], { type: "application/pdf" });
+}
+
+function downloadAllAdminDataPdf() {
+  const title = `Tamu Express Admin Export - ${normalizePdfText(new Date().toLocaleDateString("en-KE"))}`;
+  const sections = buildAdminExportSections();
+  const blob = createPdfBlobFromSections(title, sections);
+  const fileName = sanitizeDownloadFileName(
+    `tamu-express-admin-export-${new Date().toISOString().slice(0, 10)}.pdf`,
+    "tamu-express-admin-export.pdf",
+  );
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.download = fileName;
+  anchor.href = url;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+}
 
 function bootstrap() {
   state.currentAdmin = false;
@@ -239,7 +636,7 @@ function subscribeToAuth() {
       return;
     }
 
-    const allowed = await isAllowedAdmin(user.uid);
+    const allowed = await isAllowedAdmin(user);
     state.currentAdmin = allowed;
 
     if (allowed) {
@@ -259,7 +656,7 @@ function subscribeToAuth() {
     state.currentAdmin = false;
     state.adminPanelSection = "dashboard";
     state.adminSidebarOpen = false;
-    showToast("This account is registered as employee access, not admin.", "warn");
+    showToast("This account is not approved for admin access.", "warn");
     renderAdmin();
     updateAdminNotificationPromptButtonState();
   });
@@ -437,6 +834,33 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("openEmployeeIdPdf")) {
+    try {
+      await openEmployeeIdCard(button.dataset.id, button.dataset.url);
+    } catch (error) {
+      console.error("Open employee ID PDF failed", error);
+      showToast(String(error?.message || "Failed to open employee ID PDF."), "error");
+    }
+    return;
+  }
+
+  if (button.classList.contains("downloadEmployeeIdPdf")) {
+    try {
+      await downloadEmployeeIdCard(button.dataset.id, button.dataset.url);
+      showToast("Employee ID PDF downloaded.", "success");
+    } catch (error) {
+      console.error("Download employee ID PDF failed", error);
+      showToast(String(error?.message || "Failed to download employee ID PDF."), "error");
+    }
+    return;
+  }
+
+  if (button.id === "downloadAllDataPdf") {
+    downloadAllAdminDataPdf();
+    showToast("Admin data PDF download started.", "success");
+    return;
+  }
+
   if (button.classList.contains("deleteNotification")) {
     await deleteNotification(button.dataset.id);
     return;
@@ -481,9 +905,9 @@ async function handleSubmit(event) {
 
   try {
     const credentials = await signInWithEmailAndPassword(auth, user, pass);
-    if (!(await isAllowedAdmin(credentials.user.uid))) {
+    if (!(await isAllowedAdmin(credentials.user))) {
       await signOut(auth).catch(() => undefined);
-      alert("This account is registered as employee access, not admin.");
+      alert("This account is not approved for admin access.");
       return;
     }
 
@@ -506,14 +930,14 @@ async function handleSubmit(event) {
   }
 }
 
-async function isAllowedAdmin(uid) {
-  if (!uid) {
+async function isAllowedAdmin(user = auth.currentUser) {
+  if (!user) {
     return false;
   }
 
   try {
-    const employeeProfile = await getDoc(doc(db, "employees", uid));
-    return !employeeProfile.exists();
+    const result = await ensureAdminAccess(user);
+    return Boolean(result?.ok);
   } catch (error) {
     console.warn("Admin access check failed", error);
     return false;
@@ -740,7 +1164,11 @@ async function deleteEmployee(employeeId) {
 
   try {
     await deleteDoc(doc(db, "employees", employeeId));
-    await removeRtdb(rtdbRef(rtdb, `employeeIdCards/${employeeId}`)).catch(() => undefined);
+    await postAdminJson("/api/admin-employee-id-card", {
+      action: "delete",
+      employeeId,
+    }).catch(() => undefined);
+    employeeIdCardCache.delete(employeeId);
     showToast("Employee profile deleted.", "success");
   } catch (error) {
     console.error(error);

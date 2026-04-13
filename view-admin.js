@@ -1,6 +1,6 @@
 import { SERVICE_FEE, SERVICE_FEE_TILL } from "./config.js";
 import { elements, getCartItemsTotal, getHotelById, getHotelLocation, getNotificationsForTarget, state } from "./state.js";
-import { escapeHtml, formatCoordinatePair, formatCurrency, formatDateOnly, formatDistanceKm, formatTime, normalizeCoordinates, pluralize } from "./helpers.js";
+import { buildWhatsAppLink, escapeHtml, formatCoordinatePair, formatCurrency, formatDateOnly, formatDistanceKm, formatTime, normalizeCoordinates, pluralize } from "./helpers.js";
 import { renderEmptyState, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
 export function renderAdmin() {
@@ -45,6 +45,9 @@ export function renderAdmin() {
   const pendingShopOrders = state.ummaShopOrders.filter((order) => !order.paid).length;
   const totalFeedbacks = state.feedbacks.length;
   const totalEmployees = state.employees.length;
+  const uploadedEmployeeIds = state.employees.filter((employee) => Boolean(
+    employee.idCardUploaded || employee.idCardDatabasePath || employee.idCardUrl,
+  )).length;
   const totalNotifications = adminNotifications.length;
   const unreadStoredNotifications = adminNotifications.filter((item) => !item.read).length;
   const unreadFeedbacks = state.feedbacks.filter((item) => (item.status || "New") !== "Reviewed").length;
@@ -72,6 +75,7 @@ export function renderAdmin() {
           ${renderAdminNavButton("shopOrders", "Shop Here Orders", `${totalShopOrders} shop order${pluralize(totalShopOrders)}`, currentSection)}
           ${renderAdminNavButton("feedbacks", "Feedbacks", `${unreadFeedbacks} open complaint${pluralize(unreadFeedbacks)}`, currentSection)}
           ${renderAdminNavButton("employees", "Employees", `${totalEmployees} account${pluralize(totalEmployees)}`, currentSection)}
+          ${renderAdminNavButton("employeeIds", "Employee ID PDFs", `${uploadedEmployeeIds} uploaded PDF${pluralize(uploadedEmployeeIds)}`, currentSection)}
           ${renderAdminNavButton("notifications", "Notifications", `${totalNotifications} alert${pluralize(totalNotifications)}`, currentSection)}
         </div>
 
@@ -176,6 +180,10 @@ function renderAdminSection(section, summary) {
     return renderNotificationsSection();
   }
 
+  if (section === "employeeIds") {
+    return renderEmployeeIdDocumentsSection();
+  }
+
   return renderDashboardSection(summary);
 }
 
@@ -272,6 +280,7 @@ function renderDashboardSection(summary) {
             <div class="summary-item"><span>Use Registered Hotels</span><strong>Approve and manage</strong></div>
             <div class="summary-item"><span>Use Feedbacks</span><strong>Review support complaints</strong></div>
             <div class="summary-item"><span>Use Employees</span><strong>Remove employee profiles</strong></div>
+            <div class="summary-item"><span>Use Employee ID PDFs</span><strong>Open or download stored ID cards</strong></div>
             <div class="summary-item"><span>Use Notifications</span><strong>Mark read or delete</strong></div>
             <div class="summary-item"><span>Notifications</span><strong>${summary.unreadNotifications} unread</strong></div>
           </div>
@@ -403,6 +412,31 @@ function renderNotificationsSection() {
   `;
 }
 
+function renderEmployeeIdDocumentsSection() {
+  const employees = [...state.employees].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  const uploadedCount = employees.filter((employee) => Boolean(
+    employee.idCardUploaded || employee.idCardDatabasePath || employee.idCardUrl,
+  )).length;
+
+  return `
+    <section class="view-shell">
+      <div class="section-head">
+        <h4>Employee ID PDFs</h4>
+        <div class="inline-list">
+          <span class="summary-chip">${uploadedCount} uploaded PDF${pluralize(uploadedCount)}</span>
+          <button class="button button-danger" id="downloadAllDataPdf" type="button">Download All Data PDF</button>
+        </div>
+      </div>
+
+      ${
+        employees.length
+          ? `<div class="order-list">${employees.map(renderEmployeeIdDocumentCard).join("")}</div>`
+          : renderEmptyState("No employee documents yet", "Employee ID PDFs will appear here after employee registration.")
+      }
+    </section>
+  `;
+}
+
 function renderAdminHotelCard(hotel) {
   const subscriptionActive = hotel.subscriptionExpiry && hotel.subscriptionExpiry >= Date.now();
 
@@ -525,6 +559,17 @@ function renderAdminOrderCard(order) {
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsTotal = items.length ? getCartItemsTotal(items) : Number(order.itemsTotal || 0);
   const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
+  const itemsText = items.length
+    ? items.map((item) => `${item.qty || 1} x ${item.name}`).join(", ")
+    : "the order you placed";
+  const customerWaLink = buildWhatsAppLink(
+    order.customerPhone,
+    `Hello ${order.customerName || "customer"}, this is Tamu Express regarding your order of ${itemsText}. Total: ${formatCurrency(total)}.`,
+  );
+  const hotelWaLink = buildWhatsAppLink(
+    hotel.phone,
+    `Hello ${hotel.name || "hotel"}, there is a new order from ${order.customerName || "a customer"}: ${itemsText}. Total: ${formatCurrency(total)}.`,
+  );
 
   return `
     <article class="card order-card">
@@ -594,6 +639,16 @@ function renderAdminOrderCard(order) {
         ${
           order.status !== "Paid"
             ? `<button class="button button-success markPaid" data-id="${escapeHtml(order.id)}" type="button">Mark as Paid</button>`
+            : ""
+        }
+        ${
+          customerWaLink
+            ? `<a class="button button-outline button-small" href="${escapeHtml(customerWaLink)}" target="_blank" rel="noreferrer">WhatsApp Customer</a>`
+            : ""
+        }
+        ${
+          hotelWaLink
+            ? `<a class="button button-outline button-small" href="${escapeHtml(hotelWaLink)}" target="_blank" rel="noreferrer">WhatsApp Hotel</a>`
             : ""
         }
         <button class="button button-danger deleteOrder" data-id="${escapeHtml(order.id)}" type="button">Delete Order</button>
@@ -668,6 +723,10 @@ function renderEmployeeCard(employee) {
           <strong>${escapeHtml(employee.idNumber || "N/A")}</strong>
         </div>
         <div class="meta-block">
+          <span>County</span>
+          <strong>${escapeHtml(employee.county || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
           <span>Scanned ID</span>
           <strong>${hasScannedId ? "Uploaded" : "Missing"}</strong>
         </div>
@@ -679,6 +738,57 @@ function renderEmployeeCard(employee) {
 
       <div class="button-row">
         <button class="button button-danger deleteEmployee" data-id="${escapeHtml(employee.id)}" type="button">Delete Employee</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderEmployeeIdDocumentCard(employee) {
+  const hasScannedId = Boolean(employee.idCardUploaded || employee.idCardDatabasePath || employee.idCardUrl);
+  const fileName = String(employee.idCardFileName || "").trim();
+  const statusLabel = hasScannedId ? "Ready" : "Missing";
+
+  return `
+    <article class="card order-card">
+      <div class="order-header">
+        <div>
+          <p class="eyebrow">Employee ID PDF</p>
+          <h3>${escapeHtml(employee.fullName || "Unknown employee")}</h3>
+          <p class="tiny">${escapeHtml(employee.email || "No email")}</p>
+        </div>
+        ${renderStatusPill(statusLabel, hasScannedId ? "active" : "pending")}
+      </div>
+
+      <div class="order-meta-grid">
+        <div class="meta-block">
+          <span>County</span>
+          <strong>${escapeHtml(employee.county || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>ID number</span>
+          <strong>${escapeHtml(employee.idNumber || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>File name</span>
+          <strong>${escapeHtml(fileName || "Stored as secure PDF")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Storage</span>
+          <strong>${escapeHtml(employee.idCardDatabasePath ? "Realtime Database" : employee.idCardUrl ? "Direct URL" : "Missing")}</strong>
+        </div>
+      </div>
+
+      <div class="button-row">
+        ${
+          hasScannedId
+            ? `<button class="button button-outline button-small openEmployeeIdPdf" data-id="${escapeHtml(employee.id)}" data-url="${escapeHtml(employee.idCardUrl || "")}" type="button">Open PDF</button>`
+            : ""
+        }
+        ${
+          hasScannedId
+            ? `<button class="button button-danger-soft button-small downloadEmployeeIdPdf" data-id="${escapeHtml(employee.id)}" data-url="${escapeHtml(employee.idCardUrl || "")}" type="button">Download PDF</button>`
+            : ""
+        }
       </div>
     </article>
   `;

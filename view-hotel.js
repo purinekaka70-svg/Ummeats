@@ -1,6 +1,7 @@
 import { DEFAULT_HOTEL_LOCATION } from "./config.js";
 import { elements, getHotelById, getHotelLocation, getNotificationsForTarget, getRestaurantByHotelId, state } from "./state.js";
 import {
+  buildWhatsAppLink,
   escapeHtml,
   formatCoordinatePair,
   formatDistanceKm,
@@ -309,7 +310,7 @@ export function renderHotelPortal() {
         </div>
         ${
           hotelOrders.length
-            ? `<div class="order-list">${hotelOrders.map(renderHotelOrderCard).join("")}</div>`
+            ? `<div class="order-list">${hotelOrders.map((order) => renderHotelOrderCard(order, hotel.name)).join("")}</div>`
             : `<div class="notification-item"><p class="is-muted">No orders have been placed for this hotel yet.</p></div>`
         }
       </section>
@@ -317,7 +318,16 @@ export function renderHotelPortal() {
   `;
 }
 
-function renderHotelOrderCard(order) {
+function renderHotelOrderCard(order, hotelName) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsText = items.length
+    ? items.map((item) => `${item.qty || 1} x ${item.name}`).join(", ")
+    : "your order";
+  const customerWaLink = buildWhatsAppLink(
+    order.customerPhone,
+    `Hello ${order.customerName || "customer"}, this is ${hotelName || "the hotel"}. We have received your order: ${itemsText}.`,
+  );
+
   return `
     <article class="card order-card">
       <div class="order-header">
@@ -359,6 +369,11 @@ function renderHotelOrderCard(order) {
         ${
           order.status !== "Paid"
             ? `<button class="button button-success markPaid" data-id="${escapeHtml(order.id)}" type="button">Mark Paid</button>`
+            : ""
+        }
+        ${
+          customerWaLink
+            ? `<a class="button button-outline button-small" href="${escapeHtml(customerWaLink)}" target="_blank" rel="noreferrer">WhatsApp Customer</a>`
             : ""
         }
         <button class="button button-danger deleteOrder" data-id="${escapeHtml(order.id)}" type="button">Delete Order</button>

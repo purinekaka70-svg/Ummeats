@@ -201,8 +201,11 @@ const portalState = {
 let unfilteredOrders = [];
 let unfilteredShopOrders = [];
 
+let unsubscribeEmployeeHotels = null;
+let unsubscribeEmployeeOrders = null;
 let unsubscribeEmployeeProfile = null;
 let unsubscribeEmployeeNotifications = null;
+let unsubscribeEmployeeShopOrders = null;
 let employeeProfileLoadTimer = null;
 let activeEmployeeNotificationTarget = "";
 const employeeOrderAlertTracker = {
@@ -267,7 +270,6 @@ function bootstrap() {
   bindPushSyncEvents();
   hydrateShell();
   subscribeToAuth();
-  subscribeToCollections();
   renderEmployeeView();
 }
 
@@ -499,55 +501,66 @@ function getHotelCountyForOrder(order) {
   return getKnownCountyLabel(hotel?.county || hotel?.normalizedCounty);
 }
 
-function getOrderResolvedCounty(order) {
-  const directCounty = [
-    order?.customerCounty,
-    order?.normalizedCustomerCounty,
-    order?.deliveryCounty,
-    order?.normalizedDeliveryCounty,
-    order?.county,
-    order?.normalizedCounty,
-    order?.customerArea,
-    order?.customerSpecificArea,
-  ]
-    .map(getKnownCountyLabel)
-    .find(Boolean);
+function uniqueCountyLabels(values) {
+  return [...new Set(
+    (Array.isArray(values) ? values : [values])
+      .map((value) => getKnownCountyLabel(value))
+      .filter(Boolean),
+  )];
+}
 
-  if (directCounty) {
-    return directCounty;
-  }
+function getOrderCandidateCountyLabels(order) {
+  const hotel = getHotelForOrder(order);
+  const labels = [
+    ...uniqueCountyLabels([
+      order?.customerCounty,
+      order?.normalizedCustomerCounty,
+      order?.deliveryCounty,
+      order?.normalizedDeliveryCounty,
+      order?.county,
+      order?.normalizedCounty,
+      order?.customerArea,
+      order?.customerSpecificArea,
+      order?.hotelCounty,
+      order?.normalizedHotelCounty,
+      hotel?.county,
+      hotel?.normalizedCounty,
+      hotel?.location,
+    ]),
+  ];
 
   const customerCoordinateCounty = getCachedCountyForCoordinates(order?.customerCoordinates);
   if (customerCoordinateCounty) {
-    return customerCoordinateCounty;
+    labels.push(customerCoordinateCounty);
   }
 
-  const hotelCounty = [
-    order?.hotelCounty,
-    order?.normalizedHotelCounty,
-    getHotelCountyForOrder(order),
-  ]
-    .map(getKnownCountyLabel)
-    .find(Boolean);
-
-  if (hotelCounty) {
-    return hotelCounty;
-  }
-
-  const hotel = getHotelForOrder(order);
   const hotelCoordinateCounty = getCachedCountyForCoordinates(hotel?.coordinates);
   if (hotelCoordinateCounty) {
-    return hotelCoordinateCounty;
+    labels.push(hotelCoordinateCounty);
   }
 
-  const hotelLocationCounty = getKnownCountyLabel(getHotelLocationForOrder(order));
-  if (hotelLocationCounty) {
-    return hotelLocationCounty;
+  if (!customerCoordinateCounty) {
+    queueCountyLookupForCoordinates(order?.customerCoordinates);
   }
 
-  queueCountyLookupForCoordinates(order?.customerCoordinates);
-  queueCountyLookupForCoordinates(hotel?.coordinates);
-  return "";
+  if (!hotelCoordinateCounty) {
+    queueCountyLookupForCoordinates(hotel?.coordinates);
+  }
+
+  return [...new Set(labels.map((value) => getKnownCountyLabel(value)).filter(Boolean))];
+}
+
+function getShopOrderCandidateCountyLabels(order) {
+  return uniqueCountyLabels([
+    order?.county,
+    order?.normalizedCounty,
+    order?.location,
+    order?.shopName,
+  ]);
+}
+
+function getOrderResolvedCounty(order) {
+  return getOrderCandidateCountyLabels(order)[0] || "";
 }
 
 function isOrderVisibleToEmployee(order) {
@@ -556,9 +569,11 @@ function isOrderVisibleToEmployee(order) {
     return false;
   }
 
-  const resolvedCounty = normalizeCounty(getOrderResolvedCounty(order));
-  if (resolvedCounty) {
-    return resolvedCounty === county;
+  const candidateCountyKeys = getOrderCandidateCountyLabels(order)
+    .map((value) => normalizeCounty(value))
+    .filter(Boolean);
+  if (candidateCountyKeys.length) {
+    return candidateCountyKeys.includes(county);
   }
 
   const text = [
@@ -581,13 +596,11 @@ function isShopOrderVisibleToEmployee(order) {
     return false;
   }
 
-  const resolvedCounty = normalizeCounty(
-    [order?.county, order?.normalizedCounty, order?.location, order?.shopName]
-      .map(getKnownCountyLabel)
-      .find(Boolean),
-  );
-  if (resolvedCounty) {
-    return resolvedCounty === county;
+  const candidateCountyKeys = getShopOrderCandidateCountyLabels(order)
+    .map((value) => normalizeCounty(value))
+    .filter(Boolean);
+  if (candidateCountyKeys.length) {
+    return candidateCountyKeys.includes(county);
   }
 
   const text = [order?.county, order?.location, order?.shopName]
@@ -1016,8 +1029,39 @@ async function handleEmployeeNotificationPromptClick() {
   updateEmployeeNotificationPromptButtonState();
 }
 
-function subscribeToCollections() {
-  onSnapshot(collection(db, "hotels"), (snapshot) => {
+function stopEmployeeCollectionSubscriptions() {
+  [unsubscribeEmployeeHotels, unsubscribeEmployeeOrders, unsubscribeEmployeeShopOrders].forEach((unsubscribe) => {
+    if (!unsubscribe) {
+      return;
+    }
+
+    try {
+      unsubscribe();
+    } catch {
+      // ignore
+    }
+  });
+
+  unsubscribeEmployeeHotels = null;
+  unsubscribeEmployeeOrders = null;
+  unsubscribeEmployeeShopOrders = null;
+  portalState.hotels = [];
+  unfilteredOrders = [];
+  unfilteredShopOrders = [];
+  employeeOrderAlertTracker.ids = new Set();
+  employeeOrderAlertTracker.ready = false;
+  employeeShopOrderAlertTracker.ids = new Set();
+  employeeShopOrderAlertTracker.ready = false;
+  employeeOrderStatusTracker.clear();
+  employeeShopOrderStatusTracker.clear();
+}
+
+function startEmployeeCollectionSubscriptions() {
+  if (unsubscribeEmployeeHotels || unsubscribeEmployeeOrders || unsubscribeEmployeeShopOrders) {
+    return;
+  }
+
+  unsubscribeEmployeeHotels = onSnapshot(collection(db, "hotels"), (snapshot) => {
     portalState.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncEmployeeVisibleCollections();
     renderEmployeeView();
@@ -1025,7 +1069,7 @@ function subscribeToCollections() {
     console.warn("Employee hotels subscription failed", error);
   });
 
-  onSnapshot(collection(db, "orders"), (snapshot) => {
+  unsubscribeEmployeeOrders = onSnapshot(collection(db, "orders"), (snapshot) => {
     handleEmployeeOrderAlerts(snapshot);
     handleEmployeeOrderStatusAlerts(snapshot);
     unfilteredOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -1035,7 +1079,7 @@ function subscribeToCollections() {
     console.warn("Employee orders subscription failed", error);
   });
 
-  onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
+  unsubscribeEmployeeShopOrders = onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
     handleEmployeeShopOrderAlerts(snapshot);
     handleEmployeeShopOrderStatusAlerts(snapshot);
     unfilteredShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
@@ -1048,7 +1092,8 @@ function subscribeToCollections() {
 
 function subscribeToAuth() {
   onAuthStateChanged(auth, (user) => {
-    portalState.currentUser = user;
+    const activeUser = user && !user.isAnonymous ? user : null;
+    portalState.currentUser = activeUser;
     clearEmployeeProfileLoadTimer();
 
     if (unsubscribeEmployeeProfile) {
@@ -1056,7 +1101,8 @@ function subscribeToAuth() {
       unsubscribeEmployeeProfile = null;
     }
 
-    if (!user) {
+    if (!activeUser) {
+      stopEmployeeCollectionSubscriptions();
       stopEmployeeNotificationSubscription();
       portalState.countyEditorOpen = false;
       portalState.employeeProfile = null;
@@ -1075,24 +1121,25 @@ function subscribeToAuth() {
       return;
     }
 
+    startEmployeeCollectionSubscriptions();
     portalState.profileStatus = "loading";
     if (!portalState.pendingRegistration) {
-      scheduleEmployeeProfileLoadTimeout(user.uid);
+      scheduleEmployeeProfileLoadTimeout(activeUser.uid);
     }
     renderEmployeeView();
 
-    unsubscribeEmployeeProfile = onSnapshot(doc(db, "employees", user.uid), (snapshot) => {
+    unsubscribeEmployeeProfile = onSnapshot(doc(db, "employees", activeUser.uid), (snapshot) => {
       clearEmployeeProfileLoadTimer();
       portalState.employeeProfile = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
       portalState.profileStatus = snapshot.exists() ? "ready" : portalState.pendingRegistration ? "loading" : "missing";
       if (portalState.profileStatus === "loading" && !portalState.pendingRegistration) {
-        scheduleEmployeeProfileLoadTimeout(user.uid);
+        scheduleEmployeeProfileLoadTimeout(activeUser.uid);
       }
       if (
         snapshot.exists() &&
         String(snapshot.data()?.status || "active").trim().toLowerCase() !== "blocked"
       ) {
-        startEmployeeNotificationSubscription(user.uid);
+        startEmployeeNotificationSubscription(activeUser.uid);
         syncEmployeePushSubscription({
           requestPermission: portalState.requestNotificationPermission && getNotificationPermissionState() === "default",
         });
@@ -1182,6 +1229,11 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("deleteNotification")) {
+    await deleteEmployeeNotification(button.dataset.id || "");
+    return;
+  }
+
   if (button.classList.contains("viewCustomerMapBtn")) {
     openCustomerMap(button);
     return;
@@ -1221,6 +1273,25 @@ async function markEmployeeNotificationRead(notificationIdValue) {
   } catch (error) {
     console.error("Employee notification read update failed", error);
     showToast("Failed to mark notification as read.", "error");
+  }
+}
+
+async function deleteEmployeeNotification(notificationIdValue) {
+  const notificationId = String(notificationIdValue || "").trim();
+  if (!notificationId) {
+    return;
+  }
+
+  if (!window.confirm("Delete this notification?")) {
+    return;
+  }
+
+  try {
+    await deleteDoc(doc(db, "notifications", notificationId));
+    showToast("Notification deleted.", "success");
+  } catch (error) {
+    console.error("Employee notification delete failed", error);
+    showToast("Failed to delete notification.", "error");
   }
 }
 

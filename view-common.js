@@ -18,17 +18,24 @@ export function renderNotifications(items) {
         .map(
           (item) => {
             const canMarkRead = !item.read && !item.fallback && item.id;
+            const canDelete = !item.fallback && item.id;
             const statusMarkup = item.read
               ? `<span class="tiny">Read</span>`
               : canMarkRead
                 ? `<button class="button button-outline button-small markNotifRead" data-id="${escapeHtml(item.id)}" type="button">Mark Read</button>`
                 : `<span class="tiny">New</span>`;
+            const deleteMarkup = canDelete
+              ? `<button class="button button-danger-soft button-small deleteNotification" data-id="${escapeHtml(item.id)}" type="button">Delete</button>`
+              : "";
 
             return `
               <article class="notification-item">
                 <p>${escapeHtml(item.message || "Notification")}</p>
                 <p class="tiny">${formatTime(item.timestamp)}</p>
-                ${statusMarkup}
+                <div class="button-row">
+                  ${statusMarkup}
+                  ${deleteMarkup}
+                </div>
               </article>
             `;
           },

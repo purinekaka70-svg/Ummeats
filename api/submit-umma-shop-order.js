@@ -1,6 +1,7 @@
 const { getFirestore, sendJson } = require("./_lib/push");
 
 const LOCATION_NAME = "Around Umma University";
+const LOCATION_COUNTY = "Kajiado";
 const SERVICE_FEE_TILL = "7312380";
 
 function parseBody(req) {
@@ -59,6 +60,7 @@ module.exports = async (req, res) => {
 
     const firestore = getFirestore();
     const orderPayload = {
+      county: sanitizeText(body.county, 80) || LOCATION_COUNTY,
       createdAt: Date.now(),
       customerEmail,
       customerName,
@@ -66,6 +68,7 @@ module.exports = async (req, res) => {
       items,
       location: sanitizeText(body.location, 160) || LOCATION_NAME,
       mpesaCode,
+      normalizedCounty: sanitizeText(body.normalizedCounty, 80).toLowerCase() || LOCATION_COUNTY.toLowerCase(),
       paymentTargets: Array.isArray(body.paymentTargets) && body.paymentTargets.length
         ? body.paymentTargets.map((item) => sanitizeText(item, 120)).filter(Boolean)
         : [`Till ${sanitizeText(body.serviceFeeTill, 40) || SERVICE_FEE_TILL}`],

@@ -21,16 +21,46 @@ function getOneSignalAppId() {
   return String(process.env.ONESIGNAL_APP_ID || DEFAULT_ONESIGNAL_APP_ID).trim();
 }
 
-function getFirestore() {
-  const serviceAccount = JSON.parse(requireEnv("FIREBASE_SERVICE_ACCOUNT_JSON"));
+function getServiceAccount() {
+  return JSON.parse(requireEnv("FIREBASE_SERVICE_ACCOUNT_JSON"));
+}
+
+function getDatabaseUrl(serviceAccount) {
+  const explicitUrl = String(process.env.FIREBASE_DATABASE_URL || "").trim();
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+
+  const projectId = String(serviceAccount?.project_id || "").trim();
+  if (!projectId) {
+    return "";
+  }
+
+  return `https://${projectId}-default-rtdb.firebaseio.com`;
+}
+
+function getAdminApp() {
+  const serviceAccount = getServiceAccount();
 
   if (!admin.apps.length) {
+    const databaseURL = getDatabaseUrl(serviceAccount);
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      ...(databaseURL ? { databaseURL } : {}),
     });
   }
 
+  return admin.app();
+}
+
+function getFirestore() {
+  getAdminApp();
   return admin.firestore();
+}
+
+function getRealtimeDatabase() {
+  getAdminApp();
+  return admin.database();
 }
 
 async function sendPushMessage({ aliases = [], appId, body, data = null, filters = null, title, url }) {
@@ -93,8 +123,10 @@ function sendJson(res, statusCode, payload) {
 
 module.exports = {
   admin,
+  getAdminApp,
   getFirestore,
   getOneSignalAppId,
+  getRealtimeDatabase,
   getSiteUrl,
   requireEnv,
   sendJson,
