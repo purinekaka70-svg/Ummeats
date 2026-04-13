@@ -1,6 +1,6 @@
 import { SERVICE_FEE, SERVICE_FEE_TILL } from "./config.js";
 import { elements, getCartItemsTotal, getHotelById, getHotelLocation, getNotificationsForTarget, state } from "./state.js";
-import { escapeHtml, formatCoordinatePair, formatCurrency, formatDateOnly, formatDistanceKm, formatTime, normalizeCoordinates, pluralize } from "./helpers.js";
+import { buildWhatsAppLink, escapeHtml, formatCoordinatePair, formatCurrency, formatDateOnly, formatDistanceKm, formatTime, normalizeCoordinates, pluralize } from "./helpers.js";
 import { renderEmptyState, renderInlineBadge, renderNotifications, renderStatusPill } from "./view-common.js";
 
 export function renderAdmin() {
@@ -525,6 +525,10 @@ function renderAdminOrderCard(order) {
   const items = Array.isArray(order.items) ? order.items : [];
   const itemsTotal = items.length ? getCartItemsTotal(items) : Number(order.itemsTotal || 0);
   const total = Number(order.total || itemsTotal + Number(order.serviceFee ?? SERVICE_FEE));
+  const itemsText = items.map(i => `${i.qty}x ${i.name}`).join(", ");
+
+  const customerWaLink = buildWhatsAppLink(order.customerPhone, `Hello ${order.customerName}, this is Tamu Express regarding your order of ${itemsText} (Total: ${formatCurrency(total)}).`);
+  const hotelWaLink = buildWhatsAppLink(hotel.phone, `Hello ${hotel.name}, there is a new order from ${order.customerName}: ${itemsText}. Total: ${formatCurrency(total)}.`);
 
   return `
     <article class="card order-card">
@@ -596,6 +600,8 @@ function renderAdminOrderCard(order) {
             ? `<button class="button button-success markPaid" data-id="${escapeHtml(order.id)}" type="button">Mark as Paid</button>`
             : ""
         }
+        <a class="button button-outline button-small" href="${escapeHtml(customerWaLink)}" target="_blank" rel="noreferrer">WhatsApp Customer</a>
+        <a class="button button-outline button-small" href="${escapeHtml(hotelWaLink)}" target="_blank" rel="noreferrer">WhatsApp Hotel</a>
         <button class="button button-danger deleteOrder" data-id="${escapeHtml(order.id)}" type="button">Delete Order</button>
       </div>
     </article>

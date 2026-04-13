@@ -36,7 +36,9 @@ const EMPLOYEE_ID_CARD_MAX_BYTES = 5 * 1024 * 1024;
 const EMPLOYEE_AUTH_VIEW_STORAGE_KEY = "EMPLOYEE_AUTH_VIEW";
 const EMPLOYEE_AUTH_EMAIL_STORAGE_KEY = "EMPLOYEE_AUTH_EMAIL";
 const EMPLOYEE_PORTAL_FALLBACK_MESSAGE = "Employee portal could not load fully. You can still login or refresh this page.";
-const EMPLOYEE_PROFILE_LOAD_STALL_MS = 5000;
+const EMPLOYEE_PROFILE_LOAD_STALL_MS = 15000;
+const EMPLOYEE_PORTAL_SECTION_KEY = "EMPLOYEE_PORTAL_SECTION";
+
 const employeeNotificationPromptButton = document.getElementById("employeeNotificationPromptButton");
 const COUNTY_NAMES = [
   "Baringo",
@@ -135,6 +137,15 @@ function saveEmployeeAuthEmail(email) {
   safeSetStorageItem(EMPLOYEE_AUTH_EMAIL_STORAGE_KEY, normalizedEmail);
 }
 
+function loadEmployeeSection() {
+  return safeGetStorageItem(EMPLOYEE_PORTAL_SECTION_KEY) || "dashboard";
+}
+
+function saveEmployeeSection(section) {
+  const value = String(section || "dashboard").trim();
+  safeSetStorageItem(EMPLOYEE_PORTAL_SECTION_KEY, value);
+}
+
 function getEmployeeAppElement() {
   return document.getElementById("app");
 }
@@ -184,7 +195,7 @@ const portalState = {
   countySuggestions: [],
   currentUser: null,
   employeeProfile: null,
-  employeeSection: "dashboard",
+  employeeSection: loadEmployeeSection(),
   employeeSidebarOpen: false,
   hotels: [],
   mapMode: "road",
@@ -886,7 +897,7 @@ function subscribeToAuth() {
       stopEmployeeNotificationSubscription();
       portalState.countyEditorOpen = false;
       portalState.employeeProfile = null;
-      portalState.employeeSection = "dashboard";
+      portalState.employeeSection = loadEmployeeSection();
       portalState.employeeSidebarOpen = false;
       portalState.mapMode = "road";
       portalState.mapModal = null;
@@ -993,6 +1004,7 @@ async function handleClick(event) {
 
   if (button.classList.contains("employeeNavBtn")) {
     portalState.employeeSection = button.dataset.section || "dashboard";
+    saveEmployeeSection(portalState.employeeSection);
     portalState.employeeSidebarOpen = false;
     renderEmployeeView();
     return;

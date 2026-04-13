@@ -5,6 +5,7 @@ import {
   formatCoordinatePair,
   formatDistanceKm,
   formatCurrency,
+  buildWhatsAppLink,
   formatDateOnly,
   getMenuScheduleDetails,
   MENU_DAY_OPTIONS,
@@ -309,7 +310,7 @@ export function renderHotelPortal() {
         </div>
         ${
           hotelOrders.length
-            ? `<div class="order-list">${hotelOrders.map(renderHotelOrderCard).join("")}</div>`
+            ? `<div class="order-list">${hotelOrders.map((o) => renderHotelOrderCard(o, hotel.name)).join("")}</div>`
             : `<div class="notification-item"><p class="is-muted">No orders have been placed for this hotel yet.</p></div>`
         }
       </section>
@@ -317,7 +318,11 @@ export function renderHotelPortal() {
   `;
 }
 
-function renderHotelOrderCard(order) {
+function renderHotelOrderCard(order, hotelName) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemsText = items.map(i => `${i.qty}x ${i.name}`).join(", ");
+  const customerWaLink = buildWhatsAppLink(order.customerPhone, `Hello ${order.customerName}, this is ${hotelName}. We have received your order: ${itemsText}.`);
+
   return `
     <article class="card order-card">
       <div class="order-header">
@@ -361,6 +366,7 @@ function renderHotelOrderCard(order) {
             ? `<button class="button button-success markPaid" data-id="${escapeHtml(order.id)}" type="button">Mark Paid</button>`
             : ""
         }
+        <a class="button button-outline button-small" href="${escapeHtml(customerWaLink)}" target="_blank" rel="noreferrer">WhatsApp Customer</a>
         <button class="button button-danger deleteOrder" data-id="${escapeHtml(order.id)}" type="button">Delete Order</button>
       </div>
     </article>

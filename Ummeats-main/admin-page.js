@@ -250,11 +250,10 @@ function subscribeToAuth() {
     }
 
     stopAdminCollectionSubscriptions();
-    await signOut(auth).catch(() => undefined);
     state.currentAdmin = false;
     state.adminPanelSection = "dashboard";
     state.adminSidebarOpen = false;
-    showToast("This account is registered as employee access, not admin.", "warn");
+    // Do not force signOut to allow employee sessions to persist in other tabs
     renderAdmin();
     updateAdminNotificationPromptButtonState();
   });

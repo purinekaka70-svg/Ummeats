@@ -154,6 +154,24 @@ export function buildNotificationDocId({ to, type, refId }) {
   return `${normalizedTo}__${normalizedType}__${normalizedRefId}`;
 }
 
+/**
+ * Generates a WhatsApp click-to-chat link.
+ * @param {string} phone - The phone number.
+ * @param {string} message - The pre-filled message text.
+ * @returns {string} The formatted URL.
+ */
+export function buildWhatsAppLink(phone, message) {
+  const cleanPhone = String(phone || "").replace(/\D/g, "");
+  if (!cleanPhone) return "";
+  let formattedPhone = cleanPhone;
+  if (cleanPhone.startsWith("0") && cleanPhone.length >= 10) {
+    formattedPhone = "254" + cleanPhone.slice(1);
+  } else if (cleanPhone.length === 9 && (cleanPhone.startsWith("7") || cleanPhone.startsWith("1"))) {
+    formattedPhone = "254" + cleanPhone;
+  }
+  return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`;
+}
+
 export function sortMenuItems(items) {
   return [...(Array.isArray(items) ? items : [])].sort((left, right) => {
     const leftSchedule = getMenuScheduleDetails(left);

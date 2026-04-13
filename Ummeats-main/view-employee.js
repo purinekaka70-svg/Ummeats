@@ -612,6 +612,14 @@ function renderEmployeeOrderCard(order, hotels) {
           <strong>${escapeHtml(hotel.name)}</strong>
         </div>
         <div class="meta-block">
+          <span>Hotel phone</span>
+          <strong>${escapeHtml(hotel.phone || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
+          <span>Hotel till</span>
+          <strong>${escapeHtml(hotel.till || "N/A")}</strong>
+        </div>
+        <div class="meta-block">
           <span>Hotel location</span>
           <strong>${escapeHtml(hotel.location || DEFAULT_HOTEL_LOCATION)}</strong>
         </div>
@@ -646,6 +654,8 @@ function renderEmployeeOrderCard(order, hotels) {
         <div class="summary-item"><span>Distance</span><strong>${Number.isFinite(order.distanceKm) ? formatDistanceKm(order.distanceKm) : "Unknown"}</strong></div>
         <div class="summary-item"><span>Map shared</span><strong>${customerCoordinates ? "Yes" : "No"}</strong></div>
         <div class="summary-item"><span>Total</span><strong>${formatCurrency(total)}</strong></div>
+        <div class="summary-item"><span>M-PESA name</span><strong>${escapeHtml(order.mpesaName || "N/A")}</strong></div>
+        <div class="summary-item"><span>M-PESA number</span><strong>${escapeHtml(order.mpesaNumber || "N/A")}</strong></div>
       </div>
 
       ${
