@@ -11,7 +11,9 @@ const DEFAULT_ONESIGNAL_SERVICE_WORKER_PATH = "push/onesignal/OneSignalSDKWorker
 const DEFAULT_ONESIGNAL_SERVICE_WORKER_SCOPE = "push/onesignal/";
 const FALLBACK_ONESIGNAL_SERVICE_WORKER_PATH = "OneSignalSDKWorker.js";
 const ROOT_ONESIGNAL_SERVICE_WORKER_SCOPE = "/";
-const ONESIGNAL_SDK_LOAD_TIMEOUT_MS = 15000;
+const ONESIGNAL_SDK_LOAD_TIMEOUT_MS = 30000;
+const ONESIGNAL_SDK_LOAD_MAX_ATTEMPTS = 2;
+const ONESIGNAL_SDK_RETRY_DELAY_MS = 400;
 const PUSH_NOTIFICATION_ICON = "https://i.ibb.co/KzFZpw0V/Gemini-Generated-Image-bl807jbl807jbl80.png";
 const NOTIFICATION_TAG_TTL_MS = 30000;
 let foregroundListenerBound = false;
@@ -22,6 +24,8 @@ let oneSignalInitError = null;
 let activePushIdentity = null;
 let identitySyncPromise = null;
 const recentNotificationTags = new Map();
+let oneSignalDeferredBridgeBound = false;
+const oneSignalLoadWaiters = new Set();
 
 function pruneRecentNotificationTags(now = Date.now()) {
   recentNotificationTags.forEach((timestamp, tag) => {
@@ -217,15 +221,98 @@ async function resolveOneSignalWorkerSettings() {
   return resolvedSettings;
 }
 
-function ensureOneSignalPageScript() {
-  if (document.querySelector(`script[src="${ONESIGNAL_SDK_URL}"]`)) {
+function ensureOneSignalPageScript(options = {}) {
+  const cacheBust = Boolean(options.cacheBust);
+  const existing = document.querySelector(`script[src^="${ONESIGNAL_SDK_URL}"]`);
+  if (existing && !cacheBust) {
     return;
   }
 
   const script = document.createElement("script");
   script.defer = true;
-  script.src = ONESIGNAL_SDK_URL;
+  script.src = cacheBust ? `${ONESIGNAL_SDK_URL}?cb=${Date.now()}` : ONESIGNAL_SDK_URL;
+  script.crossOrigin = "anonymous";
   document.head.appendChild(script);
+}
+
+function resolveOneSignalWaiters(OneSignal) {
+  oneSignalLoadWaiters.forEach((waiter) => {
+    window.clearTimeout(waiter.timeoutId);
+    waiter.resolve(OneSignal);
+  });
+  oneSignalLoadWaiters.clear();
+}
+
+function rejectOneSignalWaiters(error) {
+  oneSignalLoadWaiters.forEach((waiter) => {
+    window.clearTimeout(waiter.timeoutId);
+    waiter.reject(error);
+  });
+  oneSignalLoadWaiters.clear();
+}
+
+function bindOneSignalDeferredBridge() {
+  if (oneSignalDeferredBridgeBound) {
+    return;
+  }
+
+  oneSignalDeferredBridgeBound = true;
+  window.OneSignalDeferred.push(async (OneSignal) => {
+    try {
+      const workerSettingsList = await resolveOneSignalWorkerSettings();
+      if (!workerSettingsList.length) {
+        throw new Error("OneSignal worker file is unreachable. Verify the worker URL returns JavaScript.");
+      }
+
+      const appId = String(ONESIGNAL_APP_ID || "").trim();
+      const safariWebId = String(ONESIGNAL_SAFARI_WEB_ID || "").trim();
+      let initSuccessful = false;
+      let lastInitError = null;
+
+      for (const workerSettings of workerSettingsList) {
+        try {
+          const initOptions = {
+            allowLocalhostAsSecureOrigin: isLocalhostOrigin(),
+            appId,
+            autoResubscribe: true,
+            notificationClickHandlerAction: "navigate",
+            notificationClickHandlerMatch: "origin",
+            notifyButton: {
+              enable: true,
+            },
+            ...workerSettings,
+            welcomeNotification: {
+              disable: true,
+            },
+          };
+
+          if (safariWebId && shouldIncludeSafariWebId()) {
+            initOptions.safari_web_id = safariWebId;
+          }
+
+          await OneSignal.init(initOptions);
+          initSuccessful = true;
+          break;
+        } catch (error) {
+          lastInitError = error;
+        }
+      }
+
+      if (!initSuccessful) {
+        throw lastInitError || new Error("OneSignal initialization failed for all worker routes.");
+      }
+
+      OneSignal.Notifications.setDefaultTitle("Tamu Express");
+      OneSignal.Notifications.setDefaultUrl(new URL("./index.html", window.location.href).href);
+      bindOneSignalForegroundListeners(OneSignal);
+      bindOneSignalIdentityListeners(OneSignal);
+      oneSignalInitError = null;
+      resolveOneSignalWaiters(OneSignal);
+    } catch (error) {
+      oneSignalInitError = error;
+      rejectOneSignalWaiters(error);
+    }
+  });
 }
 
 async function showForegroundNotification(title, body, registration, notificationOptions = {}) {
@@ -458,70 +545,44 @@ async function getOneSignal() {
   oneSignalInitError = null;
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   ensureOneSignalPageScript();
+  bindOneSignalDeferredBridge();
 
   oneSignalReadyPromise = new Promise((resolve, reject) => {
-    const timeoutId = window.setTimeout(() => {
-      oneSignalReadyPromise = null;
-      reject(new Error("OneSignal SDK load timed out."));
-    }, ONESIGNAL_SDK_LOAD_TIMEOUT_MS);
+    const waiter = {
+      attempt: 0,
+      timeoutId: null,
+      resolve,
+      reject,
+    };
 
-    window.OneSignalDeferred.push(async (OneSignal) => {
-      try {
-        const workerSettingsList = await resolveOneSignalWorkerSettings();
-        if (!workerSettingsList.length) {
-          throw new Error("OneSignal worker file is unreachable. Verify the worker URL returns JavaScript.");
+    const scheduleTimeout = () => {
+      waiter.timeoutId = window.setTimeout(async () => {
+        if (waiter.attempt + 1 < ONESIGNAL_SDK_LOAD_MAX_ATTEMPTS) {
+          waiter.attempt += 1;
+          ensureOneSignalPageScript({ cacheBust: true });
+          await new Promise((innerResolve) => window.setTimeout(innerResolve, ONESIGNAL_SDK_RETRY_DELAY_MS));
+          scheduleTimeout();
+          return;
         }
 
-        const safariWebId = String(ONESIGNAL_SAFARI_WEB_ID || "").trim();
-        let initSuccessful = false;
-        let lastInitError = null;
-
-        for (const workerSettings of workerSettingsList) {
-          try {
-            const initOptions = {
-              allowLocalhostAsSecureOrigin: isLocalhostOrigin(),
-              appId,
-              autoResubscribe: true,
-              notificationClickHandlerAction: "navigate",
-              notificationClickHandlerMatch: "origin",
-              notifyButton: {
-                enable: true,
-              },
-              ...workerSettings,
-              welcomeNotification: {
-                disable: true,
-              },
-            };
-
-            if (safariWebId && shouldIncludeSafariWebId()) {
-              initOptions.safari_web_id = safariWebId;
-            }
-
-            await OneSignal.init(initOptions);
-            initSuccessful = true;
-            break;
-          } catch (error) {
-            lastInitError = error;
-          }
-        }
-
-        if (!initSuccessful) {
-          throw lastInitError || new Error("OneSignal initialization failed for all worker routes.");
-        }
-
-        OneSignal.Notifications.setDefaultTitle("Tamu Express");
-        OneSignal.Notifications.setDefaultUrl(new URL("./index.html", window.location.href).href);
-        bindOneSignalForegroundListeners(OneSignal);
-        bindOneSignalIdentityListeners(OneSignal);
-        oneSignalInitError = null;
-        window.clearTimeout(timeoutId);
-        resolve(OneSignal);
-      } catch (error) {
-        window.clearTimeout(timeoutId);
+        oneSignalLoadWaiters.delete(waiter);
         oneSignalReadyPromise = null;
-        reject(error);
-      }
-    });
+        reject(new Error("OneSignal SDK load timed out."));
+      }, ONESIGNAL_SDK_LOAD_TIMEOUT_MS);
+    };
+
+    // If the SDK is already on the page, resolve immediately without waiting for the deferred callback.
+    if (
+      window.OneSignal &&
+      typeof window.OneSignal === "object" &&
+      typeof window.OneSignal.Notifications?.isPushSupported === "function"
+    ) {
+      resolve(window.OneSignal);
+      return;
+    }
+
+    oneSignalLoadWaiters.add(waiter);
+    scheduleTimeout();
   }).catch((error) => {
     oneSignalInitError = error;
     console.warn("OneSignal initialization failed", error);
@@ -539,7 +600,7 @@ async function ensureOneSignalPush(options = {}) {
       const initErrorMessage = String(oneSignalInitError?.message || "").trim();
       showToast(
         initErrorMessage
-          ? `Push setup failed: ${initErrorMessage}`
+          ? `Push setup failed: ${initErrorMessage} (Allow cdn.onesignal.com or disable adblock).`
           : "Push setup failed. Check HTTPS and OneSignal app/domain settings.",
         "warn",
       );
