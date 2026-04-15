@@ -171,14 +171,21 @@ async function ensureAdminRecord(firestore, decodedToken) {
   const adminRef = firestore.collection("admins").doc(normalizedUid);
   const adminSnapshot = await adminRef.get();
   const normalizedEmail = sanitizeText(decodedToken?.email, 160).toLowerCase();
-  // Allow admin access for any authenticated email/password user.
-  // This keeps admin logins "normal" without a manual approval list.
-  if (!normalizedEmail) {
+  const normalizedRole = String(decodedToken?.role || decodedToken?.claims?.role || "").trim().toLowerCase();
+  const hotelIdClaim = sanitizeText(decodedToken?.hotelId || decodedToken?.claims?.hotelId, 160);
+  const isHotelUid = normalizedUid.startsWith("hotel:");
+  const isHotelRole = normalizedRole === "hotel" || Boolean(hotelIdClaim) || isHotelUid;
+
+  // Allow admin access for:
+  // - authenticated email/password users (email present)
+  // - hotel custom-token users (role: hotel / uid hotel:*)
+  if (!normalizedEmail && !isHotelRole) {
     return null;
   }
 
   const payload = {
-    email: normalizedEmail,
+    ...(normalizedEmail ? { email: normalizedEmail } : {}),
+    ...(isHotelRole ? { sourceRole: "hotel" } : {}),
     lastValidatedAt: nowTimestamp(),
     uid: normalizedUid,
   };
