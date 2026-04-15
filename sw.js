@@ -3,7 +3,7 @@ try {
 } catch (error) {
   // Ignore failures so offline caching still works even if the OneSignal CDN is unreachable.
 }
-const APP_CACHE = "tamu-app-v42";
+const APP_CACHE = "tamu-app-v43";
 const APP_SHELL = [
   "./",
   "./index.html",
