@@ -10,6 +10,7 @@ const INVALID_TOKEN_CODES = new Set([
   "messaging/invalid-registration-token",
   "messaging/registration-token-not-registered",
 ]);
+const NOTIFICATION_DISPATCH_URL = "https://ummeats.vercel.app/api/send-order-notification";
 
 function normalizePushSubscriptionData(data = {}) {
   const label = String(data.label || "").trim().slice(0, 160);
@@ -93,6 +94,46 @@ async function sendPushToTargets({ title, body, data = {}, linksByTarget = {}, t
   await Promise.all(deletions);
 }
 
+async function dispatchOrderNotifications({ orderId, type = "order", customerId = "", hotelId = "" }) {
+  const normalizedOrderId = String(orderId || "").trim();
+  if (!normalizedOrderId) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(NOTIFICATION_DISPATCH_URL, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        customerId: String(customerId || "").trim() || undefined,
+        hotelId: String(hotelId || "").trim() || undefined,
+        orderId: normalizedOrderId,
+        type: String(type || "order").trim().toLowerCase(),
+      }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      console.warn("Notification dispatch failed", response.status, payload?.error || payload);
+      return false;
+    }
+
+    const payload = await response.json().catch(() => null);
+    if (payload?.ok === false) {
+      console.warn("Notification dispatch returned ok=false", payload?.error || payload);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn("Notification dispatch request failed", error);
+    return false;
+  }
+}
+
 exports.upsertPushSubscription = onCall(async (request) => {
   const { label, target, token } = normalizePushSubscriptionData(request.data);
   const snapshot = await db.collection("pushSubscriptions").where("token", "==", token).get();
@@ -172,6 +213,13 @@ exports.sendOrderPushNotifications = onDocumentCreated("orders/{orderId}", async
       type: "order",
     },
   });
+
+  await dispatchOrderNotifications({
+    orderId,
+    type: "order",
+    customerId: String(order.customerId || ""),
+    hotelId: String(order.hotelId || ""),
+  });
 });
 
 exports.sendUmmaShopOrderPushNotifications = onDocumentCreated("ummaShopOrders/{orderId}", async (event) => {
@@ -198,5 +246,11 @@ exports.sendUmmaShopOrderPushNotifications = onDocumentCreated("ummaShopOrders/{
       tag: `umma-shop-order-${orderId}`,
       type: "umma-shop-order",
     },
+  });
+
+  await dispatchOrderNotifications({
+    orderId,
+    type: "umma-shop-order",
+    customerId: String(order.customerEmail || order.customerId || ""),
   });
 });
