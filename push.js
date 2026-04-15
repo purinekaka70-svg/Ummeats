@@ -26,6 +26,8 @@ let identitySyncPromise = null;
 const recentNotificationTags = new Map();
 let oneSignalDeferredBridgeBound = false;
 const oneSignalLoadWaiters = new Set();
+let oneSignalScriptAttempt = 0;
+let oneSignalScriptLastResult = null;
 
 function pruneRecentNotificationTags(now = Date.now()) {
   recentNotificationTags.forEach((timestamp, tag) => {
@@ -225,14 +227,36 @@ function ensureOneSignalPageScript(options = {}) {
   const cacheBust = Boolean(options.cacheBust);
   const existing = document.querySelector(`script[src^="${ONESIGNAL_SDK_URL}"]`);
   if (existing && !cacheBust) {
-    return;
+    return Promise.resolve(oneSignalScriptLastResult || { ok: true, url: existing.src });
   }
 
   const script = document.createElement("script");
   script.defer = true;
   script.src = cacheBust ? `${ONESIGNAL_SDK_URL}?cb=${Date.now()}` : ONESIGNAL_SDK_URL;
   script.crossOrigin = "anonymous";
+  oneSignalScriptAttempt += 1;
+  const attempt = oneSignalScriptAttempt;
+
+  const loadPromise = new Promise((resolve) => {
+    script.addEventListener("load", () => resolve({ ok: true, url: script.src, attempt }));
+    script.addEventListener("error", () => resolve({ ok: false, url: script.src, attempt }));
+  }).then((result) => {
+    oneSignalScriptLastResult = result;
+    return result;
+  });
+
   document.head.appendChild(script);
+  return loadPromise;
+}
+
+async function probeOneSignalSdkReachable() {
+  try {
+    // no-cors so we can detect blocked networks/adblockers via thrown error.
+    await fetch(ONESIGNAL_SDK_URL, { cache: "no-store", method: "GET", mode: "no-cors" });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function resolveOneSignalWaiters(OneSignal) {
@@ -544,12 +568,13 @@ async function getOneSignal() {
 
   oneSignalInitError = null;
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-  ensureOneSignalPageScript();
+  void ensureOneSignalPageScript();
   bindOneSignalDeferredBridge();
 
   oneSignalReadyPromise = new Promise((resolve, reject) => {
     const waiter = {
       attempt: 0,
+      pollId: null,
       timeoutId: null,
       resolve,
       reject,
@@ -559,15 +584,25 @@ async function getOneSignal() {
       waiter.timeoutId = window.setTimeout(async () => {
         if (waiter.attempt + 1 < ONESIGNAL_SDK_LOAD_MAX_ATTEMPTS) {
           waiter.attempt += 1;
-          ensureOneSignalPageScript({ cacheBust: true });
+          const scriptResult = await ensureOneSignalPageScript({ cacheBust: true });
+          if (!scriptResult?.ok) {
+            // If the script is blocked, don't wait the full timeout again.
+            await new Promise((innerResolve) => window.setTimeout(innerResolve, ONESIGNAL_SDK_RETRY_DELAY_MS));
+            scheduleTimeout();
+            return;
+          }
           await new Promise((innerResolve) => window.setTimeout(innerResolve, ONESIGNAL_SDK_RETRY_DELAY_MS));
           scheduleTimeout();
           return;
         }
 
         oneSignalLoadWaiters.delete(waiter);
+        if (waiter.pollId) {
+          window.clearInterval(waiter.pollId);
+        }
         oneSignalReadyPromise = null;
-        reject(new Error("OneSignal SDK load timed out."));
+        const reachable = await probeOneSignalSdkReachable();
+        reject(new Error(reachable ? "OneSignal SDK load timed out." : "OneSignal SDK is blocked by network or browser extensions."));
       }, ONESIGNAL_SDK_LOAD_TIMEOUT_MS);
     };
 
@@ -582,6 +617,20 @@ async function getOneSignal() {
     }
 
     oneSignalLoadWaiters.add(waiter);
+
+    waiter.pollId = window.setInterval(() => {
+      if (
+        window.OneSignal &&
+        typeof window.OneSignal === "object" &&
+        typeof window.OneSignal.Notifications?.isPushSupported === "function"
+      ) {
+        oneSignalLoadWaiters.delete(waiter);
+        window.clearTimeout(waiter.timeoutId);
+        window.clearInterval(waiter.pollId);
+        resolve(window.OneSignal);
+      }
+    }, 250);
+
     scheduleTimeout();
   }).catch((error) => {
     oneSignalInitError = error;
@@ -600,7 +649,7 @@ async function ensureOneSignalPush(options = {}) {
       const initErrorMessage = String(oneSignalInitError?.message || "").trim();
       showToast(
         initErrorMessage
-          ? `Push setup failed: ${initErrorMessage} (Allow cdn.onesignal.com or disable adblock).`
+          ? `Push setup failed: ${initErrorMessage} (Check HTTPS, not private mode, allow cdn.onesignal.com, disable adblock).`
           : "Push setup failed. Check HTTPS and OneSignal app/domain settings.",
         "warn",
       );
