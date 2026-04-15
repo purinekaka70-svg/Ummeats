@@ -24,6 +24,16 @@ export function renderEmployeePortal(portalState) {
 
   document.body.classList.toggle("modal-open", Boolean(portalState.mapModal));
 
+  if (!portalState.authReady || portalState.authBusy) {
+    appElement.innerHTML = renderEmployeeLoading(
+      portalState.pendingRegistration ? "Creating employee account" : "Restoring session",
+      portalState.pendingRegistration
+        ? "Saving your employee profile and ID card, then opening the workspace."
+        : "Checking your saved employee login and syncing your workspace before showing the form.",
+    );
+    return;
+  }
+
   if (!portalState.currentUser) {
     appElement.innerHTML = renderEmployeeAuth(portalState);
     return;
@@ -144,15 +154,15 @@ function renderEmployeeAuth(portalState) {
   `;
 }
 
-function renderEmployeeLoading() {
+function renderEmployeeLoading(title = "Preparing workspace", copy = "Checking your employee account and loading live orders.") {
   return `
     <section class="view-shell">
       <article class="card">
         <div class="stack">
           <div>
             <p class="eyebrow">Employee access</p>
-            <h2 class="view-title">Preparing workspace</h2>
-            <p class="view-copy">Checking your employee account and loading live orders.</p>
+            <h2 class="view-title">${escapeHtml(title)}</h2>
+            <p class="view-copy">${escapeHtml(copy)}</p>
           </div>
         </div>
       </article>
@@ -232,6 +242,11 @@ function renderEmployeeDashboard(portalState) {
   const paidOrders = orders.length - pendingOrders;
   const mapReadyOrders = orders.filter((item) => Boolean(getOrderCustomerCoordinates(item))).length;
   const currentSection = portalState.employeeSection || "dashboard";
+  const hasCoverageCounty = hasEmployeeCoverageCounty(profile);
+  const ordersReady = portalState.ordersLoaded === true;
+  const shopOrdersReady = portalState.shopOrdersLoaded === true;
+  const notificationsReady = portalState.notificationsLoaded === true;
+  const dataSyncing = portalState.hotelsLoaded !== true || !ordersReady || !shopOrdersReady;
 
   return `
     <section class="view-shell admin-panel-shell">
@@ -245,11 +260,11 @@ function renderEmployeeDashboard(portalState) {
         </div>
 
         <div class="admin-nav-list">
-          ${renderEmployeeNavButton("dashboard", "Dashboard", `${pendingOrders} pending order${pluralize(pendingOrders)}`, currentSection)}
-          ${renderEmployeeNavButton("hotelOrders", "Hotel Orders", `${orders.length} hotel order${pluralize(orders.length)}`, currentSection)}
-          ${renderEmployeeNavButton("shopOrders", "Shop Here Orders", `${shopOrders.length} shop request${pluralize(shopOrders.length)}`, currentSection)}
-          ${renderEmployeeNavButton("mapOrders", "Customer Maps", `${mapReadyOrders} map-ready order${pluralize(mapReadyOrders)}`, currentSection)}
-          ${renderEmployeeNavButton("notifications", "Notifications", `${notifications.length} alert${pluralize(notifications.length)}`, currentSection, unreadNotifications)}
+          ${renderEmployeeNavButton("dashboard", "Dashboard", formatEmployeeSectionMeta("pending order", pendingOrders, { hasCounty: hasCoverageCounty, ready: ordersReady, loadingLabel: "Loading county orders..." }), currentSection)}
+          ${renderEmployeeNavButton("hotelOrders", "Hotel Orders", formatEmployeeSectionMeta("hotel order", orders.length, { hasCounty: hasCoverageCounty, ready: ordersReady, loadingLabel: "Loading hotel orders..." }), currentSection)}
+          ${renderEmployeeNavButton("shopOrders", "Shop Here Orders", formatEmployeeSectionMeta("shop request", shopOrders.length, { hasCounty: hasCoverageCounty, ready: shopOrdersReady, loadingLabel: "Loading Shop Here orders..." }), currentSection)}
+          ${renderEmployeeNavButton("mapOrders", "Customer Maps", formatEmployeeSectionMeta("map-ready order", mapReadyOrders, { hasCounty: hasCoverageCounty, ready: ordersReady, loadingLabel: "Loading map-ready orders..." }), currentSection)}
+          ${renderEmployeeNavButton("notifications", "Notifications", formatEmployeeSectionMeta("alert", notifications.length, { ready: notificationsReady, loadingLabel: "Loading alerts..." }), currentSection, notificationsReady ? unreadNotifications : 0)}
         </div>
 
         <div class="info-box admin-sidebar-note">
@@ -282,15 +297,22 @@ function renderEmployeeDashboard(portalState) {
         </div>
 
         ${renderEmployeeSection(currentSection, {
+          dataSyncing,
+          hasCoverageCounty,
           mapReadyOrders,
           notifications,
+          notificationsReady,
           orders,
+          ordersReady,
           paidOrders,
           pendingOrders,
           profile,
           shopOrders,
+          shopOrdersReady,
           hotels: portalState.hotels,
           portalState,
+          totalHotelOrders: Number(portalState.totalHotelOrders || 0),
+          totalShopOrders: Number(portalState.totalShopOrders || 0),
         })}
       </div>
 
@@ -303,6 +325,7 @@ function renderEmployeeCountyManagerCard(portalState) {
   const profile = portalState?.employeeProfile || {};
   const currentCounty = String(profile.county || "").trim();
   const currentCountyLabel = currentCounty || "Not set";
+  const hasCoverageCounty = hasEmployeeCoverageCounty(profile);
   const showEditor = !currentCounty || Boolean(portalState?.countyEditorOpen);
   const suggestions = Array.isArray(portalState?.countySuggestions) ? portalState.countySuggestions : [];
   const suggestionMarkup = suggestions.length
@@ -331,9 +354,9 @@ function renderEmployeeCountyManagerCard(portalState) {
 
       <div class="summary-list">
         <div class="summary-item"><span>Current county</span><strong>${escapeHtml(currentCountyLabel)}</strong></div>
-        <div class="summary-item"><span>Visible hotel orders</span><strong>${portalState.orders.length}</strong></div>
-        <div class="summary-item"><span>Visible Shop Here orders</span><strong>${portalState.ummaShopOrders.length}</strong></div>
-        <div class="summary-item"><span>Visible notifications</span><strong>${portalState.notifications.length}</strong></div>
+        <div class="summary-item"><span>Visible hotel orders</span><strong>${escapeHtml(formatEmployeeMetricValue(portalState.orders.length, { hasCounty: hasCoverageCounty, ready: portalState.ordersLoaded === true }))}</strong></div>
+        <div class="summary-item"><span>Visible Shop Here orders</span><strong>${escapeHtml(formatEmployeeMetricValue(portalState.ummaShopOrders.length, { hasCounty: hasCoverageCounty, ready: portalState.shopOrdersLoaded === true }))}</strong></div>
+        <div class="summary-item"><span>Visible notifications</span><strong>${escapeHtml(formatEmployeeMetricValue(portalState.notifications.length, { ready: portalState.notificationsLoaded === true }))}</strong></div>
       </div>
 
       ${
@@ -386,20 +409,56 @@ function renderEmployeeNavButton(sectionId, label, meta, currentSection, count =
   `;
 }
 
+function renderEmployeeSectionStatus(title, copy) {
+  return `
+    <section class="view-shell">
+      <article class="card">
+        <div class="stack">
+          <div>
+            <h4>${escapeHtml(title)}</h4>
+            <p class="tiny">${escapeHtml(copy)}</p>
+          </div>
+        </div>
+      </article>
+    </section>
+  `;
+}
+
 function renderEmployeeSection(section, context) {
   if (section === "notifications") {
+    if (!context.notificationsReady) {
+      return renderEmployeeSectionStatus("Loading notifications", "Checking the latest employee alerts.");
+    }
     return renderEmployeeNotificationsSection(context.notifications);
   }
 
   if (section === "hotelOrders") {
+    if (!context.hasCoverageCounty) {
+      return renderEmployeeSectionStatus("Work county required", "Set the employee work county first to load hotel orders.");
+    }
+    if (!context.ordersReady) {
+      return renderEmployeeSectionStatus("Loading hotel orders", "Syncing the latest county hotel orders.");
+    }
     return renderEmployeeOrdersSection(context.orders, context.hotels);
   }
 
   if (section === "shopOrders") {
+    if (!context.hasCoverageCounty) {
+      return renderEmployeeSectionStatus("Work county required", "Set the employee work county first to load Shop Here requests.");
+    }
+    if (!context.shopOrdersReady) {
+      return renderEmployeeSectionStatus("Loading Shop Here orders", "Syncing the latest Shop Here requests for this county.");
+    }
     return renderEmployeeShopOrdersSection(context.shopOrders);
   }
 
   if (section === "mapOrders") {
+    if (!context.hasCoverageCounty) {
+      return renderEmployeeSectionStatus("Work county required", "Set the employee work county first to load customer maps.");
+    }
+    if (!context.ordersReady) {
+      return renderEmployeeSectionStatus("Loading customer maps", "Checking hotel orders with customer coordinates.");
+    }
     return renderEmployeeMapOrdersSection(context.orders, context.hotels);
   }
 
@@ -415,32 +474,34 @@ function renderEmployeeDashboardSection(context) {
 
   return `
     <section class="view-shell">
+      ${renderEmployeeCoverageNotice(context)}
+
       ${renderEmployeeCountyManagerCard(context.portalState)}
 
       <div class="stats-grid">
         <article class="stat-card">
           <span class="stat-label">Hotel Orders</span>
-          <strong>${context.orders.length}</strong>
+          <strong>${escapeHtml(formatEmployeeMetricValue(context.orders.length, { hasCounty: context.hasCoverageCounty, ready: context.ordersReady }))}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Pending</span>
-          <strong>${context.pendingOrders}</strong>
+          <strong>${escapeHtml(formatEmployeeMetricValue(context.pendingOrders, { hasCounty: context.hasCoverageCounty, ready: context.ordersReady }))}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Paid</span>
-          <strong>${context.paidOrders}</strong>
+          <strong>${escapeHtml(formatEmployeeMetricValue(context.paidOrders, { hasCounty: context.hasCoverageCounty, ready: context.ordersReady }))}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Shop Here</span>
-          <strong>${context.shopOrders.length}</strong>
+          <strong>${escapeHtml(formatEmployeeMetricValue(context.shopOrders.length, { hasCounty: context.hasCoverageCounty, ready: context.shopOrdersReady }))}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Map Ready</span>
-          <strong>${context.mapReadyOrders}</strong>
+          <strong>${escapeHtml(formatEmployeeMetricValue(context.mapReadyOrders, { hasCounty: context.hasCoverageCounty, ready: context.ordersReady }))}</strong>
         </article>
         <article class="stat-card">
           <span class="stat-label">Notifications</span>
-          <strong>${context.notifications.length}</strong>
+          <strong>${escapeHtml(formatEmployeeMetricValue(context.notifications.length, { ready: context.notificationsReady }))}</strong>
         </article>
       </div>
 
@@ -685,6 +746,70 @@ function renderEmployeeOrderCard(order, hotels) {
       }
     </article>
   `;
+}
+
+function hasEmployeeCoverageCounty(profile) {
+  return Boolean(String(profile?.county || profile?.normalizedCounty || "").trim());
+}
+
+function formatEmployeeMetricValue(value, options = {}) {
+  const hasCounty = options.hasCounty !== false;
+  const ready = options.ready !== false;
+
+  if (!hasCounty) {
+    return "Set county";
+  }
+
+  if (!ready) {
+    return "Syncing...";
+  }
+
+  return String(value);
+}
+
+function formatEmployeeSectionMeta(label, count, options = {}) {
+  const hasCounty = options.hasCounty !== false;
+  const ready = options.ready !== false;
+
+  if (!hasCounty) {
+    return "Set work county to load data";
+  }
+
+  if (!ready) {
+    return options.loadingLabel || "Syncing data...";
+  }
+
+  return `${count} ${label}${pluralize(count)}`;
+}
+
+function renderEmployeeCoverageNotice(context) {
+  const countyLabel = String(context?.profile?.county || "").trim();
+
+  if (!context?.hasCoverageCounty) {
+    return `
+      <article class="card info-box">
+        <p>Set the employee work county first. Until then the portal will not count hotel orders, Shop Here orders, or customer maps.</p>
+      </article>
+    `;
+  }
+
+  if (context?.dataSyncing) {
+    return `
+      <article class="card info-box">
+        <p>Loading live hotel and Shop Here records for ${escapeHtml(countyLabel || "your county")}.</p>
+      </article>
+    `;
+  }
+
+  if (!context.orders.length && !context.shopOrders.length && (context.totalHotelOrders || context.totalShopOrders)) {
+    return `
+      <article class="card info-box">
+        <p>No current hotel or Shop Here orders match ${escapeHtml(countyLabel)} right now, even though there are live records in the system.</p>
+      </article>
+    `;
+  }
+
+  return "";
 }
 
 function renderEmployeeShopOrderCard(order) {

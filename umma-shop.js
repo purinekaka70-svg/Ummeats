@@ -169,6 +169,38 @@ function getOrderSubmitErrorMessage(error) {
   return message.length > 220 ? `${message.slice(0, 217)}...` : message;
 }
 
+async function writeImmediateAdminShopOrderNotification({ customerName, orderId, shopName }) {
+  const normalizedOrderId = String(orderId || "").trim();
+  if (!normalizedOrderId) {
+    return false;
+  }
+
+  const normalizedCustomerName = String(customerName || "A customer").trim() || "A customer";
+  const normalizedShopName = String(shopName || "Around Umma University").trim() || "Around Umma University";
+  const timestamp = Date.now();
+  const notification = {
+    message: `${normalizedCustomerName} submitted a Shop Here order for ${normalizedShopName}.`,
+    read: false,
+    refId: normalizedOrderId,
+    timestamp,
+    to: "admin",
+    type: "umma-shop-order",
+  };
+  const notificationId = buildNotificationDocId(notification);
+
+  if (notificationId) {
+    await setDoc(doc(db, "notifications", notificationId), notification, { merge: true });
+  } else {
+    await addDoc(collection(db, "notifications"), notification);
+  }
+
+  await updateDoc(doc(db, "ummaShopOrders", normalizedOrderId), {
+    notificationAdminDispatchedAt: timestamp,
+  }).catch(() => undefined);
+
+  return true;
+}
+
 function isPermissionDeniedError(error) {
   const code = String(error?.code || "").trim().toLowerCase();
   const message = String(error?.message || "").trim().toLowerCase();
@@ -665,6 +697,14 @@ async function submitOrder() {
 
   try {
     const createdOrder = await createShopOrder(orderPayload);
+    await writeImmediateAdminShopOrderNotification({
+      customerName,
+      orderId: createdOrder.id,
+      shopName,
+    }).catch((error) => {
+      console.warn("Immediate Shop Here admin notification write failed", error);
+      return false;
+    });
     const notificationSent = await dispatchOrderNotification(createdOrder.id, "umma-shop-order");
     if (!notificationSent) {
       try {

@@ -436,6 +436,85 @@ function downloadAllAdminDataPdf() {
   window.setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
 }
 
+function escapeExportHtml(value) {
+  return normalizePdfText(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function createWordDocumentHtml(title, sections) {
+  const sectionMarkup = sections.map((section) => `
+    <section style="margin-bottom:24px;">
+      <h2 style="font-size:18px;margin:0 0 10px;">${escapeExportHtml(section.title)}</h2>
+      <ul style="margin:0;padding-left:20px;">
+        ${section.lines.map((line) => `<li style="margin:0 0 6px;">${escapeExportHtml(line)}</li>`).join("")}
+      </ul>
+    </section>
+  `).join("");
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <title>${escapeExportHtml(title)}</title>
+    </head>
+    <body style="font-family:Calibri, Arial, sans-serif; color:#111827; line-height:1.45; padding:24px;">
+      <h1 style="font-size:24px;margin:0 0 18px;">${escapeExportHtml(title)}</h1>
+      ${sectionMarkup}
+    </body>
+    </html>
+  `;
+}
+
+function downloadAllAdminDataWord() {
+  const title = `Tamu Express Admin Export - ${normalizePdfText(new Date().toLocaleDateString("en-KE"))}`;
+  const sections = buildAdminExportSections();
+  const html = createWordDocumentHtml(title, sections);
+  const fileName = sanitizeDownloadFileName(
+    `tamu-express-admin-export-${new Date().toISOString().slice(0, 10)}.doc`,
+    "tamu-express-admin-export.doc",
+  );
+  const blob = new Blob([html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.download = fileName;
+  anchor.href = url;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+}
+
+async function downloadAllEmployeeIdPdfs() {
+  const employeesWithIds = [...state.employees]
+    .filter((employee) => Boolean(employee.idCardUploaded || employee.idCardDatabasePath || employee.idCardUrl))
+    .sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+
+  if (!employeesWithIds.length) {
+    showToast("No employee ID PDFs available to download.", "info");
+    return;
+  }
+
+  if (!window.confirm(`Download ${employeesWithIds.length} employee ID PDF${employeesWithIds.length === 1 ? "" : "s"} now? Your browser may ask to allow multiple downloads.`)) {
+    return;
+  }
+
+  let downloadedCount = 0;
+
+  for (const employee of employeesWithIds) {
+    try {
+      await downloadEmployeeIdCard(employee.id, employee.idCardUrl || "");
+      downloadedCount += 1;
+    } catch (error) {
+      console.warn("Bulk employee ID PDF download failed", employee.id, error);
+    }
+
+    await new Promise((resolve) => window.setTimeout(resolve, 180));
+  }
+
+  showToast(`Started ${downloadedCount} employee ID PDF download${downloadedCount === 1 ? "" : "s"}.`, downloadedCount ? "success" : "warn");
+}
+
 function bootstrap() {
   state.currentAdmin = false;
   state.adminPanelSection = "dashboard";
@@ -858,6 +937,17 @@ async function handleClick(event) {
   if (button.id === "downloadAllDataPdf") {
     downloadAllAdminDataPdf();
     showToast("Admin data PDF download started.", "success");
+    return;
+  }
+
+  if (button.id === "downloadAllDataWord") {
+    downloadAllAdminDataWord();
+    showToast("Admin data Word download started.", "success");
+    return;
+  }
+
+  if (button.id === "downloadAllEmployeeIds") {
+    await downloadAllEmployeeIdPdfs();
     return;
   }
 

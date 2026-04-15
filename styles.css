@@ -784,12 +784,14 @@ button {
   align-items: center;
   justify-content: center;
   min-height: 42px;
+  max-width: 100%;
   padding: 0 14px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid var(--line);
   color: var(--muted);
   font-weight: 700;
+  text-align: center;
 }
 
 .toolbar,
@@ -1747,6 +1749,14 @@ button {
     align-items: flex-start;
   }
 
+  .topbar-actions,
+  .toolbar,
+  .button-row {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .hero-stats,
   .field-grid,
   .order-meta-grid,
@@ -1798,6 +1808,18 @@ button {
     min-height: 30px;
   }
 
+  .topbar-actions > *,
+  .toolbar > *,
+  .button-row > * {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .summary-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .item-actions {
     width: 100%;
     justify-content: space-between;
@@ -1808,6 +1830,7 @@ button {
   }
 
   .install-fab {
+    left: 14px;
     right: 14px;
     bottom: 14px;
     min-height: 48px;
@@ -1815,6 +1838,7 @@ button {
   }
 
   .notification-fab {
+    left: 14px;
     right: 14px;
     bottom: 74px;
     min-height: 48px;

@@ -10,9 +10,13 @@ import {
   where,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
+  browserLocalPersistence,
+  browserSessionPersistence,
   createUserWithEmailAndPassword,
   deleteUser,
+  indexedDBLocalPersistence,
   onAuthStateChanged,
+  setPersistence,
   signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
@@ -36,7 +40,7 @@ const EMPLOYEE_ID_CARD_MAX_BYTES = 5 * 1024 * 1024;
 const EMPLOYEE_AUTH_VIEW_STORAGE_KEY = "EMPLOYEE_AUTH_VIEW";
 const EMPLOYEE_AUTH_EMAIL_STORAGE_KEY = "EMPLOYEE_AUTH_EMAIL";
 const EMPLOYEE_PORTAL_FALLBACK_MESSAGE = "Employee portal could not load fully. You can still login or refresh this page.";
-const EMPLOYEE_PROFILE_LOAD_STALL_MS = 5000;
+const EMPLOYEE_PROFILE_LOAD_STALL_MS = 12000;
 const EMPLOYEE_REVERSE_GEOCODE_TIMEOUT_MS = 3000;
 const employeeNotificationPromptButton = document.getElementById("employeeNotificationPromptButton");
 const COUNTY_NAMES = [
@@ -180,6 +184,8 @@ function renderEmployeeView() {
 
 const portalState = {
   authEmailDraft: loadEmployeeAuthEmail(),
+  authBusy: false,
+  authReady: false,
   authView: loadEmployeeAuthView(),
   countyEditorOpen: false,
   countySuggestions: [],
@@ -188,13 +194,19 @@ const portalState = {
   employeeSection: "dashboard",
   employeeSidebarOpen: false,
   hotels: [],
+  hotelsLoaded: false,
   mapMode: "road",
   mapModal: null,
   notifications: [],
+  notificationsLoaded: false,
   orders: [],
+  ordersLoaded: false,
   profileStatus: "idle",
   pendingRegistration: false,
   requestNotificationPermission: false,
+  shopOrdersLoaded: false,
+  totalHotelOrders: 0,
+  totalShopOrders: 0,
   ummaShopOrders: [],
 };
 
@@ -224,6 +236,7 @@ const employeeNotificationAlertTracker = {
 };
 const employeeCountyLookupCache = new Map();
 const employeeCountyLookupPending = new Set();
+let employeeAuthPersistencePromise = null;
 
 function clearEmployeeProfileLoadTimer() {
   if (employeeProfileLoadTimer) {
@@ -254,23 +267,51 @@ function scheduleEmployeeProfileLoadTimeout(uid) {
   }, EMPLOYEE_PROFILE_LOAD_STALL_MS);
 }
 
-safeBootstrap();
+void safeBootstrap();
 
-function safeBootstrap() {
+async function safeBootstrap() {
   try {
-    bootstrap();
+    await bootstrap();
   } catch (error) {
     console.error("Employee portal bootstrap failed", error);
     renderEmployeeStartupFallback();
   }
 }
 
-function bootstrap() {
+async function bootstrap() {
   bindEvents();
   bindPushSyncEvents();
   hydrateShell();
-  subscribeToAuth();
   renderEmployeeView();
+  await ensureEmployeeAuthPersistence();
+  subscribeToAuth();
+}
+
+function ensureEmployeeAuthPersistence() {
+  if (employeeAuthPersistencePromise) {
+    return employeeAuthPersistencePromise;
+  }
+
+  employeeAuthPersistencePromise = (async () => {
+    const persistenceOptions = [
+      indexedDBLocalPersistence,
+      browserLocalPersistence,
+      browserSessionPersistence,
+    ];
+
+    for (const persistence of persistenceOptions) {
+      try {
+        await setPersistence(auth, persistence);
+        return persistence;
+      } catch {
+        // try the next supported persistence layer
+      }
+    }
+
+    return null;
+  })();
+
+  return employeeAuthPersistencePromise;
 }
 
 function bindEvents() {
@@ -647,6 +688,8 @@ function syncEmployeeCountySuggestions() {
 }
 
 function syncEmployeeVisibleCollections() {
+  portalState.totalHotelOrders = unfilteredOrders.length;
+  portalState.totalShopOrders = unfilteredShopOrders.length;
   portalState.orders = unfilteredOrders.filter(isOrderVisibleToEmployee);
   portalState.ummaShopOrders = unfilteredShopOrders.filter(isShopOrderVisibleToEmployee);
   syncEmployeeCountySuggestions();
@@ -902,6 +945,7 @@ function stopEmployeeNotificationSubscription() {
   employeeNotificationAlertTracker.ids = new Set();
   employeeNotificationAlertTracker.ready = false;
   portalState.notifications = [];
+  portalState.notificationsLoaded = false;
 }
 
 function resolveEmployeeNotificationTitle(item) {
@@ -991,11 +1035,14 @@ function startEmployeeNotificationSubscription(employeeId) {
     query(collection(db, "notifications"), where("to", "==", normalizedEmployeeId)),
     (snapshot) => {
       handleEmployeeNotificationAlerts(snapshot);
+      portalState.notificationsLoaded = true;
       portalState.notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
       renderEmployeeView();
     },
     (error) => {
       console.warn("Employee notifications subscription failed", error);
+      portalState.notificationsLoaded = true;
+      renderEmployeeView();
     },
   );
 }
@@ -1046,6 +1093,11 @@ function stopEmployeeCollectionSubscriptions() {
   unsubscribeEmployeeOrders = null;
   unsubscribeEmployeeShopOrders = null;
   portalState.hotels = [];
+  portalState.hotelsLoaded = false;
+  portalState.ordersLoaded = false;
+  portalState.shopOrdersLoaded = false;
+  portalState.totalHotelOrders = 0;
+  portalState.totalShopOrders = 0;
   unfilteredOrders = [];
   unfilteredShopOrders = [];
   employeeOrderAlertTracker.ids = new Set();
@@ -1062,37 +1114,50 @@ function startEmployeeCollectionSubscriptions() {
   }
 
   unsubscribeEmployeeHotels = onSnapshot(collection(db, "hotels"), (snapshot) => {
+    portalState.hotelsLoaded = true;
     portalState.hotels = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncEmployeeVisibleCollections();
     renderEmployeeView();
   }, (error) => {
     console.warn("Employee hotels subscription failed", error);
+    portalState.hotelsLoaded = true;
+    renderEmployeeView();
   });
 
   unsubscribeEmployeeOrders = onSnapshot(collection(db, "orders"), (snapshot) => {
     handleEmployeeOrderAlerts(snapshot);
     handleEmployeeOrderStatusAlerts(snapshot);
+    portalState.ordersLoaded = true;
     unfilteredOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncEmployeeVisibleCollections();
     renderEmployeeView();
   }, (error) => {
     console.warn("Employee orders subscription failed", error);
+    portalState.ordersLoaded = true;
+    syncEmployeeVisibleCollections();
+    renderEmployeeView();
   });
 
   unsubscribeEmployeeShopOrders = onSnapshot(collection(db, "ummaShopOrders"), (snapshot) => {
     handleEmployeeShopOrderAlerts(snapshot);
     handleEmployeeShopOrderStatusAlerts(snapshot);
+    portalState.shopOrdersLoaded = true;
     unfilteredShopOrders = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
     syncEmployeeVisibleCollections();
     renderEmployeeView();
   }, (error) => {
     console.warn("Employee shop orders subscription failed", error);
+    portalState.shopOrdersLoaded = true;
+    syncEmployeeVisibleCollections();
+    renderEmployeeView();
   });
 }
 
 function subscribeToAuth() {
   onAuthStateChanged(auth, (user) => {
     const activeUser = user && !user.isAnonymous ? user : null;
+    portalState.authReady = true;
+    portalState.authBusy = false;
     portalState.currentUser = activeUser;
     clearEmployeeProfileLoadTimer();
 
@@ -1132,6 +1197,9 @@ function subscribeToAuth() {
       clearEmployeeProfileLoadTimer();
       portalState.employeeProfile = snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
       portalState.profileStatus = snapshot.exists() ? "ready" : portalState.pendingRegistration ? "loading" : "missing";
+      if (snapshot.exists()) {
+        portalState.authBusy = false;
+      }
       if (portalState.profileStatus === "loading" && !portalState.pendingRegistration) {
         scheduleEmployeeProfileLoadTimeout(activeUser.uid);
       }
@@ -1166,6 +1234,8 @@ function subscribeToAuth() {
   }, (error) => {
     console.error("Employee auth subscription failed", error);
     clearEmployeeProfileLoadTimer();
+    portalState.authBusy = false;
+    portalState.authReady = true;
     renderEmployeeStartupFallback("Employee auth could not initialize. Refresh and try again.");
   });
 }
@@ -1385,17 +1455,25 @@ async function loginEmployee(form) {
 
   try {
     saveEmployeeAuthEmail(email);
+    portalState.authBusy = true;
+    portalState.authReady = false;
+    portalState.profileStatus = "loading";
     portalState.authEmailDraft = email;
     portalState.authView = "login";
     saveEmployeeAuthView(portalState.authView);
     portalState.requestNotificationPermission = getNotificationPermissionState() === "default";
+    renderEmployeeView();
     await signInWithEmailAndPassword(auth, email, password);
     form.reset();
     showToast("Employee login successful.", "success");
   } catch (error) {
     console.error(error);
+    portalState.authBusy = false;
+    portalState.authReady = true;
+    portalState.profileStatus = "idle";
     portalState.requestNotificationPermission = false;
     showToast(getAuthErrorMessage(error, "login"), "error");
+    renderEmployeeView();
   }
 }
 
@@ -1458,6 +1536,7 @@ async function registerEmployee(form) {
   validateIdCardFile(idCardFile);
 
   portalState.pendingRegistration = true;
+  portalState.authBusy = true;
   portalState.profileStatus = "loading";
   portalState.requestNotificationPermission = getNotificationPermissionState() === "default";
   saveEmployeeAuthEmail(email);
@@ -1506,6 +1585,7 @@ async function registerEmployee(form) {
     }
 
     portalState.pendingRegistration = false;
+    portalState.authBusy = false;
     portalState.authView = "login";
     portalState.countyEditorOpen = false;
     saveEmployeeAuthView(portalState.authView);
@@ -1515,6 +1595,8 @@ async function registerEmployee(form) {
   } catch (error) {
     console.error(error);
     portalState.pendingRegistration = false;
+    portalState.authBusy = false;
+    portalState.authReady = true;
     portalState.profileStatus = auth.currentUser ? "loading" : "idle";
     portalState.requestNotificationPermission = false;
 

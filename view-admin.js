@@ -280,8 +280,9 @@ function renderDashboardSection(summary) {
             <div class="summary-item"><span>Use Registered Hotels</span><strong>Approve and manage</strong></div>
             <div class="summary-item"><span>Use Feedbacks</span><strong>Review support complaints</strong></div>
             <div class="summary-item"><span>Use Employees</span><strong>Remove employee profiles</strong></div>
-            <div class="summary-item"><span>Use Employee ID PDFs</span><strong>Open or download stored ID cards</strong></div>
+            <div class="summary-item"><span>Use Employee ID PDFs</span><strong>Open, download, or bulk download ID cards</strong></div>
             <div class="summary-item"><span>Use Notifications</span><strong>Mark read or delete</strong></div>
+            <div class="summary-item"><span>Export</span><strong>Download all platform data in PDF or Word</strong></div>
             <div class="summary-item"><span>Notifications</span><strong>${summary.unreadNotifications} unread</strong></div>
           </div>
         </article>
@@ -424,7 +425,9 @@ function renderEmployeeIdDocumentsSection() {
         <h4>Employee ID PDFs</h4>
         <div class="inline-list">
           <span class="summary-chip">${uploadedCount} uploaded PDF${pluralize(uploadedCount)}</span>
+          <button class="button button-outline" id="downloadAllEmployeeIds" type="button">Download All ID PDFs</button>
           <button class="button button-danger" id="downloadAllDataPdf" type="button">Download All Data PDF</button>
+          <button class="button button-secondary" id="downloadAllDataWord" type="button">Download All Data Word</button>
         </div>
       </div>
 
@@ -737,6 +740,16 @@ function renderEmployeeCard(employee) {
       </div>
 
       <div class="button-row">
+        ${
+          hasScannedId
+            ? `<button class="button button-outline button-small openEmployeeIdPdf" data-id="${escapeHtml(employee.id)}" data-url="${escapeHtml(employee.idCardUrl || "")}" type="button">Open ID PDF</button>`
+            : ""
+        }
+        ${
+          hasScannedId
+            ? `<button class="button button-danger-soft button-small downloadEmployeeIdPdf" data-id="${escapeHtml(employee.id)}" data-url="${escapeHtml(employee.idCardUrl || "")}" type="button">Download ID PDF</button>`
+            : ""
+        }
         <button class="button button-danger deleteEmployee" data-id="${escapeHtml(employee.id)}" type="button">Delete Employee</button>
       </div>
     </article>

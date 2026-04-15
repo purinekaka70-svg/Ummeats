@@ -193,7 +193,9 @@ function dedupeNotifications(items) {
 }
 
 function buildAdminFallbackNotifications() {
-  const orderNotifications = state.orders.map((order) => {
+  const orderNotifications = state.orders
+    .filter((order) => !order.notificationAdminDispatchedAt)
+    .map((order) => {
     const hotelName = getHotelById(order.hotelId).name;
     const customerName = String(order.customerName || "A customer").trim() || "A customer";
     return {
@@ -206,9 +208,11 @@ function buildAdminFallbackNotifications() {
       to: "admin",
       type: "order",
     };
-  });
+    });
 
-  const shopOrderNotifications = state.ummaShopOrders.map((order) => {
+  const shopOrderNotifications = state.ummaShopOrders
+    .filter((order) => !order.notificationAdminDispatchedAt)
+    .map((order) => {
     const customerName = String(order.customerName || "A customer").trim() || "A customer";
     const shopName = String(order.shopName || "Around Umma University").trim() || "Around Umma University";
     return {
@@ -221,7 +225,7 @@ function buildAdminFallbackNotifications() {
       to: "admin",
       type: "umma-shop-order",
     };
-  });
+    });
 
   const feedbackNotifications = state.feedbacks.map((feedback) => {
     const sender = String(feedback.name || "Anonymous").trim() || "Anonymous";
@@ -244,6 +248,12 @@ function buildAdminFallbackNotifications() {
 function buildHotelFallbackNotifications(hotelId) {
   return state.orders
     .filter((order) => String(order.hotelId || "").trim() === hotelId)
+    .filter((order) => {
+      const normalizedStatus = String(order.status || "Pending").trim().toLowerCase();
+      return normalizedStatus === "paid"
+        ? !order.notificationHotelPaidDispatchedAt
+        : !order.notificationHotelDispatchedAt;
+    })
     .map((order) => {
       const customerName = String(order.customerName || "A customer").trim() || "A customer";
       const normalizedStatus = String(order.status || "Pending").trim().toLowerCase();
@@ -267,6 +277,10 @@ function buildHotelFallbackNotifications(hotelId) {
 function buildCustomerFallbackNotifications(customerId) {
   return state.orders
     .filter((order) => String(order.customerId || "").trim() === customerId)
+    .filter((order) => {
+      const normalizedStatus = String(order.status || "Pending").trim().toLowerCase();
+      return normalizedStatus === "paid" ? !order.notificationCustomerPaidDispatchedAt : true;
+    })
     .map((order) => {
       const hotelName = getHotelById(order.hotelId).name;
       const normalizedStatus = String(order.status || "Pending").trim().toLowerCase();

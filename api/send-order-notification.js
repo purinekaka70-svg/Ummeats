@@ -195,6 +195,29 @@ function buildTagEqualsFilter(key, value) {
   ];
 }
 
+function buildTagOrFilter(key, values) {
+  const normalizedKey = String(key || "").trim();
+  const normalizedValues = [...new Set(
+    (Array.isArray(values) ? values : [values])
+      .map((value) => String(value || "").trim())
+      .filter(Boolean),
+  )];
+
+  if (!normalizedKey || !normalizedValues.length) {
+    return [];
+  }
+
+  return normalizedValues.flatMap((value, index) => [
+    ...(index > 0 ? [{ operator: "OR" }] : []),
+    {
+      field: "tag",
+      key: normalizedKey,
+      relation: "=",
+      value,
+    },
+  ]);
+}
+
 function matchesEmployeeCounty(text, county) {
   const normalizedText = normalizeCountyKey(text);
   const normalizedCounty = normalizeCounty(county);
@@ -213,6 +236,23 @@ function matchesEmployeeCounty(text, county) {
 
 function buildEmployeeAliasTargets(employees) {
   return [...new Set((Array.isArray(employees) ? employees : []).map((item) => String(item?.id || "").trim()).filter(Boolean))];
+}
+
+function buildEmployeeCountyTargets(employees) {
+  return [...new Set(
+    (Array.isArray(employees) ? employees : [])
+      .map((item) => normalizeCounty(item?.normalizedCounty || item?.county))
+      .filter(Boolean),
+  )];
+}
+
+function buildEmployeePushFilterSets(employees) {
+  const filterSets = [
+    buildTagOrFilter("notification_target", buildEmployeeAliasTargets(employees)),
+    buildTagOrFilter("employee_county", buildEmployeeCountyTargets(employees)),
+  ].filter((filters) => Array.isArray(filters) && filters.length);
+
+  return filterSets;
 }
 
 function buildOrderEmployeeMatchSources(order, hotelLocation = "") {
@@ -469,6 +509,7 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
         appId,
         body: employeeMessage,
         data: { refId: orderId, type: "order" },
+        filterSets: buildEmployeePushFilterSets(matchingEmployees),
         title: "New hotel order",
         url: `${siteUrl}/employee.html`,
       })
@@ -564,6 +605,7 @@ async function dispatchShopOrder({ appId, firestore, orderId, siteUrl }) {
         appId,
         body: message,
         data: { refId: orderId, type: "umma-shop-order" },
+        filterSets: buildEmployeePushFilterSets(matchingEmployees),
         title: "New Shop Here order",
         url: `${siteUrl}/employee.html`,
       })
@@ -730,6 +772,7 @@ async function dispatchShopOrderStatus({
         appId,
         body: adminMessage,
         data: { refId: orderId, type: config.customerType },
+        filterSets: buildEmployeePushFilterSets(matchingEmployees),
         title: config.title,
         url: `${siteUrl}/employee.html`,
       })
@@ -903,6 +946,7 @@ async function dispatchPaidOrder({ appId, customerId, firestore, hotelId, orderI
         appId,
         body: adminHotelMessage,
         data: { refId: orderId, type: "order-paid" },
+        filterSets: buildEmployeePushFilterSets(matchingEmployees),
         title: "Order marked as paid",
         url: `${siteUrl}/employee.html`,
       })

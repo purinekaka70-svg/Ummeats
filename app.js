@@ -1326,6 +1326,55 @@ function updateInfoSections() {
   });
 }
 
+async function writeImmediateOrderNotifications({ customerName, hotelId, hotelName, orderId }) {
+  const normalizedOrderId = String(orderId || "").trim();
+  const normalizedHotelId = String(hotelId || "").trim();
+  if (!normalizedOrderId || !normalizedHotelId) {
+    return false;
+  }
+
+  const normalizedCustomerName = String(customerName || "A customer").trim() || "A customer";
+  const normalizedHotelName = String(hotelName || "selected hotel").trim() || "selected hotel";
+  const timestamp = Date.now();
+  const notificationPayloads = [
+    {
+      message: `${normalizedCustomerName} placed an order for ${normalizedHotelName}.`,
+      read: false,
+      refId: normalizedOrderId,
+      timestamp,
+      to: "admin",
+      type: "order",
+    },
+    {
+      message: `${normalizedCustomerName} placed an order for ${normalizedHotelName}.`,
+      read: false,
+      refId: normalizedOrderId,
+      timestamp,
+      to: normalizedHotelId,
+      type: "order",
+    },
+  ];
+
+  await Promise.all(
+    notificationPayloads.map(async (notification) => {
+      const notificationId = buildNotificationDocId(notification);
+      if (notificationId) {
+        await setDoc(doc(db, "notifications", notificationId), notification, { merge: true });
+        return;
+      }
+
+      await addDoc(collection(db, "notifications"), notification);
+    }),
+  );
+
+  await updateDoc(doc(db, "orders", normalizedOrderId), {
+    notificationAdminDispatchedAt: timestamp,
+    notificationHotelDispatchedAt: timestamp,
+  }).catch(() => undefined);
+
+  return true;
+}
+
 async function handleClick(event) {
   const infoTrigger = event.target.closest("[data-info-target]");
   if (infoTrigger) {
@@ -2305,6 +2354,15 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
   try {
     const orderRef = await addDoc(collection(db, "orders"), orderPayload);
     createdOrderId = orderRef.id;
+    await writeImmediateOrderNotifications({
+      customerName,
+      hotelId,
+      hotelName: hotel.name,
+      orderId: createdOrderId,
+    }).catch((error) => {
+      console.warn("Immediate order notification write failed", error);
+      return false;
+    });
     sendSimulatedHotelSMS(hotelId, {
       customerName,
       customerPhone,
