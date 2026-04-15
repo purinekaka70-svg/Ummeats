@@ -671,6 +671,55 @@ async function ensureOneSignalPush(options = {}) {
   return OneSignal;
 }
 
+async function enableBasicBrowserNotifications(options = {}) {
+  const { requestPermission = true, silent = false } = options;
+
+  if (!window.isSecureContext || typeof Notification === "undefined") {
+    if (!silent) {
+      showToast("This browser cannot enable notifications here.", "warn");
+    }
+    return false;
+  }
+
+  if (Notification.permission === "granted") {
+    await getNotificationRegistration().catch(() => null);
+    if (!silent) {
+      showToast("Browser notifications enabled on this device.", "success");
+    }
+    return true;
+  }
+
+  if (Notification.permission === "denied") {
+    if (!silent) {
+      showToast("Notifications are blocked. Allow them in browser site settings, then refresh.", "warn");
+    }
+    return false;
+  }
+
+  if (!requestPermission) {
+    return false;
+  }
+
+  try {
+    const result = await Notification.requestPermission();
+    if (result === "granted") {
+      await getNotificationRegistration().catch(() => null);
+      if (!silent) {
+        const suffix = oneSignalInitError ? " (Push service unavailable on this network.)" : "";
+        showToast(`Browser notifications enabled on this device.${suffix}`, oneSignalInitError ? "warn" : "success");
+      }
+      return true;
+    }
+  } catch (error) {
+    console.warn("Notification permission request failed", error);
+  }
+
+  if (!silent) {
+    showToast("Notifications were not enabled.", "warn");
+  }
+  return false;
+}
+
 export async function registerPushSubscription(target, label, options = {}) {
   const identity = buildPushIdentity(target, label, options);
   if (!identity) {
@@ -679,7 +728,8 @@ export async function registerPushSubscription(target, label, options = {}) {
 
   const OneSignal = await ensureOneSignalPush(options);
   if (!OneSignal) {
-    return false;
+    // Fallback: still allow browser notifications (foreground alerts) even if OneSignal push is blocked.
+    return enableBasicBrowserNotifications(options);
   }
 
   try {
