@@ -24,16 +24,6 @@ export function renderEmployeePortal(portalState) {
 
   document.body.classList.toggle("modal-open", Boolean(portalState.mapModal));
 
-  if (!portalState.authReady || portalState.authBusy) {
-    appElement.innerHTML = renderEmployeeLoading(
-      portalState.pendingRegistration ? "Creating employee account" : "Restoring session",
-      portalState.pendingRegistration
-        ? "Saving your employee profile and ID card, then opening the workspace."
-        : "Checking your saved employee login and syncing your workspace before showing the form.",
-    );
-    return;
-  }
-
   if (!portalState.currentUser) {
     appElement.innerHTML = renderEmployeeAuth(portalState);
     return;
@@ -67,6 +57,8 @@ function renderEmployeeAuth(portalState) {
   const loginHiddenClass = authView === "register" ? " is-hidden" : "";
   const registerHiddenClass = authView === "register" ? "" : " is-hidden";
   const authEmailValue = escapeHtml(String(portalState?.authEmailDraft || "").trim());
+  const busy = Boolean(portalState?.authBusy);
+  const disabledAttr = busy ? " disabled" : "";
 
   return `
     <section class="view-shell">
@@ -85,19 +77,19 @@ function renderEmployeeAuth(portalState) {
 
           <label class="field">
             <span class="field-label">Email</span>
-            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" value="${authEmailValue}" />
+            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" value="${authEmailValue}"${disabledAttr} />
           </label>
 
           <label class="field">
             <span class="field-label">Password</span>
-            <input class="input" name="employeePass" placeholder="Password" type="password" />
+            <input class="input" name="employeePass" placeholder="Password" type="password"${disabledAttr} />
           </label>
 
           <p class="tiny">Use the same employee email and password you created on this page.</p>
-          <button class="button button-primary" type="submit">Login</button>
+          <button class="button button-primary" type="submit"${disabledAttr}>Login</button>
           <p class="tiny auth-switch">
             Don&apos;t have an account?
-            <button class="auth-switch-btn employeeAuthSwitchBtn" data-auth-view="register" type="button">Register</button>
+            <button class="auth-switch-btn employeeAuthSwitchBtn" data-auth-view="register" type="button"${disabledAttr}>Register</button>
           </p>
         </form>
 
@@ -107,46 +99,46 @@ function renderEmployeeAuth(portalState) {
 
           <label class="field">
             <span class="field-label">Full name</span>
-            <input class="input" name="employeeName" placeholder="Employee full name" />
+            <input class="input" name="employeeName" placeholder="Employee full name"${disabledAttr} />
           </label>
 
           <label class="field">
             <span class="field-label">Email</span>
-            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" value="${authEmailValue}" />
+            <input class="input" name="employeeEmail" placeholder="employee@example.com" type="email" value="${authEmailValue}"${disabledAttr} />
           </label>
 
           <label class="field">
             <span class="field-label">ID number</span>
-            <input class="input" name="employeeIdNumber" placeholder="National ID number" />
+            <input class="input" name="employeeIdNumber" placeholder="National ID number"${disabledAttr} />
           </label>
 
           <label class="field">
             <span class="field-label">Work county</span>
-            <input class="input" name="employeeCounty" placeholder="e.g. Kajiado" />
+            <input class="input" name="employeeCounty" placeholder="e.g. Kajiado"${disabledAttr} />
           </label>
 
           <label class="field">
             <span class="field-label">Scanned ID PDF (front + back)</span>
-            <input class="input input-file" accept=".pdf,application/pdf" name="employeeIdCard" type="file" />
+            <input class="input input-file" accept=".pdf,application/pdf" name="employeeIdCard" type="file"${disabledAttr} />
           </label>
 
           <div class="field-grid">
             <label class="field">
               <span class="field-label">Password</span>
-              <input class="input" name="employeePass" placeholder="Password" type="password" />
+              <input class="input" name="employeePass" placeholder="Password" type="password"${disabledAttr} />
             </label>
 
             <label class="field">
               <span class="field-label">Confirm password</span>
-              <input class="input" name="employeePassConfirm" placeholder="Confirm password" type="password" />
+              <input class="input" name="employeePassConfirm" placeholder="Confirm password" type="password"${disabledAttr} />
             </label>
           </div>
 
           <p class="tiny">Upload one clear PDF that includes both front and back of the ID. The work county controls which orders you can view in this portal.</p>
-          <button class="button button-secondary" type="submit">Create Employee Account</button>
+          <button class="button button-secondary" type="submit"${disabledAttr}>Create Employee Account</button>
           <p class="tiny auth-switch">
             Already have an account?
-            <button class="auth-switch-btn employeeAuthSwitchBtn" data-auth-view="login" type="button">Login</button>
+            <button class="auth-switch-btn employeeAuthSwitchBtn" data-auth-view="login" type="button"${disabledAttr}>Login</button>
           </p>
         </form>
       </div>
