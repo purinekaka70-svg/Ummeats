@@ -56,7 +56,16 @@ function isAllowedOrigin(origin) {
 
   try {
     const parsed = new URL(normalizedOrigin);
-    return parsed.protocol === "https:" && parsed.hostname.endsWith(".vercel.app");
+    if (parsed.protocol !== "https:") {
+      return false;
+    }
+
+    // Allow common static hosting domains (admin/api are deployed separately).
+    return (
+      parsed.hostname.endsWith(".vercel.app") ||
+      parsed.hostname.endsWith(".web.app") ||
+      parsed.hostname.endsWith(".firebaseapp.com")
+    );
   } catch {
     return false;
   }
