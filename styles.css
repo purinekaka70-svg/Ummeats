@@ -1819,7 +1819,7 @@ button {
   .topbar {
     flex-direction: row;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .site-topbar-actions {
@@ -1827,16 +1827,18 @@ button {
   }
 
   .topbar-actions {
-    width: auto;
+    width: 100%;
+    flex-basis: 100%;
     flex-direction: row;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: flex-start;
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    max-width: 58vw;
+    margin-top: 10px;
+    max-width: 100%;
   }
 
   .topbar-actions::-webkit-scrollbar {
