@@ -22,6 +22,7 @@ import { auth, db } from "./firebase.js";
 import {
   calculateDistanceKm,
   buildNotificationDocId,
+  buildWhatsAppLink,
   escapeHtml,
   formatCoordinatePair,
   formatDistanceKm,
@@ -1326,16 +1327,49 @@ function updateInfoSections() {
   });
 }
 
-async function writeImmediateOrderNotifications({ customerName, hotelId, hotelName, orderId }) {
+async function writeImmediateOrderNotifications({
+  customerId,
+  customerName,
+  customerPhone,
+  hotelId,
+  hotelName,
+  hotelPhone,
+  orderId,
+}) {
   const normalizedOrderId = String(orderId || "").trim();
   const normalizedHotelId = String(hotelId || "").trim();
-  if (!normalizedOrderId || !normalizedHotelId) {
+  const normalizedCustomerId = String(customerId || "").trim();
+  if (!normalizedOrderId || !normalizedHotelId || !normalizedCustomerId) {
     return false;
   }
 
   const normalizedCustomerName = String(customerName || "A customer").trim() || "A customer";
   const normalizedHotelName = String(hotelName || "selected hotel").trim() || "selected hotel";
+  const normalizedCustomerPhone = String(customerPhone || "").trim();
+  const normalizedHotelPhone = String(hotelPhone || "").trim();
   const timestamp = Date.now();
+
+  const customerWhatsAppLink = normalizedHotelPhone
+    ? buildWhatsAppLink(
+      normalizedHotelPhone,
+      `Hello ${normalizedHotelName}, I placed an order (${normalizedOrderId}). Name: ${normalizedCustomerName}. Phone: ${normalizedCustomerPhone || "N/A"}.`,
+    )
+    : "";
+
+  const hotelWhatsAppLink = normalizedCustomerPhone
+    ? buildWhatsAppLink(
+      normalizedCustomerPhone,
+      `Hello ${normalizedCustomerName}, we received your order (${normalizedOrderId}) for ${normalizedHotelName}. We will update you shortly.`,
+    )
+    : "";
+
+  const adminWhatsAppLink = normalizedHotelPhone
+    ? buildWhatsAppLink(
+      normalizedHotelPhone,
+      `New order (${normalizedOrderId}) placed for ${normalizedHotelName}. Customer: ${normalizedCustomerName} (${normalizedCustomerPhone || "N/A"}). Please confirm on the admin dashboard.`,
+    )
+    : "";
+
   const notificationPayloads = [
     {
       message: `${normalizedCustomerName} placed an order for ${normalizedHotelName}.`,
@@ -1344,6 +1378,7 @@ async function writeImmediateOrderNotifications({ customerName, hotelId, hotelNa
       timestamp,
       to: "admin",
       type: "order",
+      ...(adminWhatsAppLink ? { waLabel: `WhatsApp ${normalizedHotelName}`, waLink: adminWhatsAppLink } : {}),
     },
     {
       message: `${normalizedCustomerName} placed an order for ${normalizedHotelName}.`,
@@ -1352,6 +1387,16 @@ async function writeImmediateOrderNotifications({ customerName, hotelId, hotelNa
       timestamp,
       to: normalizedHotelId,
       type: "order",
+      ...(hotelWhatsAppLink ? { waLabel: `WhatsApp ${normalizedCustomerName}`, waLink: hotelWhatsAppLink } : {}),
+    },
+    {
+      message: `Order placed for ${normalizedHotelName}.`,
+      read: false,
+      refId: normalizedOrderId,
+      timestamp,
+      to: normalizedCustomerId,
+      type: "order",
+      ...(customerWhatsAppLink ? { waLabel: `WhatsApp ${normalizedHotelName}`, waLink: customerWhatsAppLink } : {}),
     },
   ];
 
@@ -1370,6 +1415,7 @@ async function writeImmediateOrderNotifications({ customerName, hotelId, hotelNa
   await updateDoc(doc(db, "orders", normalizedOrderId), {
     notificationAdminDispatchedAt: timestamp,
     notificationHotelDispatchedAt: timestamp,
+    notificationCustomerDispatchedAt: timestamp,
   }).catch(() => undefined);
 
   return true;
@@ -2355,9 +2401,12 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
     const orderRef = await addDoc(collection(db, "orders"), orderPayload);
     createdOrderId = orderRef.id;
     await writeImmediateOrderNotifications({
+      customerId: CUSTOMER_ID,
       customerName,
+      customerPhone,
       hotelId,
       hotelName: hotel.name,
+      hotelPhone: hotel.phone,
       orderId: createdOrderId,
     }).catch((error) => {
       console.warn("Immediate order notification write failed", error);

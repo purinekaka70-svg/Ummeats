@@ -19,6 +19,11 @@ export function renderNotifications(items) {
           (item) => {
             const canMarkRead = !item.read && !item.fallback && item.id;
             const canDelete = !item.fallback && item.id;
+            const waLink = String(item.waLink || "").trim();
+            const waLabel = String(item.waLabel || "").trim();
+            const waMarkup = waLink
+              ? `<a class="button button-outline button-small" href="${escapeHtml(waLink)}" target="_blank" rel="noreferrer">${escapeHtml(waLabel || "WhatsApp")}</a>`
+              : "";
             const statusMarkup = item.read
               ? `<span class="tiny">Read</span>`
               : canMarkRead
@@ -33,6 +38,7 @@ export function renderNotifications(items) {
                 <p>${escapeHtml(item.message || "Notification")}</p>
                 <p class="tiny">${formatTime(item.timestamp)}</p>
                 <div class="button-row">
+                  ${waMarkup}
                   ${statusMarkup}
                   ${deleteMarkup}
                 </div>

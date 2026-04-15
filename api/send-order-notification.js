@@ -139,6 +139,22 @@ function buildNotificationDocId({ refId, to, type }) {
   return `${normalizedTo}__${normalizedType}__${normalizedRefId}`;
 }
 
+function buildWhatsAppLink(phone, message) {
+  const cleanPhone = String(phone || "").replace(/\D/g, "");
+  if (!cleanPhone) {
+    return "";
+  }
+
+  let formattedPhone = cleanPhone;
+  if (cleanPhone.startsWith("0") && cleanPhone.length >= 10) {
+    formattedPhone = `254${cleanPhone.slice(1)}`;
+  } else if (cleanPhone.length === 9 && (cleanPhone.startsWith("7") || cleanPhone.startsWith("1"))) {
+    formattedPhone = `254${cleanPhone}`;
+  }
+
+  return `https://wa.me/${formattedPhone}?text=${encodeURIComponent(String(message || "").trim())}`;
+}
+
 async function writeNotification(firestore, payload) {
   const data = {
     message: String(payload.message || "Notification"),
@@ -147,6 +163,8 @@ async function writeNotification(firestore, payload) {
     timestamp: payload.timestamp || nowTimestamp(),
     to: String(payload.to || "").trim(),
     type: String(payload.type || "order").trim(),
+    ...(payload.waLink ? { waLink: String(payload.waLink) } : {}),
+    ...(payload.waLabel ? { waLabel: String(payload.waLabel) } : {}),
   };
 
   const docId = buildNotificationDocId({
@@ -396,9 +414,12 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
   const order = orderSnapshot.data() || {};
   const updates = {};
   const customerName = String(order.customerName || "A customer");
+  const customerPhone = String(order.customerPhone || "").trim();
+  const targetCustomerId = String(order.customerId || "").trim();
   const targetHotelId = String(order.hotelId || hotelId || "").trim();
   let hotelName = "selected hotel";
   let hotelLocation = "";
+  let hotelPhone = "";
 
   if (targetHotelId) {
     const hotelSnapshot = await firestore.collection("hotels").doc(targetHotelId).get();
@@ -406,15 +427,38 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
       const hotelData = hotelSnapshot.data() || {};
       hotelName = String(hotelData.name || hotelName);
       hotelLocation = String(hotelData.location || "").trim();
+      hotelPhone = String(hotelData.phone || "").trim();
     }
   }
 
   const orderMessage = `${customerName} placed an order for ${hotelName}.`;
   const employeeMessage = `${customerName} placed a hotel order for ${hotelName}.`;
   const timestamp = nowTimestamp();
+  const customerMessage = `Order placed for ${hotelName}.`;
   let sentInApp = 0;
   let sentPush = 0;
   let matchingEmployees = null;
+
+  const customerWhatsAppLink = hotelPhone
+    ? buildWhatsAppLink(
+      hotelPhone,
+      `Hello ${hotelName}, I placed an order (${orderId}). Name: ${customerName}. Phone: ${customerPhone || "N/A"}.`,
+    )
+    : "";
+
+  const hotelWhatsAppLink = customerPhone
+    ? buildWhatsAppLink(
+      customerPhone,
+      `Hello ${customerName}, we received your order (${orderId}) for ${hotelName}. We will update you shortly.`,
+    )
+    : "";
+
+  const adminWhatsAppLink = hotelPhone
+    ? buildWhatsAppLink(
+      hotelPhone,
+      `New order (${orderId}) placed for ${hotelName}. Customer: ${customerName} (${customerPhone || "N/A"}). Please confirm on the admin dashboard.`,
+    )
+    : "";
 
   if (!order.notificationAdminDispatchedAt) {
     await writeNotification(firestore, {
@@ -423,6 +467,7 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
       timestamp,
       to: "admin",
       type: "order",
+      ...(adminWhatsAppLink ? { waLabel: `WhatsApp ${hotelName}`, waLink: adminWhatsAppLink } : {}),
     });
     updates.notificationAdminDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
     sentInApp += 1;
@@ -435,8 +480,22 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
       timestamp,
       to: targetHotelId,
       type: "order",
+      ...(hotelWhatsAppLink ? { waLabel: `WhatsApp ${customerName}`, waLink: hotelWhatsAppLink } : {}),
     });
     updates.notificationHotelDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
+  if (targetCustomerId && !order.notificationCustomerDispatchedAt) {
+    await writeNotification(firestore, {
+      message: customerMessage,
+      refId: orderId,
+      timestamp,
+      to: targetCustomerId,
+      type: "order",
+      ...(customerWhatsAppLink ? { waLabel: `WhatsApp ${hotelName}`, waLink: customerWhatsAppLink } : {}),
+    });
+    updates.notificationCustomerDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
     sentInApp += 1;
   }
 
@@ -492,6 +551,26 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
       })
     ) {
       updates.onesignalHotelDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+      sentPush += 1;
+    }
+  }
+
+  if (targetCustomerId && !order.onesignalCustomerDispatchedAt) {
+    if (
+      await sendPushWithFallbackTargets({
+        aliasTargets: [targetCustomerId],
+        appId,
+        body: customerMessage,
+        data: { refId: orderId, type: "order" },
+        filterSets: [
+          buildTagEqualsFilter("customer_id", targetCustomerId),
+          buildTagEqualsFilter("notification_target", targetCustomerId),
+        ],
+        title: "Order placed",
+        url: `${siteUrl}/index.html`,
+      })
+    ) {
+      updates.onesignalCustomerDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
       sentPush += 1;
     }
   }
