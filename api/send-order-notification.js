@@ -473,6 +473,18 @@ async function dispatchStandardOrder({ appId, firestore, hotelId, orderId, siteU
     sentInApp += 1;
   }
 
+  if (!order.notificationEmployeesDispatchedAt) {
+    await writeNotification(firestore, {
+      message: orderMessage,
+      refId: orderId,
+      timestamp,
+      to: "employees",
+      type: "order",
+    });
+    updates.notificationEmployeesDispatchedAt = admin.firestore.FieldValue.serverTimestamp();
+    sentInApp += 1;
+  }
+
   if (targetHotelId && !order.notificationHotelDispatchedAt) {
     await writeNotification(firestore, {
       message: orderMessage,

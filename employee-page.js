@@ -1079,7 +1079,7 @@ function startEmployeeNotificationSubscription(employeeId) {
   stopEmployeeNotificationSubscription();
   activeEmployeeNotificationTarget = normalizedEmployeeId;
   unsubscribeEmployeeNotifications = onSnapshot(
-    query(collection(db, "notifications"), where("to", "==", normalizedEmployeeId)),
+    query(collection(db, "notifications"), where("to", "in", [normalizedEmployeeId, "employees"])),
     (snapshot) => {
       handleEmployeeNotificationAlerts(snapshot);
       portalState.notificationsLoaded = true;

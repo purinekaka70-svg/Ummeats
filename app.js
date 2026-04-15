@@ -1385,6 +1385,14 @@ async function writeImmediateOrderNotifications({
       read: false,
       refId: normalizedOrderId,
       timestamp,
+      to: "employees",
+      type: "order",
+    },
+    {
+      message: `${normalizedCustomerName} placed an order for ${normalizedHotelName}.`,
+      read: false,
+      refId: normalizedOrderId,
+      timestamp,
       to: normalizedHotelId,
       type: "order",
       ...(hotelWhatsAppLink ? { waLabel: `WhatsApp ${normalizedCustomerName}`, waLink: hotelWhatsAppLink } : {}),
@@ -1416,6 +1424,7 @@ async function writeImmediateOrderNotifications({
     notificationAdminDispatchedAt: timestamp,
     notificationHotelDispatchedAt: timestamp,
     notificationCustomerDispatchedAt: timestamp,
+    notificationEmployeesDispatchedAt: timestamp,
   }).catch(() => undefined);
 
   return true;
