@@ -93,7 +93,7 @@ export function renderHotelPortal() {
 
             <label class="field">
               <span class="field-label">Location / area</span>
-              <input class="input" name="hotelLocation" readonly value="${escapeHtml(DEFAULT_HOTEL_LOCATION)}" />
+              <input class="input" name="hotelLocation" placeholder="${escapeHtml(DEFAULT_HOTEL_LOCATION)}" value="${escapeHtml(DEFAULT_HOTEL_LOCATION)}" />
             </label>
 
             <input name="hotelLatitude" type="hidden" value="" />
@@ -102,12 +102,12 @@ export function renderHotelPortal() {
 
             <div class="button-row">
               <button class="button button-primary button-small captureHotelLocationBtn" type="button">
-                Use Current Location
+                Use Current Location (Optional)
               </button>
             </div>
 
             <p class="tiny" data-hotel-geo-status>
-              New hotel accounts stay under ${escapeHtml(DEFAULT_HOTEL_LOCATION)}. Location capture is required so distance-based service fees can be calculated automatically.
+              Enter your hotel area above. Location capture is optional, but it enables distance-based service fees and map previews.
             </p>
 
             <button class="button button-secondary button-small" type="submit">Register</button>

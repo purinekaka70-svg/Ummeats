@@ -78,7 +78,7 @@ async function registerHotel(body, res) {
   const normalizedCounty = county ? sanitizeText(body.normalizedCounty, 80).toLowerCase() : "";
   const coordinates = sanitizeCoordinates(body.coordinates);
 
-  if (!name || !phone || !password || !till || !coordinates) {
+  if (!name || !phone || !password || !till) {
     sendJson(res, 400, { error: "Missing required hotel registration details." });
     return;
   }
@@ -117,7 +117,7 @@ async function registerHotel(body, res) {
       transaction.set(hotelRef, {
         approved: false,
         blocked: false,
-        coordinates,
+        coordinates: coordinates || null,
         createdAt,
         ...(county ? { county } : {}),
         ...(normalizedCounty ? { normalizedCounty } : {}),

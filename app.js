@@ -441,7 +441,7 @@ function updateHotelRegistrationCoordinateStatus(form, coordinates = readCoordin
 
   status.textContent = normalizeCoordinates(coordinates)
     ? `${formatCoordinateSnapshot(coordinates)} Distance-based delivery fees are enabled for this hotel.`
-    : `New hotel accounts stay under ${DEFAULT_HOTEL_LOCATION}. Use current location to save the hotel map point for delivery fees.`;
+    : `Location capture is optional. Use current location to save the hotel map point for distance-based delivery fees.`;
 }
 
 function getHotelCoordinates(hotel) {
@@ -1892,8 +1892,8 @@ async function registerHotel(form) {
   const phone = form.elements.hotelPhone.value.trim();
   const pass = form.elements.hotelPass.value.trim();
   const till = form.elements.hotelTill.value.trim();
-  const location = DEFAULT_HOTEL_LOCATION;
-  let coordinates = readCoordinatesFromForm(form);
+  const location = String(form.elements.hotelLocation?.value || DEFAULT_HOTEL_LOCATION).trim() || DEFAULT_HOTEL_LOCATION;
+  const coordinates = readCoordinatesFromForm(form);
   const normalizedName = normalizeHotelAccountName(name);
 
   if (!name || !phone || !pass || !till) {
@@ -1906,23 +1906,10 @@ async function registerHotel(form) {
     return;
   }
 
-  if (!coordinates) {
-    coordinates = await requestCurrentCoordinates();
-    if (coordinates) {
-      writeCoordinatesToForm(form, coordinates);
-      updateHotelRegistrationCoordinateStatus(form, coordinates);
-    }
-  }
-
-  if (!coordinates) {
-    alert("Allow location access while registering the hotel so delivery distance and service fee can be calculated automatically.");
-    return;
-  }
-
   try {
-    const county = await resolveCountyFromCoordinates(coordinates);
+    const county = coordinates ? await resolveCountyFromCoordinates(coordinates) : "";
     await registerHotelWithServer({
-      coordinates,
+      ...(coordinates ? { coordinates } : {}),
       ...(county ? {
         county,
         normalizedCounty: normalizeCountyKey(county),
