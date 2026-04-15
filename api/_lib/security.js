@@ -184,17 +184,21 @@ async function ensureAdminRecord(firestore, decodedToken) {
   const hotelIdClaim = sanitizeText(decodedToken?.hotelId || decodedToken?.claims?.hotelId, 160);
   const isHotelUid = normalizedUid.startsWith("hotel:");
   const isHotelRole = normalizedRole === "hotel" || Boolean(hotelIdClaim) || isHotelUid;
+  const provider = String(decodedToken?.firebase?.sign_in_provider || "").trim().toLowerCase();
+  const isAnonymousProvider = provider === "anonymous";
+  const isNonAnonymousUser = Boolean(provider) && !isAnonymousProvider;
 
   // Allow admin access for:
-  // - authenticated email/password users (email present)
+  // - any non-anonymous Firebase user (email/password, google, phone, etc.)
   // - hotel custom-token users (role: hotel / uid hotel:*)
-  if (!normalizedEmail && !isHotelRole) {
+  if (!isHotelRole && !isNonAnonymousUser) {
     return null;
   }
 
   const payload = {
     ...(normalizedEmail ? { email: normalizedEmail } : {}),
     ...(isHotelRole ? { sourceRole: "hotel" } : {}),
+    ...(provider ? { signInProvider: provider } : {}),
     lastValidatedAt: nowTimestamp(),
     uid: normalizedUid,
   };
