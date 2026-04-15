@@ -162,6 +162,11 @@ function isEmailAllowedForAdmin(email) {
   return parseAdminAllowlist().has(normalizedEmail);
 }
 
+async function isAdminCollectionEmpty(firestore) {
+  const snapshot = await firestore.collection("admins").limit(1).get();
+  return snapshot.empty;
+}
+
 async function ensureAdminRecord(firestore, decodedToken) {
   const normalizedUid = String(decodedToken?.uid || "").trim();
   if (!normalizedUid) {
@@ -171,10 +176,28 @@ async function ensureAdminRecord(firestore, decodedToken) {
   const adminRef = firestore.collection("admins").doc(normalizedUid);
   const adminSnapshot = await adminRef.get();
   const normalizedEmail = sanitizeText(decodedToken?.email, 160).toLowerCase();
-  const emailAllowed = isEmailAllowedForAdmin(normalizedEmail);
+  const allowlist = parseAdminAllowlist();
+  const emailAllowed = normalizedEmail ? allowlist.has(normalizedEmail) : false;
+  const allowlistConfigured = allowlist.size > 0;
 
+  let bootstrappedAdmin = false;
   if (!adminSnapshot.exists && !emailAllowed) {
-    return null;
+    // If an allowlist is configured, require it (or a pre-created admin record).
+    if (allowlistConfigured) {
+      return null;
+    }
+
+    // Bootstrap the first admin if no admins exist yet.
+    if (!normalizedEmail) {
+      return null;
+    }
+
+    const empty = await isAdminCollectionEmpty(firestore);
+    if (!empty) {
+      return null;
+    }
+
+    bootstrappedAdmin = true;
   }
 
   const payload = {
@@ -185,6 +208,10 @@ async function ensureAdminRecord(firestore, decodedToken) {
 
   if (!adminSnapshot.exists) {
     payload.createdAt = nowTimestamp();
+  }
+
+  if (bootstrappedAdmin) {
+    payload.bootstrapped = true;
   }
 
   await adminRef.set(payload, { merge: true });

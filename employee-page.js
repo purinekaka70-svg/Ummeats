@@ -42,6 +42,8 @@ const EMPLOYEE_AUTH_EMAIL_STORAGE_KEY = "EMPLOYEE_AUTH_EMAIL";
 const EMPLOYEE_PORTAL_FALLBACK_MESSAGE = "Employee portal could not load fully. You can still login or refresh this page.";
 const EMPLOYEE_PROFILE_LOAD_STALL_MS = 12000;
 const EMPLOYEE_REVERSE_GEOCODE_TIMEOUT_MS = 3000;
+const EMPLOYEE_AUTH_PERSISTENCE_ATTEMPT_TIMEOUT_MS = 1500;
+const EMPLOYEE_AUTH_PERSISTENCE_TOTAL_TIMEOUT_MS = 5000;
 const employeeNotificationPromptButton = document.getElementById("employeeNotificationPromptButton");
 const COUNTY_NAMES = [
   "Baringo",
@@ -287,12 +289,49 @@ async function bootstrap() {
   subscribeToAuth();
 }
 
+function withTimeout(promise, timeoutMs) {
+  const ms = Number(timeoutMs);
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return promise;
+  }
+
+  let timeoutId = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      const error = new Error("Operation timed out");
+      error.code = "employee/timeout";
+      reject(error);
+    }, ms);
+  });
+
+  const guardedPromise = Promise.resolve(promise).then(
+    (value) => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      return value;
+    },
+    (error) => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      throw error;
+    },
+  );
+
+  return Promise.race([
+    guardedPromise,
+    timeoutPromise,
+  ]);
+}
+
 function ensureEmployeeAuthPersistence() {
   if (employeeAuthPersistencePromise) {
     return employeeAuthPersistencePromise;
   }
 
   employeeAuthPersistencePromise = (async () => {
+    const startedAt = Date.now();
     const persistenceOptions = [
       indexedDBLocalPersistence,
       browserLocalPersistence,
@@ -301,10 +340,18 @@ function ensureEmployeeAuthPersistence() {
 
     for (const persistence of persistenceOptions) {
       try {
-        await setPersistence(auth, persistence);
+        const elapsed = Date.now() - startedAt;
+        const remaining = EMPLOYEE_AUTH_PERSISTENCE_TOTAL_TIMEOUT_MS - elapsed;
+        if (remaining <= 0) {
+          break;
+        }
+
+        const attemptTimeout = Math.min(EMPLOYEE_AUTH_PERSISTENCE_ATTEMPT_TIMEOUT_MS, remaining);
+        await withTimeout(setPersistence(auth, persistence), attemptTimeout);
         return persistence;
-      } catch {
+      } catch (error) {
         // try the next supported persistence layer
+        console.warn("Employee auth persistence attempt failed", error);
       }
     }
 
