@@ -53,6 +53,70 @@ async function postJson(pathname, payload, options = {}) {
   throw new Error(errors.join(" | ") || "Request failed.");
 }
 
+async function postJsonWithStatus(pathname, payload, options = {}) {
+  const urls = buildApiUrls(pathname);
+  const nonDeniedErrors = [];
+  let deniedResponse = null;
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        body: JSON.stringify(payload || {}),
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(options.idToken ? { Authorization: `Bearer ${options.idToken}` } : {}),
+        },
+        method: options.method || "POST",
+      });
+
+      const result = await response.json().catch(() => null);
+      if (response.ok && result?.ok !== false) {
+        return {
+          ...(result || {}),
+          ok: true,
+          status: response.status,
+          url,
+        };
+      }
+
+      const errorMessage = String(result?.error || `Request failed with ${response.status}.`).trim();
+      const info = {
+        ok: false,
+        status: response.status,
+        url,
+        error: errorMessage,
+      };
+
+      // If local origin denies (403) but the fallback origin allows, keep trying.
+      if (response.status === 403) {
+        deniedResponse = info;
+        continue;
+      }
+
+      nonDeniedErrors.push(info);
+    } catch (error) {
+      nonDeniedErrors.push({
+        ok: false,
+        status: 0,
+        url,
+        error: String(error?.message || "Request failed").trim(),
+      });
+    }
+  }
+
+  if (deniedResponse && nonDeniedErrors.length === 0) {
+    return deniedResponse;
+  }
+
+  const message = nonDeniedErrors
+    .map((item) => `${item.url} -> ${item.error || "Request failed"}`)
+    .join(" | ");
+
+  throw new Error(message || deniedResponse?.error || "Request failed.");
+}
+
 export async function resolveAuthSession(user = auth.currentUser) {
   if (!user) {
     return {
@@ -137,6 +201,18 @@ export async function ensureAdminAccess(user = auth.currentUser) {
 
   const idToken = await getIdToken(user, true);
   return postJson("/api/admin-access", {}, { idToken });
+}
+
+// Admin page needs to distinguish between:
+// - a real 403 denial ("not approved")
+// - transient failures (CORS/offline/server hiccups) that should not force-signout.
+export async function ensureAdminAccessStatus(user = auth.currentUser) {
+  if (!user) {
+    return { ok: false, status: 0, error: "Missing user." };
+  }
+
+  const idToken = await getIdToken(user, true);
+  return postJsonWithStatus("/api/admin-access", {}, { idToken });
 }
 
 export async function getCurrentIdToken() {

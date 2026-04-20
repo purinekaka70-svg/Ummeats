@@ -5,6 +5,58 @@ import { renderEmptyState, renderInlineBadge, renderNotifications, renderStatusP
 
 export function renderAdmin() {
   if (!state.currentAdmin) {
+    const accessStatus = String(state.adminAccessStatus || "signed_out");
+    const accessMessage = String(state.adminAccessMessage || "").trim();
+    const adminEmail = String(state.adminUserEmail || "").trim();
+
+    if (accessStatus === "checking") {
+      elements.app.innerHTML = `
+        <section class="view-shell">
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">Admin</h2>
+            </div>
+          </div>
+
+          <div class="card auth-card">
+            <h3 class="card-title">Checking admin access...</h3>
+            <p class="tiny">Please wait.</p>
+            <div class="button-row">
+              <button class="button button-ghost" id="logoutAdmin" type="button">Logout</button>
+            </div>
+          </div>
+        </section>
+      `;
+      return;
+    }
+
+    if (accessStatus === "error" && adminEmail) {
+      elements.app.innerHTML = `
+        <section class="view-shell">
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">Admin</h2>
+            </div>
+          </div>
+
+          <div class="card auth-card">
+            <h3 class="card-title">Admin access could not be verified</h3>
+            <p class="tiny">
+              Signed in as <strong>${escapeHtml(adminEmail)}</strong>.
+            </p>
+            <p class="tiny">
+              ${escapeHtml(accessMessage || "Please check your internet connection and tap Retry.")}
+            </p>
+            <div class="button-row">
+              <button class="button button-primary" id="adminRetryAccess" type="button">Retry</button>
+              <button class="button button-ghost" id="logoutAdmin" type="button">Logout</button>
+            </div>
+          </div>
+        </section>
+      `;
+      return;
+    }
+
     elements.app.innerHTML = `
       <section class="view-shell">
         <div class="view-header">
@@ -425,8 +477,9 @@ function renderEmployeeIdDocumentsSection() {
         <h4>Employee ID PDFs</h4>
         <div class="inline-list">
           <span class="summary-chip">${uploadedCount} uploaded PDF${pluralize(uploadedCount)}</span>
+          <button class="button button-outline" id="downloadEmployeeIdsPdf" type="button">Download Employee IDs PDF</button>
           <button class="button button-outline" id="downloadAllEmployeeIds" type="button">Download All ID PDFs</button>
-          <button class="button button-danger" id="downloadAllDataPdf" type="button">Download All Data PDF</button>
+          <button class="button button-danger" id="downloadAllDataPdf" type="button">Download Full Data PDF</button>
           <button class="button button-secondary" id="downloadAllDataWord" type="button">Download All Data Word</button>
         </div>
       </div>

@@ -1,4 +1,10 @@
+# Firebase Service Account Keys (SENSITIVE)
+*.json
+!package.json
+!package-lock.json
+
+# Dependencies
 node_modules/
-.vercel/
-functions/node_modules/
-firebase-debug.log
+
+# Environment variables
+.env

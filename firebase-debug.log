@@ -1,0 +1,1531 @@
+[debug] [2026-04-08T12:57:13.252Z] ----------------------------------------------------------------------
+[debug] [2026-04-08T12:57:13.255Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project tamuexpress-26e4a
+[debug] [2026-04-08T12:57:13.255Z] CLI Version:   15.10.1
+[debug] [2026-04-08T12:57:13.255Z] Platform:      win32
+[debug] [2026-04-08T12:57:13.256Z] Node Version:  v24.14.0
+[debug] [2026-04-08T12:57:13.256Z] Time:          Wed Apr 08 2026 15:57:13 GMT+0300 (East Africa Time)
+[debug] [2026-04-08T12:57:13.256Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-08T12:57:13.259Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-04-08T12:57:17.230Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-08T12:57:17.232Z] > authorizing via signed-in user (purinekaka70@gmail.com)
+[debug] [2026-04-08T12:57:17.232Z] [iam] checking project tamuexpress-26e4a for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-04-08T12:57:17.233Z] Checked if tokens are valid: false, expires at: 1775293366548
+[debug] [2026-04-08T12:57:17.233Z] Checked if tokens are valid: false, expires at: 1775293366548
+[debug] [2026-04-08T12:57:17.233Z] > refreshing access token with scopes: []
+[debug] [2026-04-08T12:57:17.235Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-04-08T12:57:17.235Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-08T12:57:17.245Z] *** [apiv2] error from fetch(https://firebase-public.firebaseio.com/cli.json, {"headers":{},"method":"GET","agent":{"_events":{},"_eventsCount":2,"options":{"noDelay":true,"path":null},"requests":{},"sockets":{"firebase-public.firebaseio.com:443:::::::::::::::::::::":[]},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"cache":{"max":20,"maxSize":0,"maxEntrySize":0,"fetchMethod":null,"keyMap":{},"keyList":["https:+http://127.0.0.1:9",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"valList":[{"_events":{},"_eventsCount":2,"options":{},"requests":{},"sockets":{"firebase-public.firebaseio.com:443:::::::::::::::::::::":[]},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"proxy":"http://127.0.0.1:9/","proxyHeaders":{},"connectOpts":{"ALPNProtocols":["http/1.1"],"host":"127.0.0.1","port":9}},null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"next":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"prev":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"head":0,"tail":0,"free":{"heap":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"length":0},"initialFill":1,"size":1,"disposeAfter":null,"disposed":null,"noDisposeOnSet":false,"noUpdateTTL":false,"noDeleteOnFetchRejection":false,"allowStaleOnFetchRejection":false,"allowStaleOnFetchAbort":false,"ignoreFetchAbort":false,"allowStale":false,"noDeleteOnStaleGet":false,"updateAgeOnGet":false,"updateAgeOnHas":false,"ttlResolution":1,"ttlAutopurge":false,"ttl":0},"httpAgent":{"_events":{},"_eventsCount":2,"options":{"noDelay":true,"path":null},"defaultPort":80,"protocol":"http:","requests":{},"sockets":{},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000},"httpsAgent":{"_events":{},"_eventsCount":2,"options":{"defaultPort":443,"protocol":"https:","noDelay":true,"path":null},"defaultPort":443,"protocol":"https:","requests":{},"sockets":{},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"maxCachedSessions":100,"_sessionCache":{"map":{},"list":[]}}}}): FetchError: request to https://firebase-public.firebaseio.com/cli.json failed, reason: connect ECONNREFUSED 127.0.0.1:9
+[warn] !  Unable to fetch the CLI MOTD and remote config. This is not a fatal error, but may indicate an issue with your network connection. 
+[debug] [2026-04-08T12:57:17.246Z] Failed to fetch MOTD FirebaseError: Failed to make request to https://firebase-public.firebaseio.com/cli.json
+[debug] [2026-04-08T12:57:17.247Z] *** [apiv2] error from fetch(https://www.googleapis.com/oauth2/v3/token, {"headers":{},"method":"POST","agent":{"_events":{},"_eventsCount":2,"options":{"noDelay":true,"path":null},"requests":{},"sockets":{"www.googleapis.com:443:::::::::::::::::::::":[]},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"cache":{"max":20,"maxSize":0,"maxEntrySize":0,"fetchMethod":null,"keyMap":{},"keyList":["https:+http://127.0.0.1:9",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"valList":[{"_events":{},"_eventsCount":2,"options":{},"requests":{},"sockets":{"www.googleapis.com:443:::::::::::::::::::::":[]},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"proxy":"http://127.0.0.1:9/","proxyHeaders":{},"connectOpts":{"ALPNProtocols":["http/1.1"],"host":"127.0.0.1","port":9}},null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"next":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"prev":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"head":0,"tail":0,"free":{"heap":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"length":0},"initialFill":1,"size":1,"disposeAfter":null,"disposed":null,"noDisposeOnSet":false,"noUpdateTTL":false,"noDeleteOnFetchRejection":false,"allowStaleOnFetchRejection":false,"allowStaleOnFetchAbort":false,"ignoreFetchAbort":false,"allowStale":false,"noDeleteOnStaleGet":false,"updateAgeOnGet":false,"updateAgeOnHas":false,"ttlResolution":1,"ttlAutopurge":false,"ttl":0},"httpAgent":{"_events":{},"_eventsCount":2,"options":{"noDelay":true,"path":null},"defaultPort":80,"protocol":"http:","requests":{},"sockets":{},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000},"httpsAgent":{"_events":{},"_eventsCount":2,"options":{"defaultPort":443,"protocol":"https:","noDelay":true,"path":null},"defaultPort":443,"protocol":"https:","requests":{},"sockets":{},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"maxCachedSessions":100,"_sessionCache":{"map":{},"list":[]}}},"body":{"_overheadLength":545,"_valueLength":212,"_valuesToMeasure":[],"writable":false,"readable":true,"dataSize":0,"maxDataSize":2097152,"pauseStreams":true,"_released":true,"_streams":[],"_currentStream":null,"_insideLoop":false,"_pendingNext":false,"_boundary":"--------------------------2c12ac9016522a71aaf6c397","_events":{},"_eventsCount":1}}): FetchError: request to https://www.googleapis.com/oauth2/v3/token failed, reason: connect ECONNREFUSED 127.0.0.1:9
+[error] Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+[debug] [2026-04-08T12:57:17.247Z] [iam] error while checking permissions, command may fail: Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+[info] 
+[info] === Deploying to 'tamuexpress-26e4a'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-08T12:57:17.252Z] Checked if tokens are valid: false, expires at: 1775293366548
+[debug] [2026-04-08T12:57:17.252Z] Checked if tokens are valid: false, expires at: 1775293366548
+[debug] [2026-04-08T12:57:17.252Z] > refreshing access token with scopes: []
+[debug] [2026-04-08T12:57:17.253Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-04-08T12:57:17.253Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-08T12:57:17.258Z] *** [apiv2] error from fetch(https://www.googleapis.com/oauth2/v3/token, {"headers":{},"method":"POST","agent":{"_events":{},"_eventsCount":2,"options":{"noDelay":true,"path":null},"requests":{},"sockets":{"www.googleapis.com:443:::::::::::::::::::::":[]},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"cache":{"max":20,"maxSize":0,"maxEntrySize":0,"fetchMethod":null,"keyMap":{},"keyList":["https:+http://127.0.0.1:9",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"valList":[{"_events":{},"_eventsCount":2,"options":{},"requests":{},"sockets":{"www.googleapis.com:443:::::::::::::::::::::":[]},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"proxy":"http://127.0.0.1:9/","proxyHeaders":{},"connectOpts":{"ALPNProtocols":["http/1.1"],"host":"127.0.0.1","port":9}},null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],"next":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"prev":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"head":0,"tail":0,"free":{"heap":{"0":0,"1":0,"2":0,"3":0,"4":0,"5":0,"6":0,"7":0,"8":0,"9":0,"10":0,"11":0,"12":0,"13":0,"14":0,"15":0,"16":0,"17":0,"18":0,"19":0},"length":0},"initialFill":1,"size":1,"disposeAfter":null,"disposed":null,"noDisposeOnSet":false,"noUpdateTTL":false,"noDeleteOnFetchRejection":false,"allowStaleOnFetchRejection":false,"allowStaleOnFetchAbort":false,"ignoreFetchAbort":false,"allowStale":false,"noDeleteOnStaleGet":false,"updateAgeOnGet":false,"updateAgeOnHas":false,"ttlResolution":1,"ttlAutopurge":false,"ttl":0},"httpAgent":{"_events":{},"_eventsCount":2,"options":{"noDelay":true,"path":null},"defaultPort":80,"protocol":"http:","requests":{},"sockets":{},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000},"httpsAgent":{"_events":{},"_eventsCount":2,"options":{"defaultPort":443,"protocol":"https:","noDelay":true,"path":null},"defaultPort":443,"protocol":"https:","requests":{},"sockets":{},"freeSockets":{},"keepAliveMsecs":1000,"keepAlive":false,"maxSockets":null,"maxFreeSockets":256,"scheduling":"lifo","maxTotalSockets":null,"totalSocketCount":0,"agentKeepAliveTimeoutBuffer":1000,"maxCachedSessions":100,"_sessionCache":{"map":{},"list":[]}}},"body":{"_overheadLength":545,"_valueLength":212,"_valuesToMeasure":[],"writable":false,"readable":true,"dataSize":0,"maxDataSize":2097152,"pauseStreams":true,"_released":true,"_streams":[],"_currentStream":null,"_insideLoop":false,"_pendingNext":false,"_boundary":"--------------------------d756a06461980e10ad2dc776","_events":{},"_eventsCount":1}}): FetchError: request to https://www.googleapis.com/oauth2/v3/token failed, reason: connect ECONNREFUSED 127.0.0.1:9
+[error] Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+[error] 
+[error] Error: Authentication Error: Your credentials are no longer valid. Please run firebase login --reauth
+
+For CI servers and headless environments, generate a new token with firebase login:ci
+[debug] [2026-04-08T12:57:18.186Z] Error: EPERM: operation not permitted, open 'C:\Users\HP\.config\configstore\firebase-tools.json.282272961'
+    at Object.openSync (node:fs:560:18)
+    at writeFile.writeFileSync [as sync] (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\write-file-atomic\index.js:205:13)
+    at set all (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\configstore\index.js:61:20)
+    at Configstore.delete (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\configstore\index.js:101:12)
+    at process.<anonymous> (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\cli.js:65:45)
+    at process.emit (node:events:520:35)
+    at process.exit (node:internal/process/per_thread:236:15)
+    at Timeout._onTimeout (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\errorOut.js:20:17)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T12:58:09.088Z] ----------------------------------------------------------------------
+[debug] [2026-04-08T12:58:09.092Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project tamuexpress-26e4a
+[debug] [2026-04-08T12:58:09.093Z] CLI Version:   15.10.1
+[debug] [2026-04-08T12:58:09.093Z] Platform:      win32
+[debug] [2026-04-08T12:58:09.093Z] Node Version:  v24.14.0
+[debug] [2026-04-08T12:58:09.093Z] Time:          Wed Apr 08 2026 15:58:09 GMT+0300 (East Africa Time)
+[debug] [2026-04-08T12:58:09.094Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-08T12:58:09.098Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-04-08T12:58:11.455Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-08T12:58:11.456Z] > authorizing via signed-in user (purinekaka70@gmail.com)
+[debug] [2026-04-08T12:58:11.457Z] [iam] checking project tamuexpress-26e4a for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-04-08T12:58:11.458Z] Checked if tokens are valid: false, expires at: 1775293366548
+[debug] [2026-04-08T12:58:11.458Z] Checked if tokens are valid: false, expires at: 1775293366548
+[debug] [2026-04-08T12:58:11.459Z] > refreshing access token with scopes: []
+[debug] [2026-04-08T12:58:11.461Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-04-08T12:58:11.461Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-08T12:58:11.877Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-04-08T12:58:11.878Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-08T12:58:11.888Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions [none]
+[debug] [2026-04-08T12:58:11.889Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions  x-goog-user-project=tamuexpress-26e4a
+[debug] [2026-04-08T12:58:11.889Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-04-08T12:58:12.483Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-04-08T12:58:12.484Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-04-08T12:58:14.900Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions 200
+[debug] [2026-04-08T12:58:14.900Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'tamuexpress-26e4a'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-08T12:58:14.904Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T12:58:14.904Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T12:58:14.904Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/tamuexpress-26e4a/services/firestore.googleapis.com [none]
+[debug] [2026-04-08T12:58:14.905Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/tamuexpress-26e4a/services/firestore.googleapis.com  x-goog-user-project=tamuexpress-26e4a
+[debug] [2026-04-08T12:58:23.365Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/tamuexpress-26e4a/services/firestore.googleapis.com 200
+[debug] [2026-04-08T12:58:23.366Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/tamuexpress-26e4a/services/firestore.googleapis.com [omitted]
+[info] +  firestore: required API firestore.googleapis.com is enabled 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-08T12:58:23.443Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T12:58:23.443Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T12:58:23.443Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) [none]
+[debug] [2026-04-08T12:58:25.770Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) 200
+[debug] [2026-04-08T12:58:25.770Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) {"name":"projects/tamuexpress-26e4a/databases/(default)","uid":"02d8b97c-dd0f-43a6-990d-2ece030ac381","createTime":"2025-10-04T12:11:19.386515Z","updateTime":"2025-10-04T12:11:19.386515Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-04-08T11:58:25.636157Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"IP2h7KSn3pMDMNCrye6j5pID"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-04-08T12:58:25.772Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T12:58:25.772Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T12:58:25.772Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [none]
+[debug] [2026-04-08T12:58:25.772Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [omitted]
+[debug] [2026-04-08T13:00:23.432Z] ----------------------------------------------------------------------
+[debug] [2026-04-08T13:00:23.435Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project tamuexpress-26e4a --non-interactive
+[debug] [2026-04-08T13:00:23.436Z] CLI Version:   15.10.1
+[debug] [2026-04-08T13:00:23.436Z] Platform:      win32
+[debug] [2026-04-08T13:00:23.436Z] Node Version:  v24.14.0
+[debug] [2026-04-08T13:00:23.436Z] Time:          Wed Apr 08 2026 16:00:23 GMT+0300 (East Africa Time)
+[debug] [2026-04-08T13:00:23.436Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-08T13:00:25.695Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-08T13:00:25.696Z] > authorizing via signed-in user (purinekaka70@gmail.com)
+[debug] [2026-04-08T13:00:25.697Z] [iam] checking project tamuexpress-26e4a for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-04-08T13:00:25.699Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:25.699Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:25.700Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions [none]
+[debug] [2026-04-08T13:00:25.701Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions  x-goog-user-project=tamuexpress-26e4a
+[debug] [2026-04-08T13:00:25.701Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-04-08T13:00:29.815Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions 200
+[debug] [2026-04-08T13:00:29.815Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'tamuexpress-26e4a'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-08T13:00:29.820Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:29.820Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:29.820Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) [none]
+[debug] [2026-04-08T13:00:31.405Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) 200
+[debug] [2026-04-08T13:00:31.405Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) {"name":"projects/tamuexpress-26e4a/databases/(default)","uid":"02d8b97c-dd0f-43a6-990d-2ece030ac381","createTime":"2025-10-04T12:11:19.386515Z","updateTime":"2025-10-04T12:11:19.386515Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-04-08T12:00:31.401195Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"IJKs6OCn3pMDMNCrye6j5pID"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-04-08T13:00:31.406Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:31.407Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:31.407Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [none]
+[debug] [2026-04-08T13:00:31.407Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [omitted]
+[debug] [2026-04-08T13:00:32.010Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test 200
+[debug] [2026-04-08T13:00:32.010Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test {}
+[info] +  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-04-08T13:00:32.012Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:32.012Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:32.012Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases pageSize=10&pageToken=
+[debug] [2026-04-08T13:00:32.824Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases 200
+[debug] [2026-04-08T13:00:32.824Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases {"releases":[{"name":"projects/tamuexpress-26e4a/releases/cloud.firestore","rulesetName":"projects/tamuexpress-26e4a/rulesets/aebd02f9-e853-4a16-82d2-e220d4f63c5a","createTime":"2025-10-04T12:11:25.437505Z","updateTime":"2026-02-04T15:39:01.279919Z"}]}
+[debug] [2026-04-08T13:00:32.824Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:32.825Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:32.825Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/aebd02f9-e853-4a16-82d2-e220d4f63c5a [none]
+[debug] [2026-04-08T13:00:33.617Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/aebd02f9-e853-4a16-82d2-e220d4f63c5a 200
+[debug] [2026-04-08T13:00:33.617Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/aebd02f9-e853-4a16-82d2-e220d4f63c5a [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-04-08T13:00:33.619Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:33.619Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:33.619Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets [none]
+[debug] [2026-04-08T13:00:33.620Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets [omitted]
+[debug] [2026-04-08T13:00:34.218Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets 200
+[debug] [2026-04-08T13:00:34.218Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets {"name":"projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599","source":{"files":[{"content":"rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    function signedIn() {\n      return request.auth != null;\n    }\n\n    function isOwner(uid) {\n      return signedIn() && request.auth.uid == uid;\n    }\n\n    // Customer flows: anyone can place and read orders from public pages.\n    match /orders/{orderId} {\n      allow read: if true;\n      allow create: if true;\n      allow update, delete: if signedIn();\n    }\n\n    match /ummaShopOrders/{orderId} {\n      allow read: if true;\n      allow create: if true;\n      allow update, delete: if signedIn();\n    }\n\n    match /feedbacks/{feedbackId} {\n      allow read: if signedIn();\n      allow create: if true;\n      allow update, delete: if signedIn();\n    }\n\n    match /ummaShopFeedbacks/{feedbackId} {\n      allow read: if signedIn();\n      allow create: if true;\n      allow update, delete: if signedIn();\n    }\n\n    match /notifications/{notificationId} {\n      allow read: if signedIn();\n      allow create: if true;\n      allow update, delete: if signedIn();\n    }\n\n    match /hotels/{hotelId} {\n      allow read: if true;\n      allow create, update, delete: if signedIn();\n    }\n\n    match /restaurants/{restaurantId} {\n      allow read: if true;\n      allow create, update, delete: if signedIn();\n    }\n\n    match /employees/{uid} {\n      allow read: if signedIn();\n      allow create, update: if isOwner(uid) || signedIn();\n      allow delete: if signedIn();\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}\n","name":"firestore.rules"}]},"createTime":"2026-04-08T13:00:34.158511Z","metadata":{"services":["cloud.firestore"]}}
+[debug] [2026-04-08T13:00:34.218Z] [rules] created ruleset projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599
+[debug] [2026-04-08T13:00:34.219Z] [rules] releasing cloud.firestore/(default) with ruleset projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599
+[debug] [2026-04-08T13:00:34.219Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:34.220Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:00:34.220Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) [none]
+[debug] [2026-04-08T13:00:34.220Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) {"release":{"name":"projects/tamuexpress-26e4a/releases/cloud.firestore/(default)","rulesetName":"projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599"}}
+[debug] [2026-04-08T13:00:35.715Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) 200
+[debug] [2026-04-08T13:00:35.716Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) {"name":"projects/tamuexpress-26e4a/releases/cloud.firestore","rulesetName":"projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599","createTime":"2025-10-04T12:11:25.437505Z","updateTime":"2026-04-08T13:00:35.348015Z"}
+[debug] [2026-04-08T13:00:35.716Z] [rules] updated release projects/tamuexpress-26e4a/releases/cloud.firestore
+[info] +  firestore: released rules firestore.rules to cloud.firestore 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/tamuexpress-26e4a/overview
+[debug] [2026-04-08T13:00:41.092Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:308:49)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T13:01:09.061Z] ----------------------------------------------------------------------
+[debug] [2026-04-08T13:01:09.067Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js help firestore:rules
+[debug] [2026-04-08T13:01:09.067Z] CLI Version:   15.10.1
+[debug] [2026-04-08T13:01:09.068Z] Platform:      win32
+[debug] [2026-04-08T13:01:09.068Z] Node Version:  v24.14.0
+[debug] [2026-04-08T13:01:09.068Z] Time:          Wed Apr 08 2026 16:01:09 GMT+0300 (East Africa Time)
+[debug] [2026-04-08T13:01:09.068Z] ----------------------------------------------------------------------
+[debug] 
+[warn] 
+[warn] !  firestore:rules is not a valid command. See below for valid commands 
+[info]  Privacy Policy: https://firebase.google.com/support/privacy
+[info] 
+[debug] [2026-04-08T13:01:18.534Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:308:49)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T13:06:07.682Z] ----------------------------------------------------------------------
+[debug] [2026-04-08T13:06:07.684Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project tamuexpress-26e4a --non-interactive
+[debug] [2026-04-08T13:06:07.684Z] CLI Version:   15.10.1
+[debug] [2026-04-08T13:06:07.684Z] Platform:      win32
+[debug] [2026-04-08T13:06:07.684Z] Node Version:  v24.14.0
+[debug] [2026-04-08T13:06:07.685Z] Time:          Wed Apr 08 2026 16:06:07 GMT+0300 (East Africa Time)
+[debug] [2026-04-08T13:06:07.685Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-08T13:06:09.622Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-08T13:06:09.623Z] > authorizing via signed-in user (purinekaka70@gmail.com)
+[debug] [2026-04-08T13:06:09.623Z] [iam] checking project tamuexpress-26e4a for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-04-08T13:06:09.625Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:09.626Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:09.627Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions [none]
+[debug] [2026-04-08T13:06:09.627Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions  x-goog-user-project=tamuexpress-26e4a
+[debug] [2026-04-08T13:06:09.628Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-04-08T13:06:11.509Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions 200
+[debug] [2026-04-08T13:06:11.510Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'tamuexpress-26e4a'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-08T13:06:11.514Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:11.514Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:11.514Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) [none]
+[debug] [2026-04-08T13:06:13.101Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) 200
+[debug] [2026-04-08T13:06:13.101Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) {"name":"projects/tamuexpress-26e4a/databases/(default)","uid":"02d8b97c-dd0f-43a6-990d-2ece030ac381","createTime":"2025-10-04T12:11:19.386515Z","updateTime":"2025-10-04T12:11:19.386515Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-04-08T12:06:13.119155Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"IMmU4YOp3pMDMNCrye6j5pID"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-04-08T13:06:13.102Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:13.102Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:13.103Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [none]
+[debug] [2026-04-08T13:06:13.103Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [omitted]
+[debug] [2026-04-08T13:06:14.272Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test 200
+[debug] [2026-04-08T13:06:14.272Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test {}
+[info] +  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-04-08T13:06:14.274Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:14.274Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:14.274Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases pageSize=10&pageToken=
+[debug] [2026-04-08T13:06:15.026Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases 200
+[debug] [2026-04-08T13:06:15.026Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases {"releases":[{"name":"projects/tamuexpress-26e4a/releases/cloud.firestore","rulesetName":"projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599","createTime":"2025-10-04T12:11:25.437505Z","updateTime":"2026-04-08T13:00:35.348015Z"}]}
+[debug] [2026-04-08T13:06:15.027Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:15.027Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:15.027Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599 [none]
+[debug] [2026-04-08T13:06:15.334Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599 200
+[debug] [2026-04-08T13:06:15.334Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/d482dbda-9b81-4ae7-ba34-0bdd431e6599 [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-04-08T13:06:15.335Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:15.335Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:15.336Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets [none]
+[debug] [2026-04-08T13:06:15.336Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets [omitted]
+[debug] [2026-04-08T13:06:16.188Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets 200
+[debug] [2026-04-08T13:06:16.188Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets {"name":"projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f","source":{"files":[{"content":"rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    // Hotels collection: full access\n    match /hotels/{hotelId} {\n      allow read, write: if true;\n    }\n\n    // Restaurants collection: full access\n    match /restaurants/{restaurantId} {\n      allow read, write: if true;\n    }\n\n    // Main orders collection: full access\n    match /orders/{orderId} {\n      allow read, write: if true;\n    }\n\n    // Shop Here orders collection: full access\n    match /ummaShopOrders/{orderId} {\n      allow read, write: if true;\n    }\n\n    // Feedback collections: full access\n    match /feedbacks/{docId} {\n      allow read, write: if true;\n    }\n\n    match /ummaShopFeedbacks/{docId} {\n      allow read, write: if true;\n    }\n\n    // Notifications collection: full access\n    match /notifications/{docId} {\n      allow read, write: if true;\n    }\n\n    // Employee profiles: full access\n    match /employees/{uid} {\n      allow read, write: if true;\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}\n","name":"firestore.rules"}]},"createTime":"2026-04-08T13:06:16.191247Z","metadata":{"services":["cloud.firestore"]}}
+[debug] [2026-04-08T13:06:16.189Z] [rules] created ruleset projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f
+[debug] [2026-04-08T13:06:16.189Z] [rules] releasing cloud.firestore/(default) with ruleset projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f
+[debug] [2026-04-08T13:06:16.190Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:16.190Z] Checked if tokens are valid: true, expires at: 1775656690878
+[debug] [2026-04-08T13:06:16.190Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) [none]
+[debug] [2026-04-08T13:06:16.190Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) {"release":{"name":"projects/tamuexpress-26e4a/releases/cloud.firestore/(default)","rulesetName":"projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f"}}
+[debug] [2026-04-08T13:06:17.132Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) 200
+[debug] [2026-04-08T13:06:17.132Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) {"name":"projects/tamuexpress-26e4a/releases/cloud.firestore","rulesetName":"projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f","createTime":"2025-10-04T12:11:25.437505Z","updateTime":"2026-04-08T13:06:17.124527Z"}
+[debug] [2026-04-08T13:06:17.132Z] [rules] updated release projects/tamuexpress-26e4a/releases/cloud.firestore
+[info] +  firestore: released rules firestore.rules to cloud.firestore 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/tamuexpress-26e4a/overview
+[debug] [2026-04-08T15:16:31.151Z] *** [apiv2] error from fetch(https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test, {"headers":{},"method":"POST","body":"{\"source\":{\"files\":[{\"name\":\"firestore.rules\",\"content\":\"rules_version = '2';\\nservice cloud.firestore {\\n  match /databases/{database}/documents {\\n    function signedIn() {\\n      return request.auth != null;\\n    }\\n\\n    function isOwner(uid) {\\n      return signedIn() && request.auth.uid == uid;\\n    }\\n\\n    // Customer flows: anyone can place and read orders from public pages.\\n    match /orders/{orderId} {\\n      allow read: if true;\\n      allow create: if true;\\n      allow update, delete: if signedIn();\\n    }\\n\\n    match /ummaShopOrders/{orderId} {\\n      allow read: if true;\\n      allow create: if true;\\n      allow update, delete: if signedIn();\\n    }\\n\\n    match /feedbacks/{feedbackId} {\\n      allow read: if signedIn();\\n      allow create: if true;\\n      allow update, delete: if signedIn();\\n    }\\n\\n    match /ummaShopFeedbacks/{feedbackId} {\\n      allow read: if signedIn();\\n      allow create: if true;\\n      allow update, delete: if signedIn();\\n    }\\n\\n    match /notifications/{notificationId} {\\n      allow read: if signedIn();\\n      allow create: if true;\\n      allow update, delete: if signedIn();\\n    }\\n\\n    match /hotels/{hotelId} {\\n      allow read: if true;\\n      allow create, update, delete: if signedIn();\\n    }\\n\\n    match /restaurants/{restaurantId} {\\n      allow read: if true;\\n      allow create, update, delete: if signedIn();\\n    }\\n\\n    match /employees/{uid} {\\n      allow read: if signedIn();\\n      allow create, update: if isOwner(uid) || signedIn();\\n      allow delete: if signedIn();\\n    }\\n\\n    match /{document=**} {\\n      allow read, write: if false;\\n    }\\n  }\\n}\\n\"}]}}"}): FetchError: request to https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test failed, reason: read ECONNRESET
+[debug] [2026-04-08T15:16:31.395Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.399Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.400Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.422Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.426Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.428Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.429Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.430Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.431Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.434Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.435Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.440Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.441Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.444Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.447Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.448Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.449Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.451Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.453Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.455Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.457Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.459Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.476Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.477Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.480Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.481Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.484Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.486Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.488Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.490Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.491Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.494Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.495Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.501Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.503Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.507Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.508Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.511Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.512Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.512Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.513Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.514Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.516Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.517Z] FetchError: request to https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test failed, reason: read ECONNRESET
+    at ClientRequest.<anonymous> (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\node-fetch\lib\index.js:1501:11)
+    at ClientRequest.emit (node:events:508:28)
+    at emitErrorEvent (node:_http_client:108:11)
+    at TLSSocket.socketErrorListener (node:_http_client:575:5)
+    at TLSSocket.emit (node:events:508:28)
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+[error] 
+[error] Error: Failed to make request to https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test
+[debug] [2026-04-08T15:16:31.527Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.532Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.533Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.534Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.536Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.536Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.537Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.538Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.539Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.540Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.541Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.541Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.547Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.548Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.549Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.550Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.551Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.552Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.552Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.553Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.554Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.555Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.556Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.558Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.559Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.569Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.575Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.576Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.582Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.583Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.584Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.594Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.595Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.596Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.597Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.598Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.601Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.602Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.606Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.607Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.608Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.609Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.610Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.611Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-04-08T15:16:31.612Z] Error: EPIPE: broken pipe, write
+    at Socket._write (node:internal/net:75:18)
+    at writeOrBuffer (node:internal/streams/writable:570:12)
+    at _write (node:internal/streams/writable:499:10)
+    at Writable.write (node:internal/streams/writable:508:10)
+    at Console.log (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\lib\winston\transports\console.js:87:23)
+    at Console._write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\modern.js:103:17)
+    at doWrite (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:390:139)
+    at writeOrBuffer (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:381:5)
+    at Writable.write (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston-transport\node_modules\readable-stream\lib\_stream_writable.js:302:11)
+    at DerivedLogger.ondata (C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\winston\node_modules\readable-stream\lib\_stream_readable.js:629:20)
+[error] 
+[debug] [2026-04-20T17:08:45.502Z] ----------------------------------------------------------------------
+[debug] [2026-04-20T17:08:45.508Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project tamuexpress-26e4a
+[debug] [2026-04-20T17:08:45.509Z] CLI Version:   15.10.1
+[debug] [2026-04-20T17:08:45.509Z] Platform:      win32
+[debug] [2026-04-20T17:08:45.510Z] Node Version:  v24.14.0
+[debug] [2026-04-20T17:08:45.510Z] Time:          Mon Apr 20 2026 20:08:45 GMT+0300 (East Africa Time)
+[debug] [2026-04-20T17:08:45.510Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-20T17:08:45.516Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-04-20T17:09:03.256Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-20T17:09:03.257Z] > authorizing via signed-in user (purinekaka70@gmail.com)
+[debug] [2026-04-20T17:09:03.258Z] [iam] checking project tamuexpress-26e4a for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-04-20T17:09:03.260Z] Checked if tokens are valid: false, expires at: 1775656690878
+[debug] [2026-04-20T17:09:03.261Z] Checked if tokens are valid: false, expires at: 1775656690878
+[debug] [2026-04-20T17:09:03.261Z] > refreshing access token with scopes: []
+[debug] [2026-04-20T17:09:03.265Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-04-20T17:09:03.265Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-20T17:09:03.675Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-04-20T17:09:03.675Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-20T17:09:03.694Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions [none]
+[debug] [2026-04-20T17:09:03.694Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions  x-goog-user-project=tamuexpress-26e4a
+[debug] [2026-04-20T17:09:03.695Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-04-20T17:09:04.045Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-04-20T17:09:04.046Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-04-20T17:09:05.535Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions 200
+[debug] [2026-04-20T17:09:05.535Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/tamuexpress-26e4a:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'tamuexpress-26e4a'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-04-20T17:09:05.544Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:05.544Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:05.545Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) [none]
+[debug] [2026-04-20T17:09:07.281Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) 200
+[debug] [2026-04-20T17:09:07.281Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/tamuexpress-26e4a/databases/(default) {"name":"projects/tamuexpress-26e4a/databases/(default)","uid":"02d8b97c-dd0f-43a6-990d-2ece030ac381","createTime":"2025-10-04T12:11:19.386515Z","updateTime":"2025-10-04T12:11:19.386515Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-04-20T20:39:21.357588Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"IP6MwI2y/ZMDMNCrye6j5pID"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-04-20T17:09:07.283Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:07.284Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:07.284Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [none]
+[debug] [2026-04-20T17:09:07.284Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test [omitted]
+[debug] [2026-04-20T17:09:08.669Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test 200
+[debug] [2026-04-20T17:09:08.669Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a:test {"issues":[{"sourcePosition":{"fileName":"firestore.rules","line":14,"column":14,"currentOffset":405,"endOffset":414},"description":"Unused function: isEmployee.","severity":"WARNING"},{"sourcePosition":{"fileName":"firestore.rules","line":15,"column":28,"currentOffset":447,"endOffset":452},"description":"Invalid function name: exists.","severity":"WARNING"},{"sourcePosition":{"fileName":"firestore.rules","line":15,"column":80,"currentOffset":499,"endOffset":505},"description":"Invalid variable name: request.","severity":"WARNING"}]}
+[warn] !  [W] 14:14 - Unused function: isEmployee. 
+[warn] !  [W] 15:28 - Invalid function name: exists. 
+[warn] !  [W] 15:80 - Invalid variable name: request. 
+[info] +  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-04-20T17:09:08.672Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:08.672Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:08.673Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases pageSize=10&pageToken=
+[debug] [2026-04-20T17:09:09.458Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases 200
+[debug] [2026-04-20T17:09:09.459Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases {"releases":[{"name":"projects/tamuexpress-26e4a/releases/cloud.firestore","rulesetName":"projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f","createTime":"2025-10-04T12:11:25.437505Z","updateTime":"2026-04-08T13:06:17.124527Z"}]}
+[debug] [2026-04-20T17:09:09.460Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:09.460Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:09.460Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f [none]
+[debug] [2026-04-20T17:09:10.200Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f 200
+[debug] [2026-04-20T17:09:10.201Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets/356ccfd8-6dcc-4334-874f-6fdaa6d0da1f [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-04-20T17:09:10.203Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:10.203Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:10.204Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets [none]
+[debug] [2026-04-20T17:09:10.204Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets [omitted]
+[debug] [2026-04-20T17:09:11.139Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets 200
+[debug] [2026-04-20T17:09:11.140Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/rulesets {"name":"projects/tamuexpress-26e4a/rulesets/6eae3d73-8d29-474e-af3b-6dfdbe1a2a88","source":{"files":[{"content":"rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    function signedIn() {\n      return request.auth != null;\n    }\n\n    function isAdmin() {\n      return signedIn()\n        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))\n        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.approved != false;\n    }\n\n    function isEmployee() {\n      return signedIn() && exists(/databases/$(database)/documents/employees/$(request.auth.uid));\n    }\n\n    function isEmployeeSelf(uid) {\n      return signedIn() && request.auth.uid == uid;\n    }\n\n    function isHotel() {\n      return signedIn() && request.auth.token.role == \"hotel\";\n    }\n\n    function hotelOwns(hotelId) {\n      return isHotel() && request.auth.token.hotelId == hotelId;\n    }\n\n    match /admins/{uid} {\n      allow read: if signedIn() && request.auth.uid == uid && isAdmin();\n      allow write: if false;\n    }\n\n    match /hotelAccountNames/{docId} {\n      allow read, write: if false;\n    }\n\n    match /hotelCredentials/{docId} {\n      allow read, write: if false;\n    }\n\n    match /hotels/{hotelId} {\n      allow read: if signedIn();\n      allow create: if false;\n      allow update: if isAdmin() || hotelOwns(hotelId);\n      allow delete: if isAdmin();\n    }\n\n    match /restaurants/{restaurantId} {\n      allow read: if signedIn();\n      allow create: if isAdmin() || hotelOwns(request.resource.data.hotelId);\n      allow update: if isAdmin() || hotelOwns(resource.data.hotelId);\n      allow delete: if isAdmin();\n    }\n\n    match /orders/{orderId} {\n      allow read, write: if signedIn();\n    }\n\n    match /ummaShopOrders/{orderId} {\n      allow read, write: if signedIn();\n    }\n\n    match /feedbacks/{docId} {\n      allow create: if signedIn();\n      allow read, update, delete: if isAdmin();\n    }\n\n    match /ummaShopFeedbacks/{docId} {\n      allow create: if signedIn();\n      allow read, update, delete: if isAdmin();\n    }\n\n    match /notifications/{docId} {\n      allow read, write: if signedIn();\n    }\n\n    match /employees/{uid} {\n      allow create: if isEmployeeSelf(uid);\n      allow read: if isAdmin() || isEmployeeSelf(uid);\n      allow update: if isAdmin() || isEmployeeSelf(uid);\n      allow delete: if isAdmin();\n    }\n\n    match /{document=**} {\n      allow read, write: if false;\n    }\n  }\n}\n","name":"firestore.rules"}]},"createTime":"2026-04-20T21:39:25.282591Z","metadata":{"services":["cloud.firestore"]}}
+[debug] [2026-04-20T17:09:11.140Z] [rules] created ruleset projects/tamuexpress-26e4a/rulesets/6eae3d73-8d29-474e-af3b-6dfdbe1a2a88
+[debug] [2026-04-20T17:09:11.141Z] [rules] releasing cloud.firestore/(default) with ruleset projects/tamuexpress-26e4a/rulesets/6eae3d73-8d29-474e-af3b-6dfdbe1a2a88
+[debug] [2026-04-20T17:09:11.142Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:11.143Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:09:11.143Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) [none]
+[debug] [2026-04-20T17:09:11.144Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) {"release":{"name":"projects/tamuexpress-26e4a/releases/cloud.firestore/(default)","rulesetName":"projects/tamuexpress-26e4a/rulesets/6eae3d73-8d29-474e-af3b-6dfdbe1a2a88"}}
+[debug] [2026-04-20T17:09:12.074Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) 200
+[debug] [2026-04-20T17:09:12.074Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/tamuexpress-26e4a/releases/cloud.firestore/(default) {"name":"projects/tamuexpress-26e4a/releases/cloud.firestore","rulesetName":"projects/tamuexpress-26e4a/rulesets/6eae3d73-8d29-474e-af3b-6dfdbe1a2a88","createTime":"2025-10-04T12:11:25.437505Z","updateTime":"2026-04-20T21:39:26.221471Z"}
+[debug] [2026-04-20T17:09:12.075Z] [rules] updated release projects/tamuexpress-26e4a/releases/cloud.firestore
+[info] +  firestore: released rules firestore.rules to cloud.firestore 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/tamuexpress-26e4a/overview
+[debug] [2026-04-20T17:10:52.275Z] ----------------------------------------------------------------------
+[debug] [2026-04-20T17:10:52.281Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\HP\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js projects:list
+[debug] [2026-04-20T17:10:52.282Z] CLI Version:   15.10.1
+[debug] [2026-04-20T17:10:52.282Z] Platform:      win32
+[debug] [2026-04-20T17:10:52.282Z] Node Version:  v24.14.0
+[debug] [2026-04-20T17:10:52.282Z] Time:          Mon Apr 20 2026 20:10:52 GMT+0300 (East Africa Time)
+[debug] [2026-04-20T17:10:52.283Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-20T17:10:52.802Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-20T17:10:52.803Z] > authorizing via signed-in user (purinekaka70@gmail.com)
+[debug] [2026-04-20T17:10:52.810Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:10:52.810Z] Checked if tokens are valid: true, expires at: 1776708542676
+[debug] [2026-04-20T17:10:52.813Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-04-20T17:10:55.612Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-04-20T17:10:55.612Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] ┌──────────────────────┬───────────────────┬────────────────┬──────────────────────┐
+│ Project Display Name │ Project ID        │ Project Number │ Resource Location ID │
+├──────────────────────┼───────────────────┼────────────────┼──────────────────────┤
+│ Blue ocean           │ blue-ocean-9453a  │ 724661333895   │ [Not specified]      │
+├──────────────────────┼───────────────────┼────────────────┼──────────────────────┤
+│ JobSeekAfrica        │ jobseekafrica     │ 891070236152   │ [Not specified]      │
+├──────────────────────┼───────────────────┼────────────────┼──────────────────────┤
+│ TamuExpress          │ tamuexpress-26e4a │ 202068792631   │ [Not specified]      │
+├──────────────────────┼───────────────────┼────────────────┼──────────────────────┤
+│ ummaLeague           │ ummaleague-5eb5a  │ 172077770370   │ [Not specified]      │
+├──────────────────────┼───────────────────┼────────────────┼──────────────────────┤
+│ Wavlink wallet       │ wavlink-wallet    │ 42158213135    │ [Not specified]      │
+└──────────────────────┴───────────────────┴────────────────┴──────────────────────┘
+[info] 
+[info] 5 project(s) total.
