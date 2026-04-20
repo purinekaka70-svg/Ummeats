@@ -171,6 +171,39 @@ function isEmailAllowedForAdmin(email) {
   return parseAdminAllowlist().has(normalizedEmail);
 }
 
+async function findLegacyAdminRecordByEmail(firestore, normalizedEmail) {
+  if (!normalizedEmail) {
+    return null;
+  }
+
+  const directRef = firestore.collection("admins").doc(normalizedEmail);
+  const directSnapshot = await directRef.get();
+  if (directSnapshot.exists) {
+    return {
+      data: directSnapshot.data() || {},
+      ref: directRef,
+      snapshot: directSnapshot,
+    };
+  }
+
+  const querySnapshot = await firestore
+    .collection("admins")
+    .where("email", "==", normalizedEmail)
+    .limit(1)
+    .get();
+
+  if (querySnapshot.empty) {
+    return null;
+  }
+
+  const recordSnapshot = querySnapshot.docs[0];
+  return {
+    data: recordSnapshot.data() || {},
+    ref: recordSnapshot.ref,
+    snapshot: recordSnapshot,
+  };
+}
+
 async function ensureAdminRecord(firestore, decodedToken) {
   const normalizedUid = String(decodedToken?.uid || "").trim();
   if (!normalizedUid) {
@@ -183,31 +216,47 @@ async function ensureAdminRecord(firestore, decodedToken) {
   const provider = String(decodedToken?.firebase?.sign_in_provider || "").trim().toLowerCase();
   const isAnonymousProvider = provider === "anonymous";
   const existingRecord = adminSnapshot.exists ? (adminSnapshot.data() || {}) : null;
+  const legacyRecord = existingRecord ? null : await findLegacyAdminRecordByEmail(firestore, normalizedEmail);
   const emailAllowlisted = isEmailAllowedForAdmin(normalizedEmail);
 
   // Only explicit admins are allowed:
   // - users already stored in admins/{uid}
+  // - legacy admin records matched by email
   // - users whose email is allowlisted via ADMIN_EMAIL_ALLOWLIST
-  if (isAnonymousProvider || (!existingRecord && !emailAllowlisted)) {
+  if (isAnonymousProvider || (!existingRecord && !legacyRecord && !emailAllowlisted)) {
+    return null;
+  }
+
+  const sourceRecord = existingRecord || legacyRecord?.data || {};
+  if (sourceRecord.approved === false) {
     return null;
   }
 
   const payload = {
-    ...(existingRecord || {}),
+    ...sourceRecord,
     ...(normalizedEmail ? { email: normalizedEmail } : {}),
-    approved: existingRecord?.approved !== false,
+    approved: true,
     ...(provider ? { signInProvider: provider } : {}),
     lastValidatedAt: nowTimestamp(),
     uid: normalizedUid,
   };
 
   if (!adminSnapshot.exists) {
-    payload.createdAt = nowTimestamp();
+    payload.createdAt = Number(sourceRecord.createdAt || 0) || nowTimestamp();
   }
 
   await adminRef.set(payload, { merge: true });
+
+  if (legacyRecord?.ref && legacyRecord.ref.path !== adminRef.path) {
+    await legacyRecord.ref.set({
+      email: normalizedEmail,
+      lastMigratedUid: normalizedUid,
+      lastMigratedAt: nowTimestamp(),
+    }, { merge: true });
+  }
+
   return {
-    ...(adminSnapshot.data() || {}),
+    ...sourceRecord,
     ...payload,
   };
 }

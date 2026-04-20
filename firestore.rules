@@ -6,7 +6,9 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.approved != false;
     }
 
     function isEmployee() {
@@ -26,7 +28,7 @@ service cloud.firestore {
     }
 
     match /admins/{uid} {
-      allow read: if isAdmin() && request.auth.uid == uid;
+      allow read: if signedIn() && request.auth.uid == uid && isAdmin();
       allow write: if false;
     }
 
