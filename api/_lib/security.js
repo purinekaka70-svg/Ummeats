@@ -192,15 +192,44 @@ async function findLegacyAdminRecordByEmail(firestore, normalizedEmail) {
     .limit(1)
     .get();
 
-  if (querySnapshot.empty) {
+  if (!querySnapshot.empty) {
+    const recordSnapshot = querySnapshot.docs[0];
+    return {
+      data: recordSnapshot.data() || {},
+      ref: recordSnapshot.ref,
+      snapshot: recordSnapshot,
+    };
+  }
+
+  const normalizedEmailSnapshot = await firestore
+    .collection("admins")
+    .where("normalizedEmail", "==", normalizedEmail)
+    .limit(1)
+    .get();
+
+  if (!normalizedEmailSnapshot.empty) {
+    const recordSnapshot = normalizedEmailSnapshot.docs[0];
+    return {
+      data: recordSnapshot.data() || {},
+      ref: recordSnapshot.ref,
+      snapshot: recordSnapshot,
+    };
+  }
+
+  const legacySnapshot = await firestore.collection("admins").limit(200).get();
+  const matchedSnapshot = legacySnapshot.docs.find((item) => {
+    const data = item.data() || {};
+    return sanitizeText(data.email, 160).toLowerCase() === normalizedEmail;
+  });
+
+  if (!matchedSnapshot) {
     return null;
   }
 
-  const recordSnapshot = querySnapshot.docs[0];
   return {
-    data: recordSnapshot.data() || {},
-    ref: recordSnapshot.ref,
-    snapshot: recordSnapshot,
+    data: matchedSnapshot.data() || {},
+    ref: matchedSnapshot.ref,
+    snapshot: matchedSnapshot,
   };
 }
 
@@ -235,6 +264,7 @@ async function ensureAdminRecord(firestore, decodedToken) {
   const payload = {
     ...sourceRecord,
     ...(normalizedEmail ? { email: normalizedEmail } : {}),
+    ...(normalizedEmail ? { normalizedEmail } : {}),
     approved: true,
     ...(provider ? { signInProvider: provider } : {}),
     lastValidatedAt: nowTimestamp(),
@@ -250,6 +280,7 @@ async function ensureAdminRecord(firestore, decodedToken) {
   if (legacyRecord?.ref && legacyRecord.ref.path !== adminRef.path) {
     await legacyRecord.ref.set({
       email: normalizedEmail,
+      normalizedEmail,
       lastMigratedUid: normalizedUid,
       lastMigratedAt: nowTimestamp(),
     }, { merge: true });
