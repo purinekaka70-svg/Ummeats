@@ -21,7 +21,7 @@ import {
   unregisterPushSubscription,
 } from "./push.js";
 import { notifyPaidOrderStatus, notifyShopOrderStatus } from "./order-status-notifications.js";
-import { ensureAdminAccess, getCurrentIdToken } from "./security.js";
+import { ensureAdminAccessStatus, getCurrentIdToken } from "./security.js";
 import { getRestaurantByHotelId, state } from "./state.js";
 import { showToast } from "./ui.js";
 import { renderAdmin } from "./view-admin.js";
@@ -715,7 +715,8 @@ function subscribeToAuth() {
       return;
     }
 
-    const allowed = await isAllowedAdmin(user);
+    const access = await getAdminAccessResult(user);
+    const allowed = Boolean(access?.ok);
     state.currentAdmin = allowed;
 
     if (allowed) {
@@ -731,11 +732,17 @@ function subscribeToAuth() {
     }
 
     stopAdminCollectionSubscriptions();
-    await signOut(auth).catch(() => undefined);
     state.currentAdmin = false;
     state.adminPanelSection = "dashboard";
     state.adminSidebarOpen = false;
-    showToast("This account is not approved for admin access.", "warn");
+
+    if (access?.status === 403) {
+      await signOut(auth).catch(() => undefined);
+      showToast("This account is not approved for admin access.", "warn");
+    } else {
+      showToast("Unable to verify admin access right now. Check connection and try again.", "warn");
+    }
+
     renderAdmin();
     updateAdminNotificationPromptButtonState();
   });
@@ -995,9 +1002,14 @@ async function handleSubmit(event) {
 
   try {
     const credentials = await signInWithEmailAndPassword(auth, user, pass);
-    if (!(await isAllowedAdmin(credentials.user))) {
+    const access = await getAdminAccessResult(credentials.user);
+    if (!access?.ok) {
       await signOut(auth).catch(() => undefined);
-      alert("This account is not approved for admin access.");
+      alert(
+        access?.status === 403
+          ? "This account is not approved for admin access."
+          : "Unable to verify admin access right now. Check connection and try again.",
+      );
       return;
     }
 
@@ -1020,17 +1032,20 @@ async function handleSubmit(event) {
   }
 }
 
-async function isAllowedAdmin(user = auth.currentUser) {
+async function getAdminAccessResult(user = auth.currentUser) {
   if (!user) {
-    return false;
+    return { ok: false, status: 0, error: "Missing user." };
   }
 
   try {
-    const result = await ensureAdminAccess(user);
-    return Boolean(result?.ok);
+    return await ensureAdminAccessStatus(user);
   } catch (error) {
     console.warn("Admin access check failed", error);
-    return false;
+    return {
+      ok: false,
+      status: 0,
+      error: String(error?.message || "Admin access check failed.").trim(),
+    };
   }
 }
 
@@ -1310,3 +1325,5 @@ async function clearAllData() {
 
   showToast("All platform data cleared.", "success");
 }
+
+
