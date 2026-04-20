@@ -304,6 +304,8 @@ function buildAdminExportSections() {
       lines: employees.length
         ? employees.map((employee) => [
           `Employee: ${employee.fullName || "Unknown employee"}`,
+          `Employee Record ID: ${employee.id || "N/A"}`,
+          `Employee UID: ${employee.uid || employee.id || "N/A"}`,
           `Email: ${employee.email || "N/A"}`,
           `County: ${employee.county || "N/A"}`,
           `ID Number: ${employee.idNumber || "N/A"}`,
@@ -336,6 +338,40 @@ function buildAdminExportSections() {
         ].join(" | "))
         : ["No notification records available."],
       title: "Notifications",
+    },
+  ];
+}
+
+function buildEmployeeIdExportSections() {
+  const employees = [...state.employees].sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0));
+  const employeesWithIds = employees.filter((employee) => Boolean(
+    employee.idCardUploaded || employee.idCardDatabasePath || employee.idCardUrl,
+  ));
+
+  return [
+    {
+      lines: [
+        `Generated: ${normalizePdfText(new Date().toLocaleString("en-KE", { hour12: false }))}`,
+        `Employees with ID PDFs: ${employeesWithIds.length}`,
+        `Total employees: ${employees.length}`,
+      ],
+      title: "Employee ID Summary",
+    },
+    {
+      lines: employeesWithIds.length
+        ? employeesWithIds.map((employee) => [
+          `Employee: ${employee.fullName || "Unknown employee"}`,
+          `Employee Record ID: ${employee.id || "N/A"}`,
+          `Employee UID: ${employee.uid || employee.id || "N/A"}`,
+          `Email: ${employee.email || "N/A"}`,
+          `County: ${employee.county || "N/A"}`,
+          `ID Number: ${employee.idNumber || "N/A"}`,
+          `PDF File: ${employee.idCardFileName || "Stored as secure PDF"}`,
+          `PDF Source: ${employee.idCardDatabasePath || employee.idCardUrl || "Stored internally"}`,
+          `Created: ${employee.createdAt ? formatTime(employee.createdAt) : "N/A"}`,
+        ].join(" | "))
+        : ["No employee ID PDFs available."],
+      title: "Employee ID Records",
     },
   ];
 }
@@ -436,6 +472,22 @@ function downloadAllAdminDataPdf() {
   window.setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
 }
 
+function downloadEmployeeIdsPdf() {
+  const title = `Tamu Express Employee IDs Export - ${normalizePdfText(new Date().toLocaleDateString("en-KE"))}`;
+  const sections = buildEmployeeIdExportSections();
+  const blob = createPdfBlobFromSections(title, sections);
+  const fileName = sanitizeDownloadFileName(
+    `tamu-express-employee-ids-${new Date().toISOString().slice(0, 10)}.pdf`,
+    "tamu-express-employee-ids.pdf",
+  );
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.download = fileName;
+  anchor.href = url;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+}
+
 function escapeExportHtml(value) {
   return normalizePdfText(value)
     .replace(/&/g, "&amp;")
@@ -517,6 +569,9 @@ async function downloadAllEmployeeIdPdfs() {
 
 function bootstrap() {
   state.currentAdmin = false;
+  state.adminAccessStatus = "signed_out";
+  state.adminAccessMessage = "";
+  state.adminUserEmail = "";
   state.adminPanelSection = "dashboard";
   state.adminSidebarOpen = false;
   bindEvents();
@@ -707,6 +762,9 @@ function subscribeToAuth() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
       state.currentAdmin = false;
+      state.adminAccessStatus = "signed_out";
+      state.adminAccessMessage = "";
+      state.adminUserEmail = "";
       state.adminPanelSection = "dashboard";
       state.adminSidebarOpen = false;
       stopAdminCollectionSubscriptions();
@@ -715,11 +773,18 @@ function subscribeToAuth() {
       return;
     }
 
+    state.adminUserEmail = String(user.email || "").trim();
+    state.adminAccessStatus = "checking";
+    state.adminAccessMessage = "";
+    renderAdmin();
+
     const access = await getAdminAccessResult(user);
     const allowed = Boolean(access?.ok);
     state.currentAdmin = allowed;
 
     if (allowed) {
+      state.adminAccessStatus = "approved";
+      state.adminAccessMessage = "";
       startAdminCollectionSubscriptions();
       void registerPushSubscription("admin", user.email || "Admin", {
         requestPermission: false,
@@ -737,9 +802,15 @@ function subscribeToAuth() {
     state.adminSidebarOpen = false;
 
     if (access?.status === 403) {
+      state.adminAccessStatus = "denied";
+      state.adminAccessMessage = String(access?.error || "This account is not approved for admin access.").trim();
       await signOut(auth).catch(() => undefined);
       showToast("This account is not approved for admin access.", "warn");
     } else {
+      state.adminAccessStatus = "error";
+      state.adminAccessMessage = String(
+        access?.error || "Unable to verify admin access right now. Check connection and try again.",
+      ).trim();
       showToast("Unable to verify admin access right now. Check connection and try again.", "warn");
     }
 
@@ -839,6 +910,41 @@ async function handleClick(event) {
   if (button.id === "adminMenuToggle") {
     state.adminSidebarOpen = !state.adminSidebarOpen;
     renderAdmin();
+    return;
+  }
+
+  if (button.id === "adminRetryAccess") {
+    const user = auth.currentUser;
+    if (!user) {
+      state.adminAccessStatus = "signed_out";
+      state.adminAccessMessage = "";
+      state.adminUserEmail = "";
+      renderAdmin();
+      return;
+    }
+
+    state.adminAccessStatus = "checking";
+    state.adminAccessMessage = "";
+    renderAdmin();
+
+    const access = await getAdminAccessResult(user);
+    if (access?.ok) {
+      state.currentAdmin = true;
+      state.adminAccessStatus = "approved";
+      state.adminAccessMessage = "";
+      startAdminCollectionSubscriptions();
+      renderAdmin();
+      updateAdminNotificationPromptButtonState();
+      return;
+    }
+
+    state.currentAdmin = false;
+    state.adminAccessStatus = access?.status === 403 ? "denied" : "error";
+    state.adminAccessMessage = String(
+      access?.error || "Unable to verify admin access right now. Check connection and try again.",
+    ).trim();
+    renderAdmin();
+    updateAdminNotificationPromptButtonState();
     return;
   }
 
@@ -947,6 +1053,12 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.id === "downloadEmployeeIdsPdf") {
+    downloadEmployeeIdsPdf();
+    showToast("Employee IDs PDF download started.", "success");
+    return;
+  }
+
   if (button.id === "downloadAllDataWord") {
     downloadAllAdminDataWord();
     showToast("Admin data Word download started.", "success");
@@ -1001,9 +1113,19 @@ async function handleSubmit(event) {
   }
 
   try {
+    state.adminAccessStatus = "checking";
+    state.adminAccessMessage = "";
+    state.adminUserEmail = user;
+    renderAdmin();
+
     const credentials = await signInWithEmailAndPassword(auth, user, pass);
     const access = await getAdminAccessResult(credentials.user);
     if (!access?.ok) {
+      state.adminAccessStatus = access?.status === 403 ? "denied" : "error";
+      state.adminAccessMessage = String(
+        access?.error || "Unable to verify admin access right now. Check connection and try again.",
+      ).trim();
+      state.adminUserEmail = user;
       await signOut(auth).catch(() => undefined);
       alert(
         access?.status === 403
@@ -1028,6 +1150,11 @@ async function handleSubmit(event) {
     updateAdminNotificationPromptButtonState();
   } catch (error) {
     console.error(error);
+    state.currentAdmin = false;
+    state.adminAccessStatus = "signed_out";
+    state.adminAccessMessage = "";
+    state.adminUserEmail = "";
+    renderAdmin();
     alert("Wrong admin email or password.");
   }
 }
