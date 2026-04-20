@@ -180,24 +180,22 @@ async function ensureAdminRecord(firestore, decodedToken) {
   const adminRef = firestore.collection("admins").doc(normalizedUid);
   const adminSnapshot = await adminRef.get();
   const normalizedEmail = sanitizeText(decodedToken?.email, 160).toLowerCase();
-  const normalizedRole = String(decodedToken?.role || decodedToken?.claims?.role || "").trim().toLowerCase();
-  const hotelIdClaim = sanitizeText(decodedToken?.hotelId || decodedToken?.claims?.hotelId, 160);
-  const isHotelUid = normalizedUid.startsWith("hotel:");
-  const isHotelRole = normalizedRole === "hotel" || Boolean(hotelIdClaim) || isHotelUid;
   const provider = String(decodedToken?.firebase?.sign_in_provider || "").trim().toLowerCase();
   const isAnonymousProvider = provider === "anonymous";
-  const isNonAnonymousUser = Boolean(provider) && !isAnonymousProvider;
+  const existingRecord = adminSnapshot.exists ? (adminSnapshot.data() || {}) : null;
+  const emailAllowlisted = isEmailAllowedForAdmin(normalizedEmail);
 
-  // Allow admin access for:
-  // - any non-anonymous Firebase user (email/password, google, phone, etc.)
-  // - hotel custom-token users (role: hotel / uid hotel:*)
-  if (!isHotelRole && !isNonAnonymousUser) {
+  // Only explicit admins are allowed:
+  // - users already stored in admins/{uid}
+  // - users whose email is allowlisted via ADMIN_EMAIL_ALLOWLIST
+  if (isAnonymousProvider || (!existingRecord && !emailAllowlisted)) {
     return null;
   }
 
   const payload = {
+    ...(existingRecord || {}),
     ...(normalizedEmail ? { email: normalizedEmail } : {}),
-    ...(isHotelRole ? { sourceRole: "hotel" } : {}),
+    approved: existingRecord?.approved !== false,
     ...(provider ? { signInProvider: provider } : {}),
     lastValidatedAt: nowTimestamp(),
     uid: normalizedUid,
@@ -241,3 +239,4 @@ module.exports = {
   setCorsHeaders,
   verifyBearerIdToken,
 };
+
