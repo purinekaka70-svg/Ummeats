@@ -349,6 +349,31 @@ async function writeEmployeeNotifications({ employees, firestore, message, refId
   return writes.length;
 }
 
+/**
+ * Helper to handle the common pattern of checking a dispatch flag, 
+ * sending a push notification, and updating the document.
+ */
+async function tryDispatchPush({ order, field, updates, ...pushParams }) {
+  if (order[field]) return 0;
+  const sent = await sendPushWithFallbackTargets(pushParams);
+  if (sent) {
+    updates[field] = admin.firestore.FieldValue.serverTimestamp();
+    return 1;
+  }
+  return 0;
+}
+
+/**
+ * Helper to handle the common pattern of checking a dispatch flag,
+ * writing an in-app notification, and updating the document.
+ */
+async function tryDispatchInApp({ firestore, order, field, updates, ...notifyParams }) {
+  if (order[field]) return 0;
+  await writeNotification(firestore, { ...notifyParams, timestamp: nowTimestamp() });
+  updates[field] = admin.firestore.FieldValue.serverTimestamp();
+  return 1;
+}
+
 async function trySendPush(payload) {
   try {
     const result = await sendPushMessage(payload);

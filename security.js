@@ -57,6 +57,7 @@ async function postJsonWithStatus(pathname, payload, options = {}) {
   const urls = buildApiUrls(pathname);
   const nonDeniedErrors = [];
   let deniedResponse = null;
+  let firstHttpError = null;
 
   for (const url of urls) {
     try {
@@ -95,6 +96,9 @@ async function postJsonWithStatus(pathname, payload, options = {}) {
         continue;
       }
 
+      if (!firstHttpError && response.status > 0) {
+        firstHttpError = info;
+      }
       nonDeniedErrors.push(info);
     } catch (error) {
       nonDeniedErrors.push({
@@ -108,6 +112,10 @@ async function postJsonWithStatus(pathname, payload, options = {}) {
 
   if (deniedResponse && nonDeniedErrors.length === 0) {
     return deniedResponse;
+  }
+
+  if (firstHttpError && nonDeniedErrors.every((item) => item.status > 0)) {
+    return firstHttpError;
   }
 
   const message = nonDeniedErrors

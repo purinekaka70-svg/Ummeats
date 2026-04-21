@@ -1,10 +1,14 @@
-# Firebase Service Account Keys (SENSITIVE)
+# Dependencies
+node_modules/
+
+# Firebase keys and secrets (CRITICAL: Never push these)
 *.json
 !package.json
 !package-lock.json
 
-# Dependencies
-node_modules/
+# IDE and System files
+.vscode/
+.DS_Store
 
-# Environment variables
-.env
+# Logs
+*.log
