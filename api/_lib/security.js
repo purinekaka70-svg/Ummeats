@@ -6,9 +6,6 @@ const HOTEL_PASSWORD_KEY_BYTES = 64;
 const HOTEL_PASSWORD_DIGEST = "sha512";
 const HOTEL_LOGIN_MAX_FAILURES = 5;
 const HOTEL_LOGIN_LOCK_MS = 15 * 60 * 1000;
-const DEFAULT_ADMIN_EMAIL_ALLOWLIST = [
-  "admintamuexpress@gmail.com",
-];
 
 function normalizeWhitespace(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
@@ -157,15 +154,12 @@ async function verifyBearerIdToken(req) {
 }
 
 function parseAdminAllowlist() {
-  const envEmails = String(process.env.ADMIN_EMAIL_ALLOWLIST || "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-
-  return new Set([
-    ...DEFAULT_ADMIN_EMAIL_ALLOWLIST,
-    ...envEmails,
-  ]);
+  return new Set(
+    String(process.env.ADMIN_EMAIL_ALLOWLIST || "")
+      .split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+  );
 }
 
 function isEmailAllowedForAdmin(email) {
