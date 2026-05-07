@@ -199,6 +199,12 @@ export function getHotelLocation(hotelOrId) {
   return normalizeHotelLocation(hotel?.location);
 }
 
+export function getHotelCountyName(hotelOrId) {
+  const hotel = typeof hotelOrId === "string" ? getHotelById(hotelOrId) : hotelOrId;
+  const location = getHotelLocation(hotel);
+  return toDisplayCountyName(hotel?.county || hotel?.normalizedCounty) || detectCountyFromText(location);
+}
+
 export function getVisibleRestaurants(location = state.selectedLocation) {
   const normalizedLocation = location ? normalizeHotelLocation(location) : null;
   return state.hotels
@@ -229,6 +235,7 @@ export function getLocationCards() {
         cards.set(location, {
           areas: [],
           hotelCount: 0,
+          hotelPlaces: [],
           hotels: [],
           menuCount: 0,
           name: location,
@@ -239,6 +246,11 @@ export function getLocationCards() {
       card.hotelCount += 1;
       card.menuCount += Array.isArray(restaurant?.menu) ? restaurant.menu.length : 0;
       card.hotels.push(hotel.name);
+      card.hotelPlaces.push({
+        area,
+        county: getHotelCountyName(hotel),
+        name: hotel.name,
+      });
       if (!card.areas.includes(area)) {
         card.areas.push(area);
       }

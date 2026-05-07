@@ -12,6 +12,7 @@ import {
   getCartItemCount,
   getCartItemsTotal,
   getHotelById,
+  getHotelCountyName,
   getHotelLocation,
   getLocationCards,
   getRestaurantByHotelId,
@@ -152,7 +153,7 @@ function renderLocationDirectory(locationCards) {
     <section class="location-directory">
       <div class="section-head">
         <h4>Browse by Location</h4>
-        <span class="summary-chip">${locationCards.length} area${pluralize(locationCards.length)}</span>
+        <span class="summary-chip">${locationCards.length} location${pluralize(locationCards.length)}</span>
       </div>
 
       <div class="location-grid">
@@ -170,13 +171,13 @@ function matchesUmmaLocationCard(name) {
 
 function renderLocationCard(card) {
   const isUmmaCard = matchesUmmaLocationCard(card.name);
-  const hotelPreview = card.hotels.slice(0, 3);
+  const hotelPreview = Array.isArray(card.hotelPlaces) ? card.hotelPlaces.slice(0, 3) : [];
   const areaPreview = Array.isArray(card.areas) ? card.areas.filter((area) => !matchesUmmaLocationCard(area)).slice(0, 3) : [];
   const previewCopy = hotelPreview.length
-    ? `Hotels here include ${hotelPreview.map((name) => escapeHtml(name)).join(", ")}${card.hotelCount > 3 ? ", and more." : "."}`
+    ? `Hotels here include ${hotelPreview.map((hotel) => `${escapeHtml(hotel.name)} - ${escapeHtml(hotel.area || "Area not set")}`).join(", ")}${card.hotelCount > 3 ? ", and more." : "."}`
     : `Hotels in ${escapeHtml(card.name)} will appear here automatically.`;
   const areaCopy = areaPreview.length
-    ? `<p class="tiny">Areas: ${areaPreview.map((area) => escapeHtml(area)).join(", ")}${card.areas.length > 3 ? ", and more." : ""}</p>`
+    ? `<p class="tiny">Places / areas: ${areaPreview.map((area) => escapeHtml(area)).join(", ")}${card.areas.length > 3 ? ", and more." : ""}</p>`
     : "";
 
   return `
@@ -253,12 +254,15 @@ function renderRestaurantCard(restaurant) {
   const hotel = getHotelById(restaurant.hotelId);
   const isOpen = state.activeHotelMenuId === restaurant.hotelId;
   const cartCount = getCartItemCount(getCart(restaurant.hotelId));
+  const county = getHotelCountyName(hotel);
+  const area = getHotelLocation(hotel);
 
   return `
     <article class="card restaurant-card ${isOpen ? "restaurant-card--open" : ""}">
       <div class="restaurant-card-toggle">
         <div class="restaurant-card-meta-row">
-          <span class="restaurant-card-meta-chip">${escapeHtml(getHotelLocation(hotel))}</span>
+          ${county ? `<span class="restaurant-card-meta-chip">${escapeHtml(county)} County</span>` : ""}
+          <span class="restaurant-card-meta-chip">${escapeHtml(area)}</span>
           <span class="restaurant-card-meta-chip">Till ${escapeHtml(hotel.till || "N/A")}</span>
           <span class="restaurant-card-meta-chip">${escapeHtml(hotel.phone || "N/A")}</span>
         </div>
