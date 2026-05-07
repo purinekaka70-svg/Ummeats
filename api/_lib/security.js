@@ -6,6 +6,7 @@ const HOTEL_PASSWORD_KEY_BYTES = 64;
 const HOTEL_PASSWORD_DIGEST = "sha512";
 const HOTEL_LOGIN_MAX_FAILURES = 5;
 const HOTEL_LOGIN_LOCK_MS = 15 * 60 * 1000;
+const DEFAULT_ADMIN_EMAIL_ALLOWLIST = "admintamuexpress@gmail.com";
 
 function normalizeWhitespace(value) {
   return String(value || "").trim().replace(/\s+/g, " ");
@@ -155,7 +156,11 @@ async function verifyBearerIdToken(req) {
 
 function parseAdminAllowlist() {
   return new Set(
-    String(process.env.ADMIN_EMAIL_ALLOWLIST || "")
+    [
+      DEFAULT_ADMIN_EMAIL_ALLOWLIST,
+      String(process.env.ADMIN_EMAIL_ALLOWLIST || ""),
+    ]
+      .join(",")
       .split(",")
       .map((item) => item.trim().toLowerCase())
       .filter(Boolean),
@@ -169,6 +174,11 @@ function isEmailAllowedForAdmin(email) {
   }
 
   return parseAdminAllowlist().has(normalizedEmail);
+}
+
+function hasAdminClaim(decodedToken) {
+  const role = String(decodedToken?.role || "").trim().toLowerCase();
+  return decodedToken?.admin === true || decodedToken?.isAdmin === true || role === "admin";
 }
 
 async function findLegacyAdminRecordByEmail(firestore, normalizedEmail) {
@@ -247,12 +257,14 @@ async function ensureAdminRecord(firestore, decodedToken) {
   const existingRecord = adminSnapshot.exists ? (adminSnapshot.data() || {}) : null;
   const legacyRecord = existingRecord ? null : await findLegacyAdminRecordByEmail(firestore, normalizedEmail);
   const emailAllowlisted = isEmailAllowedForAdmin(normalizedEmail);
+  const tokenHasAdminClaim = hasAdminClaim(decodedToken);
 
   // Only explicit admins are allowed:
   // - users already stored in admins/{uid}
   // - legacy admin records matched by email
   // - users whose email is allowlisted via ADMIN_EMAIL_ALLOWLIST
-  if (isAnonymousProvider || (!existingRecord && !legacyRecord && !emailAllowlisted)) {
+  // - users with Firebase custom claims: admin=true, isAdmin=true, or role=admin
+  if (isAnonymousProvider || (!existingRecord && !legacyRecord && !emailAllowlisted && !tokenHasAdminClaim)) {
     return null;
   }
 
@@ -266,6 +278,7 @@ async function ensureAdminRecord(firestore, decodedToken) {
     ...(normalizedEmail ? { email: normalizedEmail } : {}),
     ...(normalizedEmail ? { normalizedEmail } : {}),
     approved: true,
+    ...(tokenHasAdminClaim ? { adminClaim: true } : {}),
     ...(provider ? { signInProvider: provider } : {}),
     lastValidatedAt: nowTimestamp(),
     uid: normalizedUid,

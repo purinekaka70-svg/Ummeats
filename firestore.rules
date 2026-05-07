@@ -7,8 +7,15 @@ service cloud.firestore {
 
     function isAdmin() {
       return signedIn()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.approved != false;
+        && (
+          request.auth.token.admin == true
+          || request.auth.token.isAdmin == true
+          || request.auth.token.role == "admin"
+          || (
+            exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+            && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.approved != false
+          )
+        );
     }
 
     function isEmployee() {

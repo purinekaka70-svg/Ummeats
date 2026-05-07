@@ -76,7 +76,7 @@ export function renderAdmin() {
             <input class="input" name="adminPass" placeholder="Password" type="password" />
           </label>
 
-          <p class="tiny">Use the admin account you added in Firebase Authentication.</p>
+          <p class="tiny">Use an approved admin account from Firebase Authentication.</p>
           <button class="button button-primary" type="submit">Login</button>
         </form>
       </section>
