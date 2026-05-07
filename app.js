@@ -4,6 +4,7 @@ import {
   deleteDoc,
   doc,
   getDocs,
+  getDoc,
   onSnapshot,
   setDoc,
   updateDoc,
@@ -1430,6 +1431,25 @@ async function writeImmediateOrderNotifications({
   return true;
 }
 
+function hasOrderNotificationDispatched(orderData, fields) {
+  return fields.some((field) => Boolean(orderData?.[field]));
+}
+
+async function orderHasDispatchedNotifications(orderId, fields) {
+  const normalizedOrderId = String(orderId || "").trim();
+  if (!normalizedOrderId) {
+    return false;
+  }
+
+  try {
+    const snapshot = await getDoc(doc(db, "orders", normalizedOrderId));
+    return snapshot.exists() && hasOrderNotificationDispatched(snapshot.data() || {}, fields);
+  } catch (error) {
+    console.warn("Order notification status check failed", error);
+    return false;
+  }
+}
+
 async function handleClick(event) {
   const infoTrigger = event.target.closest("[data-info-target]");
   if (infoTrigger) {
@@ -2435,7 +2455,13 @@ async function handlePlaceOrder(hotelId, options = { clearCartAfter: false, clos
 
   const notificationMessage = `${customerName} placed an order for ${hotel.name}.`;
 
-  if (!notificationSent) {
+  if (
+    !notificationSent &&
+    !(await orderHasDispatchedNotifications(createdOrderId, [
+      "notificationAdminDispatchedAt",
+      "notificationHotelDispatchedAt",
+    ]))
+  ) {
     try {
       const adminNotification = {
         message: notificationMessage,
