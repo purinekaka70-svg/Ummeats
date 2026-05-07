@@ -3,7 +3,7 @@ try {
 } catch (error) {
   // Ignore failures so offline caching still works even if the OneSignal CDN is unreachable.
 }
-const APP_CACHE = "tamu-app-v44";
+const APP_CACHE = "tamu-app-v45";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -96,6 +96,18 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(request).then((cached) => {
+      const shouldRefresh = /\.(?:css|js|json|webmanifest)$/i.test(url.pathname);
+      if (shouldRefresh) {
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(APP_CACHE).then((cache) => cache.put(request, responseClone));
+          }
+
+          return response;
+        }).catch(() => cached || caches.match("./index.html"));
+      }
+
       if (cached) {
         return cached;
       }

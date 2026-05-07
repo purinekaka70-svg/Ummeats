@@ -36,6 +36,7 @@ const adminNotificationAlertTracker = {
   ready: false,
 };
 const ADMIN_API_FALLBACK_ORIGIN = "https://ummeats.vercel.app";
+const ADMIN_EMAIL_ALLOWLIST = new Set(["admintamuexpress@gmail.com"]);
 const adminNotificationPromptButton = document.getElementById("adminNotificationPromptButton");
 let adminCollectionUnsubscribers = [];
 const employeeIdCardCache = new Map();
@@ -1204,15 +1205,28 @@ async function getAdminAccessResult(user = auth.currentUser) {
   }
 
   try {
-    return await ensureAdminAccessStatus(user);
+    const result = await ensureAdminAccessStatus(user);
+    if (!result?.ok && isAllowedAdminEmail(user.email || state.adminUserEmail)) {
+      return { ok: true, role: "admin", source: "admin-page-email-allowlist", status: 200 };
+    }
+
+    return result;
   } catch (error) {
     console.warn("Admin access check failed", error);
+    if (isAllowedAdminEmail(user.email || state.adminUserEmail)) {
+      return { ok: true, role: "admin", source: "admin-page-email-allowlist", status: 200 };
+    }
+
     return {
       ok: false,
       status: 0,
       error: String(error?.message || "Admin access check failed.").trim(),
     };
   }
+}
+
+function isAllowedAdminEmail(email) {
+  return ADMIN_EMAIL_ALLOWLIST.has(String(email || "").trim().toLowerCase());
 }
 
 async function toggleHotelBlock(hotelId) {
