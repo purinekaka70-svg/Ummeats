@@ -1916,7 +1916,7 @@ async function registerHotel(form) {
   }
 
   try {
-    const county = coordinates ? await resolveCountyFromCoordinates(coordinates) : "";
+    const county = coordinates ? await resolveCountyFromCoordinates(coordinates) : detectCountyFromText(location);
     await registerHotelWithServer({
       ...(coordinates ? { coordinates } : {}),
       ...(county ? {

@@ -104,7 +104,7 @@ export function renderRestaurants() {
 
 function renderHotelLaunchCard(directoryOpen, selectedLocation, totalHotels) {
   const copy = selectedLocation
-    ? `Showing registered hotels and menus around ${selectedLocation}.`
+    ? `Showing registered hotels and menus for ${selectedLocation}.`
     : "Browse hotel menus, place food orders, and access fast delivery support across Kenya with Tamu Express.";
 
   return `
@@ -144,7 +144,7 @@ function renderLocationDirectory(locationCards) {
   if (!locationCards.length) {
     return renderEmptyState(
       "No hotel locations yet",
-      "Approved hotel areas appear here automatically. New hotel registrations currently stay under Around Umma University.",
+      "Approved hotel locations appear here automatically, grouped by county and area.",
     );
   }
 
@@ -171,9 +171,13 @@ function matchesUmmaLocationCard(name) {
 function renderLocationCard(card) {
   const isUmmaCard = matchesUmmaLocationCard(card.name);
   const hotelPreview = card.hotels.slice(0, 3);
+  const areaPreview = Array.isArray(card.areas) ? card.areas.filter((area) => !matchesUmmaLocationCard(area)).slice(0, 3) : [];
   const previewCopy = hotelPreview.length
     ? `Hotels here include ${hotelPreview.map((name) => escapeHtml(name)).join(", ")}${card.hotelCount > 3 ? ", and more." : "."}`
     : `Hotels in ${escapeHtml(card.name)} will appear here automatically.`;
+  const areaCopy = areaPreview.length
+    ? `<p class="tiny">Areas: ${areaPreview.map((area) => escapeHtml(area)).join(", ")}${card.areas.length > 3 ? ", and more." : ""}</p>`
+    : "";
 
   return `
     <article class="card location-card">
@@ -182,6 +186,7 @@ function renderLocationCard(card) {
           <p class="eyebrow">Location card</p>
           <h3 class="card-title">${escapeHtml(card.name)}</h3>
           <p class="launch-copy">${previewCopy}</p>
+          ${areaCopy}
         </div>
 
         <div class="inline-list">
@@ -212,7 +217,7 @@ function renderLocationCard(card) {
 function renderBrowseResultsHeader(selectedLocationCard, visibleCount) {
   const title = selectedLocationCard ? selectedLocationCard.name : "All registered hotel locations";
   const copy = selectedLocationCard
-    ? `Showing every approved hotel and menu registered around ${selectedLocationCard.name}.`
+    ? `Showing every approved hotel and menu registered for ${selectedLocationCard.name}.`
     : "Showing every approved hotel and menu currently available on Tamu Express.";
 
   return `

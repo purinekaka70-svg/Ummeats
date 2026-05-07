@@ -66,6 +66,134 @@ export function normalizeHotelLocation(location) {
   return String(location || "").trim().replace(/\s+/g, " ") || DEFAULT_HOTEL_LOCATION;
 }
 
+const COUNTY_NAMES = [
+  "Baringo",
+  "Bomet",
+  "Bungoma",
+  "Busia",
+  "Elgeyo-Marakwet",
+  "Embu",
+  "Garissa",
+  "Homa Bay",
+  "Isiolo",
+  "Kajiado",
+  "Kakamega",
+  "Kericho",
+  "Kiambu",
+  "Kilifi",
+  "Kirinyaga",
+  "Kisii",
+  "Kisumu",
+  "Kitui",
+  "Kwale",
+  "Laikipia",
+  "Lamu",
+  "Machakos",
+  "Makueni",
+  "Mandera",
+  "Marsabit",
+  "Meru",
+  "Migori",
+  "Mombasa",
+  "Murang'a",
+  "Nairobi",
+  "Nakuru",
+  "Nandi",
+  "Narok",
+  "Nyamira",
+  "Nyandarua",
+  "Nyeri",
+  "Samburu",
+  "Siaya",
+  "Taita-Taveta",
+  "Tana River",
+  "Tharaka-Nithi",
+  "Trans Nzoia",
+  "Turkana",
+  "Uasin Gishu",
+  "Vihiga",
+  "Wajir",
+  "West Pokot",
+];
+
+const COUNTY_TEXT_ALIAS_MAP = {
+  kajiado: [
+    "kajiado",
+    "kaijiado",
+    "around umma university",
+    "umma university",
+    "my qwetu residence",
+    "kajiado town",
+    "kajiado cbd",
+  ],
+  mombasa: [
+    "mombasa",
+    "mombasa cbd",
+    "nyali",
+    "bamburi",
+    "likoni",
+    "kisauni",
+    "changamwe",
+    "shanzu",
+    "mtwapa",
+    "tudor",
+    "mikindani",
+  ],
+};
+
+function normalizeLocationKey(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\bcounty\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function toDisplayCountyName(value) {
+  const normalizedValue = normalizeLocationKey(value);
+  if (!normalizedValue) {
+    return "";
+  }
+
+  return COUNTY_NAMES.find((county) => normalizeLocationKey(county) === normalizedValue) || "";
+}
+
+function detectCountyFromText(value) {
+  const normalizedValue = normalizeLocationKey(value);
+  if (!normalizedValue) {
+    return "";
+  }
+
+  for (const [countyKey, aliases] of Object.entries(COUNTY_TEXT_ALIAS_MAP)) {
+    if (aliases.some((alias) => normalizedValue.includes(normalizeLocationKey(alias)))) {
+      return toDisplayCountyName(countyKey);
+    }
+  }
+
+  return COUNTY_NAMES.find((county) => normalizedValue.includes(normalizeLocationKey(county))) || "";
+}
+
+function matchesDefaultHotelLocation(value) {
+  const normalizedValue = normalizeHotelLocation(value).toLowerCase();
+  return normalizedValue === DEFAULT_HOTEL_LOCATION.toLowerCase() || normalizedValue.includes("umma universit");
+}
+
+function getHotelLocationCardName(hotel) {
+  const location = getHotelLocation(hotel);
+  if (matchesDefaultHotelLocation(location)) {
+    return DEFAULT_HOTEL_LOCATION;
+  }
+
+  const county = toDisplayCountyName(hotel?.county || hotel?.normalizedCounty) || detectCountyFromText(location);
+  if (county) {
+    return `Hotels in ${county}`;
+  }
+
+  return location;
+}
+
 export function getHotelLocation(hotelOrId) {
   const hotel = typeof hotelOrId === "string" ? getHotelById(hotelOrId) : hotelOrId;
   return normalizeHotelLocation(hotel?.location);
@@ -75,7 +203,7 @@ export function getVisibleRestaurants(location = state.selectedLocation) {
   const normalizedLocation = location ? normalizeHotelLocation(location) : null;
   return state.hotels
     .filter((hotel) => isHotelOpenForCustomers(hotel))
-    .filter((hotel) => !normalizedLocation || getHotelLocation(hotel) === normalizedLocation)
+    .filter((hotel) => !normalizedLocation || getHotelLocationCardName(hotel) === normalizedLocation)
     .map((hotel) => {
       const restaurant = getRestaurantByHotelId(hotel.id);
       return {
@@ -93,11 +221,13 @@ export function getLocationCards() {
   state.hotels
     .filter((hotel) => isHotelOpenForCustomers(hotel))
     .forEach((hotel) => {
-      const location = getHotelLocation(hotel);
+      const location = getHotelLocationCardName(hotel);
+      const area = getHotelLocation(hotel);
       const restaurant = getRestaurantByHotelId(hotel.id);
 
       if (!cards.has(location)) {
         cards.set(location, {
+          areas: [],
           hotelCount: 0,
           hotels: [],
           menuCount: 0,
@@ -109,6 +239,9 @@ export function getLocationCards() {
       card.hotelCount += 1;
       card.menuCount += Array.isArray(restaurant?.menu) ? restaurant.menu.length : 0;
       card.hotels.push(hotel.name);
+      if (!card.areas.includes(area)) {
+        card.areas.push(area);
+      }
     });
 
   return [...cards.values()].sort((left, right) => {
