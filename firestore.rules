@@ -11,6 +11,7 @@ service cloud.firestore {
           request.auth.token.admin == true
           || request.auth.token.isAdmin == true
           || request.auth.token.role == "admin"
+          || request.auth.token.email == "admintamuexpress@gmail.com"
           || (
             exists(/databases/$(database)/documents/admins/$(request.auth.uid))
             && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.approved != false
