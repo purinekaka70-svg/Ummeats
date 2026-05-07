@@ -4,8 +4,8 @@
     ".write": false,
     "employeeIdCards": {
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true)",
-        ".write": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && (auth.uid === $uid || auth.token.admin === true || auth.token.isAdmin === true || auth.token.role === \"admin\" || auth.token.email === \"admintamuexpress@gmail.com\")",
+        ".write": "auth != null && (auth.uid === $uid || auth.token.admin === true || auth.token.isAdmin === true || auth.token.role === \"admin\" || auth.token.email === \"admintamuexpress@gmail.com\")",
         ".validate": "newData.hasChildren(['base64', 'fileName', 'mimeType', 'sizeBytes', 'uploadedAt'])",
         "base64": {
           ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 8000000"

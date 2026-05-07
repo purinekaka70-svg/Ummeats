@@ -8,11 +8,16 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 import {
+  get as getRtdbSnapshot,
+  ref as rtdbRef,
+  remove as removeRtdb,
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { auth, db } from "./firebase.js";
+import { auth, db, rtdb } from "./firebase.js";
 import { formatTime, inferToastTone } from "./helpers.js";
 import {
   claimNotificationTag,
@@ -98,9 +103,43 @@ async function fetchEmployeeIdCardFile(employeeId) {
 
   const result = await postAdminJson("/api/admin-employee-id-card", {
     employeeId: normalizedEmployeeId,
+  }).catch((error) => {
+    console.warn("Employee ID API failed; trying Realtime Database fallback.", error);
+    return fetchEmployeeIdCardFileFromDatabase(normalizedEmployeeId);
   });
   employeeIdCardCache.set(normalizedEmployeeId, result);
   return result;
+}
+
+async function fetchEmployeeIdCardFileFromDatabase(employeeId) {
+  const employee = state.employees.find((item) => item.id === employeeId || item.uid === employeeId) || {};
+  const databasePath = String(employee.idCardDatabasePath || `employeeIdCards/${employeeId}`).trim();
+  if (!databasePath) {
+    throw new Error("Employee ID PDF path is missing.");
+  }
+
+  const snapshot = await getRtdbSnapshot(rtdbRef(rtdb, databasePath));
+  if (!snapshot.exists()) {
+    throw new Error("Employee ID PDF was not found.");
+  }
+
+  const idCard = snapshot.val() || {};
+  const base64 = String(idCard.base64 || "").trim();
+  if (!base64) {
+    throw new Error("Employee ID PDF content is empty.");
+  }
+
+  return {
+    base64,
+    employeeId,
+    fileName: sanitizeDownloadFileName(
+      idCard.fileName || employee.idCardFileName || `${employeeId}-id-card.pdf`,
+      `${employeeId}-id-card.pdf`,
+    ),
+    mimeType: String(idCard.mimeType || "application/pdf").trim() || "application/pdf",
+    ok: true,
+    source: "realtime-database",
+  };
 }
 
 function decodeBase64ToBytes(base64Value) {
@@ -1399,7 +1438,12 @@ async function deleteEmployee(employeeId) {
     await postAdminJson("/api/admin-employee-id-card", {
       action: "delete",
       employeeId,
-    }).catch(() => undefined);
+    }).catch(async () => {
+      const databasePath = String(employee.idCardDatabasePath || `employeeIdCards/${employeeId}`).trim();
+      if (databasePath) {
+        await removeRtdb(rtdbRef(rtdb, databasePath)).catch(() => undefined);
+      }
+    });
     employeeIdCardCache.delete(employeeId);
     showToast("Employee profile deleted.", "success");
   } catch (error) {
