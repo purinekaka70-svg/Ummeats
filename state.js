@@ -16,6 +16,7 @@ export const state = {
   activeHotelMenuId: null,
   locationDirectoryOpen: false,
   restaurantDirectoryOpen: false,
+  restaurantSearchOpen: false,
   restaurantSearchQuery: "",
   currentTab: "restaurants",
   currentInfoSection: null,

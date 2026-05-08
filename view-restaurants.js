@@ -112,8 +112,15 @@ export function renderRestaurants() {
 
 function renderHotelSearchPanel(searchQuery, resultCount, mode) {
   const label = mode === "location" ? "location" : "hotel";
+  const isOpen = state.restaurantSearchOpen || Boolean(searchQuery);
   return `
-    <section class="hotel-search-card" aria-label="Search hotels">
+    <section class="hotel-search-card ${isOpen ? "is-open" : ""}" aria-label="Search hotels">
+      <button class="hotel-search-toggle hotelSearchToggleBtn" type="button" aria-label="${isOpen ? "Hide search" : "Show search"}" aria-expanded="${isOpen}">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M10.5 4a6.5 6.5 0 0 1 5.17 10.44l3.45 3.44a1 1 0 0 1-1.41 1.42l-3.45-3.45A6.5 6.5 0 1 1 10.5 4Zm0 2a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9Z"></path>
+        </svg>
+        <span>Search</span>
+      </button>
       <label class="hotel-search-field">
         <span class="field-label">Search hotels, county, area, menu, phone, or till</span>
         <input

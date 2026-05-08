@@ -187,6 +187,7 @@ function bindStaticEvents() {
     state.locationDirectoryOpen = false;
     state.selectedLocation = null;
     state.restaurantDirectoryOpen = false;
+    state.restaurantSearchOpen = false;
     state.restaurantSearchQuery = "";
     updateInfoSections();
     switchTab("restaurants");
@@ -1507,6 +1508,17 @@ async function handleClick(event) {
     return;
   }
 
+  if (button.classList.contains("hotelSearchToggleBtn")) {
+    state.restaurantSearchOpen = !state.restaurantSearchOpen;
+    renderCurrentView();
+    if (state.restaurantSearchOpen) {
+      window.requestAnimationFrame(() => {
+        document.querySelector(".hotelSearchInput")?.focus({ preventScroll: true });
+      });
+    }
+    return;
+  }
+
   if (button.classList.contains("browseNavBtn")) {
     state.restaurantDirectoryOpen = true;
     state.locationDirectoryOpen = button.dataset.tab === "restaurants" && !state.selectedLocation && !state.activeHotelMenuId;
@@ -1794,6 +1806,7 @@ function toggleRestaurantDirectory() {
     state.locationDirectoryOpen = false;
     state.activeHotelMenuId = null;
     state.selectedLocation = null;
+    state.restaurantSearchOpen = false;
     state.restaurantSearchQuery = "";
     state.currentTab = "restaurants";
   }
