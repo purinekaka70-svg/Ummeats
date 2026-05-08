@@ -1840,6 +1840,35 @@ button {
     min-height: 30px;
   }
 
+  .admin-main-header .toolbar,
+  .admin-panel-shell .button-row,
+  .admin-panel-shell .section-head .inline-list {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .admin-main-header .toolbar::-webkit-scrollbar,
+  .admin-panel-shell .button-row::-webkit-scrollbar,
+  .admin-panel-shell .section-head .inline-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .admin-main-header .toolbar > *,
+  .admin-panel-shell .button-row > *,
+  .admin-panel-shell .section-head .inline-list > * {
+    width: auto;
+    max-width: none;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .topbar-actions > *,
   .toolbar > * {
     width: 100%;
