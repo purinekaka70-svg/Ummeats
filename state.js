@@ -187,11 +187,7 @@ function getHotelLocationCardName(hotel) {
   }
 
   const county = toDisplayCountyName(hotel?.county || hotel?.normalizedCounty) || detectCountyFromText(location);
-  if (county) {
-    return `Hotels in ${county}`;
-  }
-
-  return location;
+  return location || county || DEFAULT_HOTEL_LOCATION;
 }
 
 export function getHotelLocation(hotelOrId) {
@@ -515,7 +511,7 @@ export function getHotelById(id) {
 }
 
 export function getRestaurantByHotelId(hotelId) {
-  return state.restaurants.find((restaurant) => restaurant.hotelId === hotelId);
+  return state.restaurants.find((restaurant) => restaurant.hotelId === hotelId || restaurant.id === hotelId);
 }
 
 export function getCart(hotelId) {

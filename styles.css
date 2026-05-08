@@ -1750,11 +1750,16 @@ button {
   }
 
   .topbar-actions,
-  .toolbar,
-  .button-row {
+  .toolbar {
     width: 100%;
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .button-row {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
   }
 
   .hero-stats,
@@ -1809,10 +1814,16 @@ button {
   }
 
   .topbar-actions > *,
-  .toolbar > *,
-  .button-row > * {
+  .toolbar > * {
     width: 100%;
     max-width: 100%;
+  }
+
+  .button-row > * {
+    width: auto;
+    max-width: 100%;
+    flex: 0 1 auto;
+    white-space: nowrap;
   }
 
   /* Keep the desktop header feel on phones: pills stay in a single row and can scroll if needed. */
