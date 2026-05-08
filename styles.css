@@ -895,6 +895,28 @@ button {
   gap: 14px;
 }
 
+.hotel-search-card {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 28px rgba(21, 128, 61, 0.08);
+}
+
+.hotel-search-field {
+  display: grid;
+  gap: 7px;
+  flex: 1 1 420px;
+}
+
+.hotel-search-card .summary-chip {
+  flex: 0 0 auto;
+}
+
 .location-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -1779,6 +1801,11 @@ button {
 
   .notice-strip {
     grid-template-columns: 1fr;
+  }
+
+  .hotel-search-card {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .notice-track {

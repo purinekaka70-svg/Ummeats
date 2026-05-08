@@ -14,6 +14,7 @@ import {
   getHotelById,
   getHotelCountyName,
   getHotelLocation,
+  locationCardMatchesSearch,
   getLocationCards,
   getRestaurantByHotelId,
   getVisibleRestaurants,
@@ -27,7 +28,9 @@ import {
 } from "./view-common.js";
 export function renderRestaurants() {
   const selectedLocation = state.selectedLocation;
-  const locationCards = getLocationCards();
+  const searchQuery = String(state.restaurantSearchQuery || "").trim();
+  const allLocationCards = getLocationCards();
+  const locationCards = allLocationCards.filter((card) => locationCardMatchesSearch(card, searchQuery));
   const allVisibleRestaurants = getVisibleRestaurants(null);
   const visibleRestaurants = getVisibleRestaurants();
   const activeHotelId = state.activeHotelMenuId;
@@ -38,7 +41,7 @@ export function renderRestaurants() {
     ? visibleRestaurants.filter((restaurant) => restaurant.hotelId === activeHotelId)
     : visibleRestaurants;
   const selectedLocationCard = selectedLocation
-    ? locationCards.find((card) => card.name === selectedLocation) || null
+    ? allLocationCards.find((card) => card.name === selectedLocation) || null
     : null;
 
   elements.app.innerHTML = `
@@ -64,7 +67,9 @@ export function renderRestaurants() {
         }
       </div>
 
-      ${showLocationDirectory ? renderLocationDirectory(locationCards) : directoryOpen ? renderBrowseResultsHeader(selectedLocationCard, visibleRestaurants.length) : ""}
+      ${directoryOpen ? renderHotelSearchPanel(searchQuery, showLocationDirectory ? locationCards.length : visibleRestaurants.length, showLocationDirectory ? "location" : "hotel") : ""}
+
+      ${showLocationDirectory ? renderLocationDirectory(locationCards, searchQuery) : directoryOpen ? renderBrowseResultsHeader(selectedLocationCard, visibleRestaurants.length) : ""}
 
       ${
         directoryOpen && !showLocationDirectory
@@ -88,10 +93,12 @@ export function renderRestaurants() {
                       <div class="restaurant-grid">${visibleCards.map(renderRestaurantCard).join("")}</div>
                     `
                   : renderEmptyState(
-                      "No hotels in this location yet",
-                      selectedLocation
-                        ? "Registered hotels in this area will appear here automatically once they are approved and menus are added."
-                        : "Hotels will appear here once they are approved and a menu has been added.",
+                      searchQuery ? "No hotels match your search" : "No hotels in this location yet",
+                      searchQuery
+                        ? "Try a hotel name, county, area, phone number, till number, or menu item."
+                        : selectedLocation
+                          ? "Registered hotels in this area will appear here automatically once they are approved and menus are added."
+                          : "Hotels will appear here once they are approved and a menu has been added.",
                     )
               }
             `
@@ -99,6 +106,26 @@ export function renderRestaurants() {
       }
 
       ${directoryOpen && hasActiveMenu ? renderMenuForHotel(activeHotelId) : ""}
+    </section>
+  `;
+}
+
+function renderHotelSearchPanel(searchQuery, resultCount, mode) {
+  const label = mode === "location" ? "location" : "hotel";
+  return `
+    <section class="hotel-search-card" aria-label="Search hotels">
+      <label class="hotel-search-field">
+        <span class="field-label">Search hotels, county, area, menu, phone, or till</span>
+        <input
+          class="input hotelSearchInput"
+          name="hotelSearch"
+          placeholder="Search hotel, county, location..."
+          type="search"
+          value="${escapeHtml(searchQuery)}"
+          autocomplete="off"
+        />
+      </label>
+      <span class="summary-chip">${resultCount} ${label}${pluralize(resultCount)} found</span>
     </section>
   `;
 }
@@ -141,11 +168,13 @@ function renderHotelLaunchCard(directoryOpen, selectedLocation, totalHotels) {
   `;
 }
 
-function renderLocationDirectory(locationCards) {
+function renderLocationDirectory(locationCards, searchQuery = "") {
   if (!locationCards.length) {
     return renderEmptyState(
-      "No hotel locations yet",
-      "Approved hotel locations appear here automatically, grouped by county and area.",
+      searchQuery ? "No locations match your search" : "No hotel locations yet",
+      searchQuery
+        ? "Try a hotel name, county, area, phone number, till number, or menu item."
+        : "Approved hotel locations appear here automatically, grouped by county and area.",
     );
   }
 

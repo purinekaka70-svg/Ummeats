@@ -16,6 +16,7 @@ export const state = {
   activeHotelMenuId: null,
   locationDirectoryOpen: false,
   restaurantDirectoryOpen: false,
+  restaurantSearchQuery: "",
   currentTab: "restaurants",
   currentInfoSection: null,
   selectedLocation: null,
@@ -201,11 +202,63 @@ export function getHotelCountyName(hotelOrId) {
   return toDisplayCountyName(hotel?.county || hotel?.normalizedCounty) || detectCountyFromText(location);
 }
 
+function normalizeSearchText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchesSearchText(values, query) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const haystack = values.map(normalizeSearchText).filter(Boolean).join(" ");
+  return normalizedQuery.split(" ").every((term) => haystack.includes(term));
+}
+
+export function hotelMatchesSearch(hotelOrId, query) {
+  const hotel = typeof hotelOrId === "string" ? getHotelById(hotelOrId) : hotelOrId;
+  const restaurant = getRestaurantByHotelId(hotel?.id);
+  const menuNames = Array.isArray(restaurant?.menu)
+    ? restaurant.menu.map((item) => item?.name)
+    : [];
+
+  return matchesSearchText([
+    hotel?.name,
+    hotel?.phone,
+    hotel?.till,
+    hotel?.county,
+    hotel?.normalizedCounty,
+    getHotelCountyName(hotel),
+    getHotelLocation(hotel),
+    ...menuNames,
+  ], query);
+}
+
+export function locationCardMatchesSearch(card, query) {
+  const hotelNames = Array.isArray(card?.hotels) ? card.hotels : [];
+  const areas = Array.isArray(card?.areas) ? card.areas : [];
+  const hotelPlaces = Array.isArray(card?.hotelPlaces) ? card.hotelPlaces : [];
+
+  return matchesSearchText([
+    card?.name,
+    ...hotelNames,
+    ...areas,
+    ...hotelPlaces.flatMap((place) => [place?.name, place?.area, place?.county]),
+  ], query);
+}
+
 export function getVisibleRestaurants(location = state.selectedLocation) {
   const normalizedLocation = location ? normalizeHotelLocation(location) : null;
   return state.hotels
     .filter((hotel) => isHotelOpenForCustomers(hotel))
     .filter((hotel) => !normalizedLocation || getHotelLocationCardName(hotel) === normalizedLocation)
+    .filter((hotel) => hotelMatchesSearch(hotel, state.restaurantSearchQuery))
     .map((hotel) => {
       const restaurant = getRestaurantByHotelId(hotel.id);
       return {
