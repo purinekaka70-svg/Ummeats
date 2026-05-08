@@ -49,14 +49,14 @@ service cloud.firestore {
     }
 
     match /hotels/{hotelId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if false;
       allow update: if isAdmin() || hotelOwns(hotelId);
       allow delete: if isAdmin();
     }
 
     match /restaurants/{restaurantId} {
-      allow read: if signedIn();
+      allow read: if true;
       allow create: if isAdmin() || hotelOwns(request.resource.data.hotelId);
       allow update: if isAdmin() || hotelOwns(resource.data.hotelId);
       allow delete: if isAdmin();
