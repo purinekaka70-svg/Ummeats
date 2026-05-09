@@ -810,7 +810,7 @@ button {
 }
 
 .restaurant-grid {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
 }
 
 .dashboard-grid,
@@ -939,7 +939,7 @@ button {
 
 .location-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 16px;
 }
 
@@ -1023,6 +1023,25 @@ button {
   font-size: 1.35rem;
   font-weight: 800;
   line-height: 1.35;
+}
+
+.restaurant-card-compact h3,
+.location-card .card-title,
+.location-card .launch-copy,
+.location-card .tiny {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+}
+
+.restaurant-card-compact h3,
+.location-card .card-title {
+  -webkit-line-clamp: 2;
+}
+
+.location-card .launch-copy,
+.location-card .tiny {
+  -webkit-line-clamp: 2;
 }
 
 .restaurant-card-actions {
@@ -1877,6 +1896,87 @@ button {
     white-space: nowrap;
   }
 
+  .restaurant-grid,
+  .location-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .restaurant-card,
+  .location-card {
+    min-width: 0;
+    padding: 8px;
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(21, 128, 61, 0.08);
+  }
+
+  .restaurant-card-toggle,
+  .location-card .stack {
+    gap: 8px;
+  }
+
+  .restaurant-card-toggle {
+    padding: 8px;
+  }
+
+  .location-card .card-title,
+  .restaurant-card-compact h3 {
+    font-size: 0.94rem;
+    line-height: 1.22;
+  }
+
+  .location-card .launch-copy,
+  .location-card .tiny,
+  .restaurant-card-instruction {
+    font-size: 0.74rem;
+    line-height: 1.28;
+  }
+
+  .restaurant-card-meta-row,
+  .location-card .inline-list {
+    flex-wrap: nowrap;
+    gap: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .restaurant-card-meta-row::-webkit-scrollbar,
+  .location-card .inline-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .restaurant-card-meta-chip,
+  .location-card .summary-chip {
+    flex: 0 0 auto;
+    min-height: 24px;
+    padding: 0 7px;
+    font-size: 0.7rem;
+  }
+
+  .restaurant-card-actions,
+  .location-card .button-row {
+    gap: 5px;
+  }
+
+  .restaurant-card-actions .button,
+  .location-card .button {
+    min-height: 34px;
+    padding: 0 9px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+  }
+
+  .button-cart-icon {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 9px;
+  }
+
+  .button-cart-icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
   .menu-item,
   .cart-item {
     flex-direction: column;
@@ -2008,5 +2108,77 @@ button {
 
   .employee-map-frame {
     min-height: 280px;
+  }
+}
+
+@media (max-width: 380px) {
+  .restaurant-grid,
+  .location-grid {
+    gap: 6px;
+  }
+
+  .restaurant-card,
+  .location-card {
+    padding: 6px;
+  }
+
+  .button-cart-icon-label {
+    display: none;
+  }
+
+  .restaurant-card-actions .button,
+  .location-card .button {
+    padding: 0 8px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Final action-row override: keep buttons beside each other instead of stacked. */
+.toolbar,
+.button-row,
+.site-actions,
+.modal-actions,
+.admin-main-header .toolbar,
+.admin-panel-shell .button-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  max-width: 100% !important;
+  scrollbar-width: none;
+}
+
+.toolbar::-webkit-scrollbar,
+.button-row::-webkit-scrollbar,
+.site-actions::-webkit-scrollbar,
+.modal-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.toolbar > *,
+.button-row > *,
+.site-actions > *,
+.modal-actions > * {
+  flex: 0 0 auto !important;
+}
+
+.toolbar .button,
+.button-row .button,
+.site-actions .button,
+.modal-actions .button {
+  width: auto !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 640px) {
+  .admin-nav-btn {
+    flex-direction: row !important;
+    align-items: center !important;
   }
 }
