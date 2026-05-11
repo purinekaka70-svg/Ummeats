@@ -283,6 +283,38 @@ function getRestaurantMenuItems(restaurant) {
   );
 }
 
+function mergeMenuItems(menuLists) {
+  const seen = new Set();
+  const merged = [];
+
+  menuLists.flat().forEach((item) => {
+    if (!item || typeof item !== "object") {
+      return;
+    }
+
+    const name = String(item.name || "").trim();
+    if (!name) {
+      return;
+    }
+
+    const key = [
+      normalizeMatchKey(name),
+      String(item.price ?? "").trim(),
+      normalizeMatchKey(item.day),
+      normalizeMatchKey(item.mealPeriod),
+    ].join("|");
+
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    merged.push(item);
+  });
+
+  return merged;
+}
+
 function normalizeMatchKey(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -667,31 +699,25 @@ export function getRestaurantByHotelId(hotelId) {
       ...restaurant,
       menu: getRestaurantMenuItems(restaurant),
     }));
+  const hotelMenu = getRestaurantMenuItems(hotel);
+  const exactMatch = matches.find((restaurant) => restaurant.id === hotel.id || restaurant.hotelId === hotel.id);
+  const fallbackMatch = matches.find((restaurant) => restaurant.menu.length) || matches[0];
+  const menu = mergeMenuItems([
+    ...(exactMatch ? [exactMatch.menu] : []),
+    ...matches.filter((restaurant) => restaurant !== exactMatch).map((restaurant) => restaurant.menu),
+    hotelMenu,
+  ]);
 
-  matches.sort((left, right) => {
-    const leftHasMenu = left.menu.length ? 1 : 0;
-    const rightHasMenu = right.menu.length ? 1 : 0;
-    if (rightHasMenu !== leftHasMenu) {
-      return rightHasMenu - leftHasMenu;
-    }
-
-    const leftExactId = left.id === hotel.id || left.hotelId === hotel.id ? 1 : 0;
-    const rightExactId = right.id === hotel.id || right.hotelId === hotel.id ? 1 : 0;
-    return rightExactId - leftExactId;
-  });
-
-  if (matches[0]) {
-    return matches[0];
+  if (matches.length || menu.length) {
+    return {
+      ...(fallbackMatch || {}),
+      id: exactMatch?.id || hotel.id,
+      hotelId: hotel.id,
+      menu,
+    };
   }
 
-  const hotelMenu = getRestaurantMenuItems(hotel);
-  return hotelMenu.length
-    ? {
-        id: hotel.id,
-        hotelId: hotel.id,
-        menu: hotelMenu,
-      }
-    : undefined;
+  return undefined;
 }
 
 export function getCart(hotelId) {
