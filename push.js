@@ -341,7 +341,7 @@ function bindOneSignalDeferredBridge() {
 
 async function showForegroundNotification(title, body, registration, notificationOptions = {}) {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") {
-    return;
+    return false;
   }
 
   const options = {
@@ -357,7 +357,7 @@ async function showForegroundNotification(title, body, registration, notificatio
   if (registration?.showNotification) {
     try {
       await registration.showNotification(title, options);
-      return;
+      return true;
     } catch (error) {
       console.warn("Foreground browser notification failed", error);
     }
@@ -371,9 +371,12 @@ async function showForegroundNotification(title, body, registration, notificatio
         window.location.href = options.data.link;
       }
     };
+    return true;
   } catch (error) {
     console.warn("Fallback notification failed", error);
   }
+
+  return false;
 }
 
 async function getNotificationRegistration() {
@@ -568,8 +571,8 @@ async function getOneSignal() {
 
   oneSignalInitError = null;
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-  void ensureOneSignalPageScript();
   bindOneSignalDeferredBridge();
+  void ensureOneSignalPageScript();
 
   oneSignalReadyPromise = new Promise((resolve, reject) => {
     const waiter = {
@@ -634,6 +637,7 @@ async function getOneSignal() {
     scheduleTimeout();
   }).catch((error) => {
     oneSignalInitError = error;
+    oneSignalReadyPromise = null;
     console.warn("OneSignal initialization failed", error);
     return null;
   });
@@ -726,7 +730,11 @@ export async function registerPushSubscription(target, label, options = {}) {
     return false;
   }
 
-  const OneSignal = await ensureOneSignalPush(options);
+  const OneSignal = await ensureOneSignalPush(options).catch((error) => {
+    oneSignalInitError = error;
+    console.warn("Push setup failed before identity sync", error);
+    return null;
+  });
   if (!OneSignal) {
     // Fallback: still allow browser notifications (foreground alerts) even if OneSignal push is blocked.
     return enableBasicBrowserNotifications(options);
@@ -782,8 +790,7 @@ export async function showBrowserNotification(title, body, options = {}) {
   }
 
   const registration = await getNotificationRegistration();
-  await showForegroundNotification(title, body, registration, options);
-  return true;
+  return showForegroundNotification(title, body, registration, options);
 }
 
 export function claimNotificationTag(tag) {
