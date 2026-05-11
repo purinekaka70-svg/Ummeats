@@ -222,12 +222,107 @@ function matchesSearchText(values, query) {
   return normalizedQuery.split(" ").every((term) => haystack.includes(term));
 }
 
+function normalizeMenuItems(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (!item || typeof item !== "object") {
+          return {
+            name: String(item || "").trim(),
+            price: "",
+          };
+        }
+
+        return {
+          ...item,
+          name: item.name ?? item.title ?? item.itemName ?? item.foodName ?? item.dishName ?? "",
+          price: item.price ?? item.amount ?? item.cost ?? item.value ?? "",
+        };
+      })
+      .filter((item) => {
+        if (!item || typeof item !== "object") {
+          return false;
+        }
+
+        return String(item.name || "").trim();
+      });
+  }
+
+  if (value && typeof value === "object") {
+    return Object.entries(value)
+      .map(([key, item]) => {
+        if (item && typeof item === "object") {
+          return {
+            id: item.id ?? key,
+            ...item,
+            name: item.name ?? item.title ?? item.itemName ?? item.foodName ?? item.dishName ?? key,
+            price: item.price ?? item.amount ?? item.cost ?? item.value ?? "",
+          };
+        }
+
+        return {
+          id: key,
+          name: key,
+          price: item,
+        };
+      })
+      .filter((item) => String(item.name || "").trim());
+  }
+
+  return [];
+}
+
+function getRestaurantMenuItems(restaurant) {
+  return normalizeMenuItems(
+    restaurant?.menu ??
+      restaurant?.menus ??
+      restaurant?.items ??
+      restaurant?.products ??
+      restaurant?.dishes ??
+      restaurant?.foodItems,
+  );
+}
+
+function normalizeMatchKey(value) {
+  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function restaurantMatchesHotel(restaurant, hotel) {
+  if (!restaurant || !hotel?.id) {
+    return false;
+  }
+
+  const hotelId = String(hotel.id || "").trim();
+  const hotelName = normalizeMatchKey(hotel.name);
+  const restaurantHotelIds = [
+    restaurant.hotelId,
+    restaurant.hotelID,
+    restaurant.hotel_id,
+    restaurant.hotel,
+    restaurant.ownerHotelId,
+    restaurant.restaurantId,
+    restaurant.id,
+  ].map((item) => String(item || "").trim());
+
+  if (restaurantHotelIds.some((item) => item === hotelId)) {
+    return true;
+  }
+
+  const restaurantHotelNames = [
+    restaurant.hotelName,
+    restaurant.restaurantName,
+    restaurant.name,
+    restaurant.title,
+    restaurant.id,
+  ].map(normalizeMatchKey);
+
+  return Boolean(hotelName) && restaurantHotelNames.some((item) => item === hotelName);
+}
+
 export function hotelMatchesSearch(hotelOrId, query) {
   const hotel = typeof hotelOrId === "string" ? getHotelById(hotelOrId) : hotelOrId;
   const restaurant = getRestaurantByHotelId(hotel?.id);
-  const menuNames = Array.isArray(restaurant?.menu)
-    ? restaurant.menu.map((item) => item?.name)
-    : [];
+  const menuNames = restaurant?.menu.map((item) => item?.name) || [];
 
   return matchesSearchText([
     hotel?.name,
@@ -265,7 +360,7 @@ export function getVisibleRestaurants(location = state.selectedLocation) {
       return {
         hotelId: hotel.id,
         id: restaurant?.id || hotel.id,
-        menu: Array.isArray(restaurant?.menu) ? restaurant.menu : [],
+        menu: restaurant?.menu || [],
       };
     })
     .sort((left, right) => getHotelById(left.hotelId).name.localeCompare(getHotelById(right.hotelId).name));
@@ -294,7 +389,7 @@ export function getLocationCards() {
 
       const card = cards.get(location);
       card.hotelCount += 1;
-      card.menuCount += Array.isArray(restaurant?.menu) ? restaurant.menu.length : 0;
+      card.menuCount += restaurant?.menu.length || 0;
       card.hotels.push(hotel.name);
       card.hotelPlaces.push({
         area,
@@ -565,7 +660,38 @@ export function getHotelById(id) {
 }
 
 export function getRestaurantByHotelId(hotelId) {
-  return state.restaurants.find((restaurant) => restaurant.hotelId === hotelId || restaurant.id === hotelId);
+  const hotel = getHotelById(hotelId);
+  const matches = state.restaurants
+    .filter((restaurant) => restaurantMatchesHotel(restaurant, hotel))
+    .map((restaurant) => ({
+      ...restaurant,
+      menu: getRestaurantMenuItems(restaurant),
+    }));
+
+  matches.sort((left, right) => {
+    const leftHasMenu = left.menu.length ? 1 : 0;
+    const rightHasMenu = right.menu.length ? 1 : 0;
+    if (rightHasMenu !== leftHasMenu) {
+      return rightHasMenu - leftHasMenu;
+    }
+
+    const leftExactId = left.id === hotel.id || left.hotelId === hotel.id ? 1 : 0;
+    const rightExactId = right.id === hotel.id || right.hotelId === hotel.id ? 1 : 0;
+    return rightExactId - leftExactId;
+  });
+
+  if (matches[0]) {
+    return matches[0];
+  }
+
+  const hotelMenu = getRestaurantMenuItems(hotel);
+  return hotelMenu.length
+    ? {
+        id: hotel.id,
+        hotelId: hotel.id,
+        menu: hotelMenu,
+      }
+    : undefined;
 }
 
 export function getCart(hotelId) {
