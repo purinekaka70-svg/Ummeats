@@ -77,6 +77,11 @@ function createFirestoreMock({ hotels = {}, orders = {}, shopOrders = {} } = {})
             notifications.push(payload);
             return { id: `notification-${notifications.length}` };
           },
+          doc: (id) => ({
+            async set(payload) {
+              notifications.push({ id, ...payload });
+            },
+          }),
         };
       }
 
